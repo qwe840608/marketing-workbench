@@ -1,0 +1,48 @@
+/* Surface insets have one owner; page geometry and control padding stay in their own layers. */
+:root body :is(
+  .dashboard-card,.kpi,.settings-section,.settings-shortcuts button,.ranked-post,
+  .metric-chart,.comment-sync,.post-comment,.post-toolbar,
+  .post-date-filter,.key-overview > div,
+  .prompt-history,.prompt-history pre,
+  .export-status,
+  .legacy-note,.success-note,.error,.review-reason,
+  .sheet-heading,.sheet-content,
+  .post-metrics,.post-intro,.post-comments,.sync-notice,.pagination,.receive-banner,
+  .sheet-source
+) { padding-inline:var(--ui-panel-padding); }
+
+:root body .post-card { padding-inline:var(--ui-list-padding); }
+/* Filter backgrounds follow the same surface rule everywhere, including nested date filters. */
+:root body :is(.post-toolbar,.post-date-filter) {
+  background:var(--paper); padding-inline:var(--ui-panel-padding);
+}
+/* Children own the inset so split panels do not accumulate two layers of padding. */
+:root body .post-list { padding-inline:0; }
+/* 清單內的日期篩選與下方貼文卡片左右對齊。 */
+:root body .post-list .post-date-filter { padding-inline:var(--ui-list-padding); }
+:root body .post-conversation { padding-inline:0; }
+:root body .metric-chart :is(.card-title,.metric-note) { padding-inline:0; }
+
+/* A table row is the bordered surface; its cells retain their compact column spacing. */
+:root body :is(.usage-table,.snapshot-table) :is(td,th) { border-bottom:0; }
+:root body :is(.usage-table,.snapshot-table) tr { border-bottom:1px solid var(--line); }
+:root body :is(.usage-table,.snapshot-table) :is(td,th):first-child { padding-left:var(--ui-panel-padding); }
+:root body :is(.usage-table,.snapshot-table) :is(td,th):last-child { padding-right:var(--ui-panel-padding); }
+
+@media (max-width:599px) {
+  :root body .usage-table tbody tr { padding-inline:var(--ui-panel-padding); }
+  :root body .usage-table tbody :is(td,th) { padding-inline:0; }
+}
+
+/* Compact numeric cells wrap as a whole; their numbers never break across lines. */
+:root body .metric-grid {
+  font-size:var(--ui-font-section-title);
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--ui-metric-min-width)),1fr));
+}
+:root body .metric-grid > div { padding:var(--ui-small-padding); }
+:root body :is(.metric-grid strong,.kpi > strong,.stage-bars strong,.intent-bars strong,
+  .rank-reach,.rank-number,.workspace-nav span,.page-count,.post-comments h3 span,
+  .snapshot-table td:not(:first-child)) { white-space:nowrap; overflow-wrap:normal; }
+
+:root body .snapshot-table table { table-layout:auto; }
+:root body .snapshot-table th:first-child { width:auto; }

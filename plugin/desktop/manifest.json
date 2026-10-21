@@ -1,0 +1,42 @@
+{
+  "manifest_version": "0.3",
+  "name": "mwb",
+  "display_name": "行銷工作檯",
+  "version": "${plugin_version}",
+  "description": "透過內部連線查詢行銷數據、撰寫草稿、上傳本機媒體與確認發佈。",
+  "author": { "name": "行銷工作檯" },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "MWB_WORKBENCH_URL": "${user_config.workbench_url}",
+        "MWB_TOKEN": "${user_config.token}"
+      }
+    }
+  },
+  "compatibility": { "platforms": ["win32", "darwin", "linux"], "runtimes": { "node": ">=18.0.0" } },
+  "user_config": {
+    "workbench_url": {
+      "type": "string", "title": "工作檯網址", "required": true,
+      "description": "請填內部 https 網址（從工作檯『我的帳號 → 安裝 Agent』複製）"
+    },
+    "token": {
+      "type": "string", "title": "連線權杖", "required": true, "sensitive": true,
+      "description": "在工作檯『我的帳號 → Agent 連線 → 建立連線權杖』取得"
+    }
+  },
+  "tools": [
+    { "name": "get_server_info", "description": "查看成員權限、連線與版本資訊。" },
+    { "name": "get_guide", "description": "讀取報表、主題、腳本、草稿與發佈流程。" },
+    { "name": "get_brand_guide", "description": "讀取品牌說明與禁語。" },
+    { "name": "save_publish_draft", "description": "將已定案文案存為草稿。" },
+    { "name": "upload_local_file", "description": "將本機圖片或影片上傳到草稿。" },
+    { "name": "get_publish_post", "description": "確認草稿與媒體上傳結果。" },
+    { "name": "prepare_publish", "description": "準備發佈明細供使用者確認。" },
+    { "name": "confirm_publish", "description": "使用者明確同意後確認發佈。" }
+  ],
+  "tools_generated": true
+}

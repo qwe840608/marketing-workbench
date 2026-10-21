@@ -1,0 +1,206 @@
+.publish-page { min-width: 0; overflow-wrap: anywhere; }
+.publish-switch,.publish-brand-row,.publish-platform-heading,.publish-record-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.publish-brand-row { margin-bottom: 16px; }
+.publish-brand-row label { flex: 0 1 260px; margin: 0; }
+.publish-brand-row > span { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-tabs { margin-bottom: 24px; }
+.publish-step + .publish-step { margin-top: 32px; }
+.publish-step h2 { display: flex; align-items: center; gap: 8px; font-size: var(--ui-font-section-title); font-weight: 600; margin: 0 0 12px; }
+.publish-step h2 > span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--ui-radius-control); color: var(--bg-surface); background: var(--brand-primary); font-size: var(--ui-font-help); }
+.publish-upload { border: 1px dashed var(--border-subtle); border-radius: var(--ui-radius-control); padding: 24px; text-align: center; background: var(--bg-subtle); }
+.publish-upload button { max-width: 100%; }
+.publish-media-list { margin-top: 12px; }
+.publish-media-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+.publish-media-row > img,.publish-media-row > video { width: 80px; height: 80px; object-fit: contain; border-radius: var(--ui-radius-control); background: var(--bg-subtle); }
+.publish-media-row > div:not(.action-row) { flex: 1; min-width: 100px; }
+.publish-media-row small { display: block; color: var(--text-subtle); }
+.publish-platforms { margin-top: 16px; }
+.publish-platform { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+.publish-platform-heading { justify-content: space-between; }
+.publish-platform-heading label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; }
+.publish-platform-heading input { width: auto; }
+.publish-platform small { color: var(--text-subtle); }
+.publish-reasons { color: var(--state-danger); font-size: var(--ui-font-help); margin: 8px 0; }
+.publish-step textarea { width: 100%; resize: vertical; }
+.publish-step input[type=datetime-local] { max-width: 320px; }
+.publish-actions { margin-top: 24px; }
+.publish-presence { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.publish-presence > span { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-record { padding: var(--ui-panel-padding); }
+.publish-record-heading strong { flex: 1 1 200px; min-width: 0; }
+.publish-record-id { color: var(--muted); font-size: var(--ui-font-help); font-variant-numeric: tabular-nums; }
+.publish-source { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-record .action-row { margin-top: 12px; }
+.publish-targets { display: grid; gap: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.publish-targets > div { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.workspace:has(.publish-page) .ideation-delete-dialog p { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .publish-brand-row > label { flex-basis: 100%; }
+  .publish-step .segmented-control { max-width: 100%; }
+  .publish-step .segmented-control button { padding-inline: 10px; min-width: 0; }
+  .publish-media-row .action-row { width: 100%; }
+}
+/* 發佈確認視窗：逐平台列出帳號與文案，底部摘要媒體與時間。 */
+.confirm-heading { margin: 0 0 16px; font-size: var(--ui-font-section-title); }
+.publish-confirm-list { margin: 0; padding: 0; list-style: none; }
+.publish-confirm-list li { padding: 12px 16px; border-top: 1px solid var(--border-subtle); }
+.publish-confirm-list li:first-child { border-top: 0; }
+.publish-confirm-platform { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.publish-confirm-platform span:not(.status-badge) { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-confirm-list p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--ui-font-help); color: var(--text-main); }
+.publish-confirm-summary { display: grid; gap: 8px; margin: 16px 0; }
+.publish-confirm-summary div { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 8px; }
+.publish-confirm-summary dt { color: var(--text-muted); font-size: var(--ui-font-help); }
+.publish-confirm-summary dd { margin: 0; overflow-wrap: anywhere; }
+/* 發佈帳號：每個平台一顆帳號膠囊，綠點＝可發佈、灰點＝未連結或未就緒（滑鼠移上顯示原因）。 */
+.publish-brand-row { align-items: flex-end; }
+.publish-accounts { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.publish-account { display: inline-flex; align-items: center; gap: 8px; min-height: var(--ui-height-input); padding: 0 12px; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-control); background: var(--bg-surface); font-size: var(--ui-font-help); max-width: 100%; }
+.publish-account strong { font-weight: 600; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.publish-account-platform { color: var(--text-subtle); }
+.publish-account-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--state-success); }
+.publish-account.off { background: var(--bg-subtle); }
+.publish-account.off .publish-account-dot { background: var(--text-muted); }
+.publish-account.off strong { color: var(--text-subtle); font-weight: 500; }
+.publish-editor-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ui-shell-gap); }
+.publish-editor-heading { margin-bottom: 12px; }
+.publish-editor-heading h2 { margin-bottom: 0; }
+.publish-caption-start { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.publish-tabs button { min-width: 0; }
+@media (max-width: 600px) { .publish-tabs button { padding-inline: 8px; } }
+.publish-agent-source { max-width: 100%; overflow-wrap: anywhere; }
+.publish-unpublished { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
+.publish-unpublished input { width: auto; }
+
+/* 平台與開關併列，文案／預覽共用同一個編輯區。 */
+.publish-composer-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+.publish-composer-tab.publish-platform { display: flex; align-items: center; padding: 0; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-control); background: var(--bg-surface); }
+:root body .publish-composer-tab > button.secondary { border: 0; background: transparent; color: var(--state-success); display: flex; align-items: center; gap: 8px; }
+.publish-composer-tab.off { background: var(--bg-subtle); }
+:root body .publish-composer-tab.off > button.secondary { color: var(--text-subtle); }
+.publish-composer-tab:has([aria-selected=true]) { border-color: var(--brand-primary); }
+:root body .publish-composer-tab > button[aria-selected=true] { font-weight: 600; }
+:root body .publish-composer-tab .publish-platform-toggle { padding-right: 12px; margin: 0; display: flex; align-items: center; }
+:root body .publish-composer-tab .publish-platform-toggle input { margin: 0; flex: 0 0 calc(var(--ui-choice-size) * 2); width: calc(var(--ui-choice-size) * 2); height: var(--ui-choice-size); appearance: none; border: 1px solid var(--text-subtle); border-radius: var(--ui-radius-control); background: var(--bg-subtle); cursor: pointer; }
+:root body .publish-composer-tab .publish-platform-toggle input::before { content: ''; display: block; width: calc(var(--ui-choice-size) - 6px); height: calc(var(--ui-choice-size) - 6px); margin: 2px; background: var(--text-subtle); border-radius: var(--ui-radius-control); }
+:root body .publish-composer-tab .publish-platform-toggle input:checked { background: var(--state-success); border-color: var(--state-success); }
+:root body .publish-composer-tab .publish-platform-toggle input:checked::before { background: var(--bg-surface); transform: translateX(var(--ui-choice-size)); }
+:root body .publish-composer-tab .publish-platform-toggle input:disabled { cursor: default; }
+.publish-tab-error { width: 8px; height: 8px; flex: 0 0 8px; border-radius: var(--ui-radius-control); background: var(--state-danger); }
+.publish-composer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr); align-items: start; gap: 24px; }
+.publish-composer-fields,.publish-composer-panel { min-width: 0; }
+.publish-caption-heading,.publish-segment-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; }
+.publish-caption-heading > span:first-child { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-caption-heading > button { margin-left: auto; }
+.publish-composer-fields textarea { width: 100%; resize: vertical; }
+.publish-platform-options { margin-top: 16px; }
+.publish-segments { display: grid; gap: 16px; margin-top: 16px; }
+.publish-segment-heading label { margin: 0; flex: 1; color: var(--text-main); }
+.publish-segment-heading > span { font-size: var(--ui-font-help); white-space: nowrap; }
+.publish-segment-heading .publish-reasons { margin: 0; }
+.publish-disconnected { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding-block: 16px; }
+.publish-disconnected p { margin: 0; color: var(--text-subtle); }
+.publish-disconnected a { display: inline-flex; align-items: center; text-decoration: none; }
+.publish-preview { --publish-preview-media-height: 480px; min-width: 0; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-card); background: var(--bg-surface); padding: var(--ui-panel-padding); }
+.publish-preview-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+:root body .publish-preview-tabs button[aria-pressed=true] { border-color: var(--brand-primary); color: var(--brand-primary); font-weight: 600; }
+.publish-preview-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.publish-preview-avatar { display: grid; place-items: center; flex: 0 0 32px; height: 32px; background: var(--bg-subtle); color: var(--text-subtle); border-radius: var(--ui-radius-control); }
+.publish-preview-identity strong { min-width: 0; overflow-wrap: anywhere; }
+.publish-preview-identity > span:last-child { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-preview-caption { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; color: var(--text-main); font-size: var(--ui-font-body); }
+.publish-preview-highlight,.publish-preview-topic { color: var(--link-color); }
+.publish-preview-topic { display: block; margin-top: 8px; font-size: var(--ui-font-help); overflow-wrap: anywhere; }
+.publish-preview-media { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 8px; margin-top: 12px; }
+.publish-preview-media > div { max-width: 100%; overflow: hidden; border-radius: var(--ui-radius-control); background: var(--bg-subtle); }
+.publish-preview-media img,.publish-preview-media video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.publish-preview-post + .publish-preview-post { border-top: 1px solid var(--border-subtle); margin-top: 16px; padding-top: 16px; }
+.publish-preview-thread.is-thread .publish-preview-post + .publish-preview-post { border-left: 2px solid var(--border-subtle); padding-left: 16px; }
+.publish-preview-empty { margin: 0; color: var(--text-subtle); }
+@media (max-width: 767px) {
+  .publish-composer-grid { grid-template-columns: minmax(0, 1fr); }
+  .publish-preview { grid-row: 1; }
+  .publish-composer-tabs { gap: 6px; }
+  :root body .publish-composer-tab > button.secondary { padding-inline: 8px; }
+  :root body .publish-composer-tab .publish-platform-toggle { padding-right: 8px; }
+}
+
+:root body .publish-composer-fields label > small { display: inline; margin-left: 8px; color: var(--text-subtle); }
+:root body .publish-composer-fields label > small.publish-reasons { margin: 0 0 0 8px; color: var(--state-danger); }
+
+.publish-story-navigation { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-story-preview .publish-preview-media > div { margin-inline: auto; }
+.publish-story-preview .publish-preview-media img,.publish-story-preview .publish-preview-media video { object-fit: contain; }
+.publish-story-results { flex-basis: 100%; display: grid; gap: 12px; }
+.publish-story-result { border-top: 1px solid var(--border-subtle); padding-top: 12px; }
+.publish-story-result strong { color: var(--text-main); }
+.publish-story-result dl { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 8px 0 0; }
+.publish-story-result dl > div { display: flex; gap: 8px; align-items: baseline; }
+.publish-story-result dt,.publish-story-unavailable { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-story-result dd { margin: 0; color: var(--text-main); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.publish-media-row[draggable=true] { cursor: grab; }
+
+@media (max-width: 767px) {
+  .publish-story-preview .publish-preview-post { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .publish-story-preview .publish-preview-media { grid-column: 1; grid-row: 1 / span 2; margin-top: 0; }
+  .publish-story-preview .publish-preview-media > div { max-width: calc(var(--ui-height-input) * 4 * 9 / 16); }
+  .publish-story-preview .publish-preview-identity { grid-column: 2; grid-row: 1; }
+  .publish-story-navigation { grid-column: 2; grid-row: 2; flex-direction: column; margin-top: 0; gap: 8px; }
+  .publish-story-editor .publish-upload { padding: 12px; }
+  .publish-story-editor .publish-media-row > img,.publish-story-editor .publish-media-row > video { width: var(--ui-height-input); height: var(--ui-height-input); }
+}
+
+.publish-markdown-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-top: 8px; }
+@media (max-width: 767px) { .publish-preview { --publish-preview-media-height: 320px; } }
+
+/* 各平台真實排版的預覽細節 */
+.publish-preview-author { font-weight: 600; }
+.publish-preview-more { padding: 0; border: 0; background: none; color: var(--text-subtle); font: inherit; cursor: pointer; }
+.publish-preview-actions { display: flex; align-items: center; gap: 16px; margin-top: 12px; color: var(--text-main); }
+.publish-preview-actions-end { margin-left: auto; display: inline-flex; }
+.publish-preview-icon { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.publish-preview-actions.is-facebook { justify-content: space-around; padding-top: 8px; border-top: 1px solid var(--border-subtle); color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-preview-actions.is-facebook > span { display: inline-flex; align-items: center; gap: 6px; }
+.publish-preview-actions.is-facebook .publish-preview-icon { width: 18px; height: 18px; }
+.is-instagram .publish-preview-caption { margin-top: 8px; }
+.is-instagram .publish-preview-media > div { border-radius: 0; }
+.is-threads .publish-preview-post > :not(.publish-preview-identity) { margin-left: 40px; }
+/* YouTube：縮圖欄位與預覽（影片 → 標題 → 頻道 → 互動列 → 說明） */
+.publish-thumbnail { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.publish-thumbnail > img { width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--ui-radius-control); background: var(--bg-subtle); }
+/* Reels 封面是直式：與 YouTube 縮圖同高（54px）的 9:16 小框。 */
+.publish-cover > img { width: auto; height: 54px; aspect-ratio: 9 / 16; }
+/* FB 封面跟影片同比例（直式或橫式），預覽依圖片原比例、同樣 54px 高。 */
+.publish-facebook-cover > img { aspect-ratio: auto; max-width: 96px; }
+.publish-cover-hint { flex-basis: 100%; margin: 0; }
+.publish-thumbnail > small { flex: 1 1 160px; min-width: 0; color: var(--text-subtle); font-size: var(--ui-font-help); overflow-wrap: anywhere; }
+.publish-thumbnail .action-row { margin: 0; }
+.publish-platform-options > .publish-thumbnail { margin-top: 16px; }
+.publish-preview-title { margin: 12px 0 0; font-size: var(--ui-font-body); font-weight: 700; color: var(--text-main); overflow-wrap: anywhere; }
+.is-youtube .publish-preview-identity { margin-top: 8px; }
+.is-youtube .publish-preview-media { margin-top: 0; }
+.publish-preview-actions.is-youtube { gap: 24px; color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-preview-actions.is-youtube > span { display: inline-flex; align-items: center; gap: 6px; }
+.publish-preview-actions.is-youtube .publish-preview-icon { width: 18px; height: 18px; }
+.is-youtube .publish-preview-caption { margin-top: 12px; padding: 12px; border-radius: var(--ui-radius-control); background: var(--bg-subtle); }
+
+/* 發佈／排程設定與送出按鈕同在底部動作列：桌機時間靠左、按鈕靠右。 */
+.publish-footer { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px 24px; margin-top: 24px; }
+.publish-schedule { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.publish-schedule label { margin: 0; }
+.publish-submit { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-left: auto; min-width: 0; max-width: 100%; }
+.publish-submit .publish-actions { margin-top: 0; }
+/* 停用原因獨占一列，放在「立即發佈／排程」與送出按鈕上方。 */
+.publish-footer > .publish-reasons { flex: 1 1 100%; margin: 0; }
+.publish-editor-heading > button { margin-left: auto; }
+@media (max-width: 600px) {
+  .publish-footer { flex-direction: column; align-items: stretch; }
+  .publish-schedule { flex-direction: column; align-items: stretch; }
+  .publish-schedule input[type=datetime-local] { max-width: 100%; width: 100%; }
+  .publish-submit { align-items: stretch; margin-left: 0; }
+}
+/* 「新貼文／新限時動態」與平台分頁同列：桌機按鈕在分頁右側，手機在分頁上方。 */
+.publish-editor-top { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; margin-bottom: 24px; }
+.publish-editor-top > .publish-composer-tabs { flex: 1 1 auto; margin: 0; }
+.publish-editor-top > .publish-editor-heading { order: 2; margin: 0 0 0 auto; }
+@media (max-width: 767px) { .publish-editor-top > .publish-editor-heading { order: 0; flex-basis: 100%; } }

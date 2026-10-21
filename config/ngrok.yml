@@ -1,0 +1,5 @@
+version: 3
+agent:
+  web_addr: 127.0.0.1:4040
+  # 避免將平台驗證 query 或訊息內容寫入 agent request capture。
+  inspect_db_size: -1

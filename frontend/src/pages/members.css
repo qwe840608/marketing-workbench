@@ -1,0 +1,36 @@
+/* 分頁列不換行，窄螢幕在自身容器內橫向捲動（與其他底線分頁一致）。 */
+.settings-hub .settings-tabs { flex-wrap: nowrap; overflow-x: auto; }
+.member-dialog > h2 { margin-bottom: 16px; }
+.member-card-heading, .temporary-password-row, .member-maintenance, .account-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.member-card-heading { margin-bottom: 24px; }
+.member-card-heading h1, .member-card-heading h2 { margin: 0; }
+.member-row { display: grid; grid-template-columns: minmax(120px, 1fr) auto minmax(80px, 1fr) auto auto; gap: 16px; align-items: center; }
+.member-name { min-width: 0; display: grid; gap: 4px; overflow-wrap: anywhere; }
+.member-name strong { font-weight: 600; }
+.member-name span, .account-summary > span { color: var(--text-subtle); }
+.member-brands { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; color: var(--text-subtle); }
+.member-status { display: flex; gap: 8px; flex-wrap: wrap; }
+.member-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.member-form, .password-form { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 16px; }
+.member-form label, .password-form label { display: grid; gap: 8px; min-width: 0; }
+.member-role { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 8px; }
+.member-role .segmented-control { width: 100%; overflow: visible; }
+:root body .member-role .segmented-control button[role=radio] { flex: 1 1 0; min-width: 0; }
+.member-brand-options { min-width: 0; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-control); padding: 12px; }
+.member-brand-options label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.member-brand-options input { flex-shrink: 0; }
+.member-maintenance { border-top: 1px solid var(--border-subtle); margin-top: 24px; padding-top: 16px; }
+.temporary-password { font-family: var(--ui-font-mono); color: var(--text-main); background: var(--bg-subtle); padding: 12px; border-radius: var(--ui-radius-control); overflow-wrap: anywhere; min-width: 0; }
+.password-required { min-height: 100dvh; display: grid; place-items: center; padding: 16px; }
+.password-required > section { width: min(100%, 520px); }
+.account-summary { justify-content: flex-start; margin: 0 0 24px; overflow-wrap: anywhere; }
+@media (max-width: 599px) { .member-row { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; } .member-brands { grid-column: 1; } .member-status { grid-column: 1; } .member-row > button { grid-column: 2; grid-row: 3; } }
+/* 設定分頁大小一致：桌面每個分頁同一最小寬度；手機平分整列（管理員最多 6 個，一行排完）。 */
+:root body .settings-hub .settings-tabs button[role=tab] { min-width: 96px; justify-content: center; text-align: center; }
+@media (max-width: 599px) {
+  :root body .settings-hub .settings-tabs { gap: 4px; }
+  :root body .settings-hub .settings-tabs button[role=tab] { flex: 1 1 0; min-width: 0; padding: 0 2px; font-size: var(--ui-font-help); }
+  :root body .settings-hub .settings-tabs button[role=tab]:only-child { flex: 0 0 auto; padding: 0 8px; }
+}
+.recovery-code { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-subtle); min-width: 0; }
+.recovery-code > p { margin: 12px 0 16px; line-height: 1.8; }

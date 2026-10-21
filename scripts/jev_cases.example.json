@@ -1,0 +1,42 @@
+{
+  "cases": [
+    {
+      "id": "greeting",
+      "state": {
+        "message": "您好，想詢問服務方式。"
+      },
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "Select the message intent.",
+          "criteria": {
+            "inquiry": "Asking about a service",
+            "other": "Other"
+          }
+        }
+      },
+      "expected": {
+        "intent": "inquiry"
+      }
+    },
+    {
+      "id": "handoff",
+      "state": {
+        "message": "請安排專人與我聯繫。"
+      },
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "Select the message intent.",
+          "criteria": {
+            "human": "Explicitly asks for a person",
+            "other": "Other"
+          }
+        }
+      },
+      "expected": {
+        "intent": "human"
+      }
+    }
+  ]
+}

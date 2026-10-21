@@ -1,0 +1,49 @@
+[project]
+name = "marketing-workbench-backend"
+version = "0.1.0"
+description = "行銷管理工作檯後台"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "cryptography>=50.0.1,<51",
+    "alembic>=1.14,<2",
+    "anthropic>=1.8.0",
+    "argon2-cffi>=25.1,<26",
+    "fastapi>=0.115,<1",
+    "google-genai>=2.25.0",
+    "openai>=3.19.2",
+    "pydantic-settings>=2.7,<3",
+    "python-docx>=1.2,<2",
+    "sqlalchemy>=2.0,<2.1",
+    "tzdata>=2026.4",
+    "uvicorn>=0.34,<1",
+    "psutil>=7.2.2",
+    "mcp>=1.28,<2",
+    "pillow>=12.3.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2",
+    "playwright>=1.63.0",
+    "pytest>=8.3,<10",
+    "pytest-xdist>=3.8,<4",
+    "ruff>=0.11,<1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+markers = [
+    "migration: exercise real migrations, including the initial database setup",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

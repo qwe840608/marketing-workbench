@@ -1,0 +1,163 @@
+﻿.ideation-page p,.ideation-settings p { overflow-wrap:anywhere; }
+.ideation-actions { display:flex; flex-wrap:wrap; gap:var(--ui-shell-gap); margin-block:var(--ui-shell-gap); }
+.ideation-actions button { height:auto; min-height:var(--ui-height-button); white-space:normal; text-align:left; }
+.ideation-quotes blockquote { margin:var(--ui-shell-gap) 0; padding:var(--ui-panel-padding); background:var(--paper); border-left:solid var(--line); }
+.ideation-quotes p { white-space:pre-wrap; font-size:var(--ui-font-conversation); }
+.ideation-quotes a { font-size:var(--ui-font-help); overflow-wrap:anywhere; }
+.ideation-hook { font-size:var(--ui-font-body); font-weight:400; }
+.ideation-card > .review-reason { color:var(--state-pending-text); background:var(--state-pending-bg); }
+.ideation-page details,.ideation-settings details { margin-block:var(--ui-shell-gap); }
+.ideation-page summary,.ideation-settings summary { cursor:pointer; overflow-wrap:anywhere; }
+.script-editor label { display:grid; gap:var(--ui-nav-gap); margin-block:var(--ui-shell-gap); }
+.script-shot { min-width:0; margin:var(--ui-shell-gap) 0; border:0; padding:0; }
+.script-shot legend { font-size:var(--ui-font-section-title); font-weight:600; }
+.script-history pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; font-size:var(--ui-font-body); }
+.ideation-actions > button { max-width:100%; min-width:0; overflow-wrap:anywhere; }
+.ideation-page h2 { overflow-wrap:anywhere; }
+
+.ideation-exports { display:flex; flex-wrap:wrap; gap:var(--ui-shell-gap); }
+.ideation-exports > .error { flex-basis:100%; }
+.export-card { display:flex; align-items:center; gap:var(--ui-nav-gap); min-width:0; }
+.export-card a.secondary { display:inline-flex; width:auto; padding:10px 20px; border-radius:var(--ui-radius-control); text-decoration:none; overflow-wrap:anywhere; }
+.report-history { flex-direction:column; flex-wrap:nowrap; gap:8px; max-height:288px; overflow-y:auto; }
+.report-history .report-select[aria-current="true"] { font-weight:600; }
+.report-heading { display:flex; align-items:center; justify-content:space-between; gap:var(--ui-shell-gap); }
+.report-heading h2 { min-width:0; }
+.report-heading-meta,.script-heading { display:flex; align-items:center; flex-wrap:wrap; gap:var(--ui-shell-gap); min-width:0; }
+.agent-source-chip { display:inline-flex; max-width:100%; overflow-wrap:anywhere; padding:2px 8px; color:var(--text-subtle); background:var(--bg-subtle); border-radius:var(--ui-radius-control); font-size:var(--ui-font-help); }
+.agent-awaiting,.agent-handoff-hint { color:var(--text-subtle); font-size:var(--ui-font-help); }
+/* 四顆接手按鈕等寬等高；手機版兩欄兩列。 */
+.agent-handoff-actions { display:grid; grid-template-columns:repeat(4, minmax(0, 200px)); gap:8px; margin-top:8px; }
+:root body .agent-handoff-actions .secondary { box-sizing:border-box; display:flex; align-items:center; justify-content:center; width:100%; height:auto; min-height:var(--ui-height-button); margin:0; padding:4px 12px; border-radius:var(--ui-radius-control); font-size:var(--ui-font-button); text-align:center; text-decoration:none; overflow-wrap:anywhere; }
+@media (max-width: 640px) { .agent-handoff-actions { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+
+.report-row { display:flex; align-items:center; gap:8px; flex-shrink:0; min-height:48px; padding:8px 8px 8px 12px; border:1px solid var(--border-subtle); border-radius:var(--ui-radius-control); background:var(--bg-surface); position:relative; }
+.report-row[data-selected=true] { background:var(--bg-subtle); }
+.report-row[data-selected=true]::before { content:""; position:absolute; inset:8px auto 8px 0; width:3px; border-radius:var(--ui-radius-control); background:var(--brand-primary); }
+.ideation-page .report-row button { margin:0; border-radius:var(--ui-radius-control); }
+:root body .report-row .report-select { display:flex; align-items:center; justify-content:space-between; gap:8px; flex:1; min-width:0; height:auto; min-height:var(--ui-height-button); padding:0; color:var(--text-main); background:transparent; font-size:var(--ui-font-help); }
+.report-row-state { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.ideation-timer { color:var(--text-subtle); font-size:var(--ui-font-help); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.ideation-page .report-row .danger { flex-shrink:0; width:auto; height:var(--ui-height-button-small); min-height:var(--ui-height-button-small); padding:0 12px; font-size:var(--ui-font-help); }
+/* 平台分頁多時（FB／IG／Threads／YouTube）在分頁列內橫向捲動，不撐寬整頁。 */
+.ideation-page .ideation-platform-tabs { max-width:100%; min-width:0; overflow-x:auto; overflow-y:hidden; }
+.ideation-page .ideation-platform-tabs button { flex:0 0 auto; }
+.ideation-posts { margin:0; max-height:360px; overflow:auto; border:1px solid var(--border-subtle); border-radius:var(--ui-radius-card); }
+.ideation-comment-window { width:100%; margin:0; }
+/* 日期列沿用外層表單底色與內距，避免巢狀卡片讓欄位錯位。 */
+:root body .ideation-page .ideation-comment-window { padding-inline:0; background:transparent; }
+.ideation-comment-window .post-date-inputs input { border-radius:var(--ui-radius-control); }
+.ideation-tags { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.ideation-page .ideation-post-actions label { display:flex; flex-direction:row; align-items:center; gap:8px; color:var(--text-main); }
+:root body .ideation-page label.ideation-post { display:grid; grid-template-columns:auto auto minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--border-subtle); cursor:pointer; }
+.ideation-post:hover { background:var(--bg-subtle); }
+.ideation-page .ideation-posts input { flex-shrink:0; accent-color:var(--brand-primary); width:var(--ui-choice-size); height:var(--ui-choice-size); min-height:0; margin:0; padding:0; }
+.ideation-platform { padding:4px 8px; background:var(--bg-subtle); color:var(--text-subtle); font-size:var(--ui-font-caption); border-radius:var(--ui-radius-control); }
+.ideation-post-caption { display:flex; align-items:baseline; gap:4px; min-width:0; font-size:var(--ui-font-body); color:var(--text-main); }
+.ideation-caption-text { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* 手機欄寬放不下 30 字預覽，改為換行完整顯示，避免已截短的文字再被裁切。 */
+@media (max-width: 599px) { .ideation-caption-text { white-space:normal; overflow-wrap:anywhere; } }
+:root body .ideation-page .ideation-caption-more { flex:none; width:auto; min-height:0; height:auto; padding:0; border:0; background:transparent; color:var(--link-color); font-size:var(--ui-font-body); cursor:pointer; }
+.ideation-post-meta { display:flex; flex-direction:column; align-items:flex-end; gap:4px; color:var(--text-subtle); font-size:var(--ui-font-help); }
+.ideation-post-meta .has-comments { color:var(--brand-primary); font-weight:600; }
+.ideation-post-empty { padding:32px 16px; text-align:center; }
+.ideation-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:stretch; grid-auto-rows:1fr; gap:16px; }
+.ideation-goal { margin-top:40px; }
+.ideation-goal > h2 { display:flex; align-items:baseline; gap:8px; border-left:4px solid var(--state-success); padding-inline:12px; margin-bottom:16px; }
+.ideation-goal[data-goal="流量型"] > h2 { border-color:var(--state-info); }
+.ideation-goal[data-goal="引流型"] > h2 { border-color:var(--state-pending); }
+.ideation-goal > h2 span { font-size:var(--ui-font-help); font-weight:400; }
+:root body .ideation-grid .ideation-card { min-width:0; margin:0; padding:20px; display:flex; flex-direction:column; gap:12px; border-radius:var(--ui-radius-card); }
+.ideation-card h3 { font-size:var(--ui-font-section-title); margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
+.ideation-card p { margin:0; }
+.ideation-fields { display:grid; gap:12px; margin:0; }
+.ideation-fields dt { color:var(--text-muted); font-size:var(--ui-font-caption); letter-spacing:.06em; margin-bottom:4px; }
+.ideation-fields dd { color:var(--text-main); font-size:var(--ui-font-body); line-height:1.8; margin:0; overflow-wrap:anywhere; }
+.ideation-page .ideation-card > button { margin-top:auto; align-self:flex-start; width:auto; }
+.ideation-chip { color:var(--text-subtle); background:var(--bg-subtle); padding:4px 8px; border-radius:var(--ui-radius-control); font-size:var(--ui-font-help); overflow-wrap:anywhere; }
+.ideation-type { background:var(--state-success-bg); color:var(--state-success); }
+.ideation-goal[data-goal="流量型"] .ideation-type { background:var(--state-info-bg); color:var(--state-info); }
+.ideation-goal[data-goal="引流型"] .ideation-type { background:var(--state-pending-bg); color:var(--state-pending-text); }
+.ideation-form > .muted { margin-top:8px; }
+.ideation-step { margin-top:32px; }
+.ideation-step h3 { display:flex; align-items:center; gap:8px; margin:0 0 12px; font-size:var(--ui-font-section-title); font-weight:600; }
+.ideation-step-number { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:24px; height:24px; border-radius:50%; background:var(--brand-primary); color:var(--bg-surface); font-size:var(--ui-font-help); font-weight:600; }
+.ideation-page .ideation-step label { color:var(--text-muted); font-size:var(--ui-font-help); font-weight:500; gap:8px; }
+.ideation-step input,.ideation-step select { color:var(--text-main); font-size:var(--ui-font-input); height:var(--ui-height-input); }
+.ideation-step .policy-grid { margin:12px 0; gap:16px; }
+.ideation-page .ideation-source-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.ideation-execution-row { display:flex; align-items:flex-end; flex-wrap:wrap; gap:16px; }
+.ideation-execution-row > label { flex:0 1 320px; min-width:0; }
+.ideation-page .ideation-execution-row .ideation-actions { margin:0 0 0 auto; }
+:root body .ideation-page .ideation-execution-row .ideation-actions > button { height:var(--ui-height-input); min-height:var(--ui-height-input); }
+.ideation-step .ideation-selection-summary { margin-bottom:12px; }
+.ideation-execution-row .ideation-timer { align-self:center; }
+.ideation-post-row { display:flex; align-items:center; border-top:1px solid var(--border-subtle); padding-right:12px; }
+:root body .ideation-page .ideation-post-row label.ideation-post { flex:1; min-width:0; border-top:0; }
+:root body .ideation-page .ideation-post-expand { flex-shrink:0; width:32px; min-width:32px; height:var(--ui-height-button-small); min-height:var(--ui-height-button-small); color:var(--brand-primary); font-size:var(--ui-font-section-title); }
+.ideation-post-preview { padding:12px 16px; background:var(--bg-subtle); }
+/* 每則留言一列：左側勾選框決定是否用於發想，整列可點。 */
+:root body .ideation-page label.ideation-preview-item { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:12px; padding:12px 0; border-bottom:1px solid var(--border-subtle); cursor:pointer; color:var(--text-main); }
+:root body .ideation-page .ideation-preview-item input { accent-color:var(--brand-primary); width:var(--ui-choice-size); height:var(--ui-choice-size); min-height:0; margin:2px 0 0; padding:0; }
+.ideation-preview-item:has(input:not(:checked)) .ideation-preview-content { opacity:.5; }
+.ideation-preview-content { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.ideation-preview-meta { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; color:var(--text-subtle); font-size:var(--ui-font-help); }
+.ideation-preview-text { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--text-main); font-size:var(--ui-font-conversation); }
+.ideation-post-preview > button { margin-top:12px; }
+:root body .ideation-page .ideation-notice,:root body .ideation-page .script-editor .legacy-note { margin:12px 0; padding:12px 16px; border-left:3px solid var(--border-subtle); border-radius:var(--ui-radius-control); background:var(--bg-subtle); color:var(--text-subtle); font-size:var(--ui-font-help); }
+:root body .ideation-page .ideation-notice.warning,:root body .ideation-page .script-editor .legacy-note { border-left-color:var(--state-pending); }
+.ideation-page .ideation-step .ideation-actions { gap:12px; align-items:center; }
+/* 覆寫 .settings-section .primary 的上邊距，主要與次要按鈕同列對齊。 */
+.ideation-page .ideation-step .ideation-actions > button { margin:0; }
+.ideation-step .ideation-selection-summary { font-size:var(--ui-font-help); color:var(--text-subtle); }
+.ideation-page .ideation-step .post-date-inputs { display:flex; align-items:flex-end; flex-wrap:nowrap; gap:8px; margin-top:8px; }
+.ideation-step .post-date-inputs label { flex:0 1 200px; min-width:0; }
+.ideation-date-separator { height:var(--ui-height-input); display:flex; align-items:center; color:var(--text-subtle); }
+.ideation-page .ideation-step .primary { height:var(--ui-height-button); min-height:var(--ui-height-button); padding:0 16px; border-radius:var(--ui-radius-control); }
+.ideation-tags .muted { font-size:var(--ui-font-help); }
+.ideation-page .ideation-delete-dialog button { width:auto; margin:0; }
+@media (max-width:1100px) { .ideation-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:900px) { .ideation-page .ideation-source-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:600px) { .ideation-grid { grid-template-columns:minmax(0,1fr); } }
+@media (max-width:600px) {
+  .ideation-page .ideation-source-fields { grid-template-columns:minmax(0,1fr); }
+  .ideation-execution-row > label { flex-basis:100%; }
+  .ideation-page .ideation-execution-row .ideation-actions { margin:0; }
+  .report-heading { flex-wrap:wrap; }
+  :root body .ideation-page label.ideation-post { grid-template-columns:auto auto minmax(0,1fr); gap:8px; padding:12px; }
+  .ideation-post-meta { grid-column:2/-1; flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:wrap; font-size:var(--ui-font-caption); }
+  .ideation-post-actions { padding:8px 12px; gap:4px; }
+  :root body .report-row .report-select { flex-wrap:wrap; gap:0 4px; font-size:var(--ui-font-caption); }
+  .report-status { padding:0 8px; }
+}
+/* 刪除類動作：與實心主要按鈕同尺寸，改用危險色。 */
+.primary.danger { background:var(--state-danger); color:var(--bg-surface); }
+.primary.danger:hover { background:var(--state-danger); filter:brightness(.9); }
+.idea-card-heading,.idea-card-actions,.obsidian-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-width:0; }
+.idea-card-actions { margin-top:auto; justify-content:flex-start; }
+:root body .ideation-card .idea-card-actions > button { margin:0; width:auto; max-width:100%; flex:0 0 auto; }
+:root body .ideation-card .idea-restore { width:auto; justify-self:start; }
+.obsidian-actions > button { max-width:100%; }
+.idea-number { color: var(--text-subtle); font-size: var(--ui-font-help); }
+/* 卡片動作分兩組：右上角是修改主題本身（編輯，小按鈕），底部是產出（查看腳本、建立發佈草稿）。 */
+.idea-card-tools { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; max-width: 100%; }
+:root body .ideation-card .idea-card-tools > button.small { width: auto; margin: 0; height: var(--ui-height-button); min-height: var(--ui-height-button); padding: 0 12px; font-size: var(--ui-font-help); }
+@media (max-width: 599px) { .idea-card-tools { margin-left: 0; } }
+.idea-editor { display: grid; gap: var(--ui-shell-gap); width: 100%; min-width: 0; }
+.idea-editor label { margin: 0; }
+.idea-editor textarea { width: 100%; min-width: 0; }
+/* 留言範圍分段按鈕：窄螢幕改為換行，不水平捲動、不裁切。 */
+@media (max-width:600px) {
+  :root body .ideation-comment-window .segmented-control { flex-wrap:wrap; overflow:visible; gap:2px; }
+  :root body .ideation-comment-window .segmented-control button[role=radio] { flex:1 1 calc(33% - 4px); min-width:0; }
+}
+/* 貼文全文／留言視窗：標題與按鈕固定，只有內容區捲動。 */
+.ideation-post-dialog { display:flex; flex-direction:column; width:min(100%,640px); overflow:hidden; }
+.ideation-dialog-meta { display:flex; align-items:center; gap:8px; margin:0 0 12px; color:var(--text-subtle); font-size:var(--ui-font-help); }
+.ideation-dialog-body { flex:1; min-height:0; overflow:auto; border:1px solid var(--border-subtle); border-radius:var(--ui-radius-control); background:var(--bg-subtle); }
+.ideation-caption-body { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; font-size:var(--ui-font-body); color:var(--text-main); padding:12px 16px; }
+.ideation-post-dialog .action-row { justify-content:flex-end; margin:16px 0 0; }
+.ideation-exclusions p { margin:0; }
+.ideation-exclusions details { margin-top:8px; }
+.ideation-exclusions summary { cursor:pointer; color:var(--link-color); }
+.ideation-exclusions ul { margin:8px 0 0; padding-left:20px; line-height:1.8; }

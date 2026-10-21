@@ -1,0 +1,66 @@
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
+
+
+class LoginInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+    username: str = Field(min_length=1, max_length=80)
+    password: SecretStr = Field(min_length=1, max_length=128)
+
+
+class StaffView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    display_name: str
+    role: str
+    must_change_password: bool
+    language: str | None = None
+    brand_ids: list[int]
+
+
+class PasswordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    current_password: SecretStr = Field(min_length=1, max_length=128)
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+
+
+class CSRFView(BaseModel):
+    csrf_token: str
+
+
+class LoginView(CSRFView):
+    user: StaffView
+
+
+class RecoveryCodeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    current_password: SecretStr = Field(min_length=1, max_length=128)
+
+
+class RecoveryStatus(BaseModel):
+    configured: bool
+    created_at: datetime | None
+
+
+class RecoveryCodeView(RecoveryStatus):
+    recovery_code: str
+
+
+class PasswordRecovery(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    username: str = Field(min_length=1, max_length=80)
+    recovery_code: SecretStr = Field(min_length=1, max_length=64)
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+
+
+UiLanguage = Literal["zh-TW", "zh-CN", "en", "ja"]
+
+
+class LanguageUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    language: UiLanguage

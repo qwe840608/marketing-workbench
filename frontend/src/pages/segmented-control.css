@@ -1,0 +1,5 @@
+.segmented-control { display:flex; width:520px; max-width:100%; padding:3px; border:1px solid var(--border-subtle); border-radius:var(--ui-radius-control); background:var(--bg-surface); overflow-x:auto; }
+:root body .segmented-control button[role=radio] { flex:1 0 auto; min-width:88px; height:var(--ui-height-input); min-height:var(--ui-height-input); margin:0; padding:0 8px; border-radius:calc(var(--ui-radius-control) - 3px); color:var(--text-main); background:transparent; font-size:var(--ui-font-help); white-space:nowrap; }
+:root body .segmented-control button:hover { background:var(--bg-subtle); }
+:root body .segmented-control button[aria-checked=true] { background:var(--brand-primary); color:var(--bg-surface); font-weight:600; }
+:root body .segmented-control button:focus-visible { outline-offset:-3px; }

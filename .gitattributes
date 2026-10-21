@@ -1,0 +1,14 @@
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.ps1 text eol=crlf
+*.docx binary
+*.db binary
+*.js text eol=lf
+*.mjs text eol=lf
+# 維護者私人紀錄，不隨 git archive 匯出到公開版（見 docs/開源發佈.md）。
+docs/專案現況.md export-ignore
+# 維護者用的開源決策與發佈步驟，含私人 repo 的背景，不進公開版。
+docs/開源發佈.md export-ignore

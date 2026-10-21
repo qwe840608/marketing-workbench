@@ -1,0 +1,32 @@
+{
+  "on_http_request": [
+    {
+      "name": "Allow only production webhook paths",
+      "expressions": [
+        "!req.url.path.matches('^(/webhook/[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*/?|/media/[A-Za-z0-9_-]{43}([.]jpg)?)$') || !req.url.raw_path.matches('^(/webhook/[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*/?|/media/[A-Za-z0-9_-]{43}([.]jpg)?)$')"
+      ],
+      "actions": [
+        {
+          "type": "deny",
+          "config": {
+            "status_code": 404
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mark public ingress independently of caller headers",
+      "actions": [
+        {
+          "type": "add-headers",
+          "config": {
+            "headers": {
+              "x-mwb-public": "1",
+              "host": "127.0.0.1"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

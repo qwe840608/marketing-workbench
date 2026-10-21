@@ -1,0 +1,11 @@
+.csv-import { overflow-wrap: anywhere; }
+.csv-import h3 { font-size: var(--ui-font-section-title); }
+.csv-import p, .csv-import li { white-space: normal; }
+.csv-columns { display: grid; gap: var(--ui-shell-gap); }
+.csv-column, .csv-validation { min-width: 0; padding: var(--ui-shell-gap) var(--ui-panel-padding); border-top: 1px solid var(--line); }
+.csv-column select { width: 100%; min-width: 0; }
+.csv-sample { margin-block: var(--ui-nav-gap); white-space: pre-wrap; overflow-wrap: anywhere; }
+.csv-errors { margin-block: var(--ui-shell-gap); }
+.csv-errors ul { padding-inline-start: var(--ui-panel-padding); }
+.csv-import input[type="file"] { max-width: 100%; padding: 0; }
+.csv-import input[type="file"]::file-selector-button { font: inherit; min-height: var(--ui-height-button); }

@@ -1,0 +1,45 @@
+/* 平台設定教學視窗：沿用 ideation-modal-backdrop，標題固定、內容自己捲動。 */
+.guide-dialog { display:flex; flex-direction:column; width:min(100%,640px); max-height:90dvh; overflow:hidden; border-radius:var(--ui-radius-card); background:var(--bg-surface); color:var(--text-main); }
+.guide-heading { display:flex; align-items:center; justify-content:space-between; gap:var(--ui-small-padding); padding:var(--ui-panel-padding) var(--ui-panel-padding) var(--ui-small-padding); }
+.guide-dialog .guide-heading h2 { margin:0; min-width:0; overflow-wrap:anywhere; font-size:var(--ui-font-section-title); font-weight:600; }
+.guide-heading button { flex:none; width:auto; margin:0; }
+.guide-body { min-height:0; overflow:auto; padding:0 var(--ui-panel-padding) var(--ui-panel-padding); }
+.guide-body section + section { margin-top:var(--ui-panel-padding); }
+.guide-dialog .guide-body h3 { margin:0 0 var(--ui-small-padding); font-size:var(--ui-font-body); font-weight:600; }
+/* 開頭資訊：預估時間與開始前需要。 */
+.guide-intro { margin-bottom:var(--ui-panel-padding); padding:var(--ui-small-padding); border:1px solid var(--border-subtle); border-radius:var(--ui-radius-control); }
+.guide-intro p { margin:0 0 var(--ui-small-padding); font-weight:600; }
+.guide-dialog .guide-intro h3 { margin-bottom:var(--ui-nav-gap); }
+.guide-intro ul { margin:0; padding-left:var(--ui-panel-padding); }
+.guide-intro li { overflow-wrap:anywhere; }
+/* 直達平台後台的連結；卡關說明集中在最後的常見問題，預設收合。 */
+.guide-links { display:flex; flex-wrap:wrap; gap:var(--ui-nav-gap) var(--ui-panel-padding); margin:var(--ui-nav-gap) 0 0; }
+.guide-links a { color:var(--link-color); font-weight:600; text-decoration:underline; text-underline-offset:3px; }
+.guide-faq { margin-top:var(--ui-panel-padding); padding:var(--ui-small-padding); border-radius:var(--ui-radius-control); background:var(--bg-subtle); }
+.guide-faq summary { cursor:pointer; font-weight:600; }
+.guide-faq ul { margin:var(--ui-small-padding) 0 0; padding-left:var(--ui-panel-padding); color:var(--text-subtle); }
+.guide-faq li + li { margin-top:var(--ui-nav-gap); }
+.guide-faq li { overflow-wrap:anywhere; }
+/* 步驟編號用小方塊標示，編號跨小節連續。 */
+.guide-body { counter-reset:guide-step; }
+.guide-steps { margin:0; padding:0; list-style:none; }
+.guide-steps > li { display:grid; grid-template-columns:auto minmax(0,1fr); gap:var(--ui-small-padding); margin-bottom:var(--ui-panel-padding); counter-increment:guide-step; }
+.guide-steps > li:last-child { margin-bottom:0; }
+.guide-steps > li::before { content:counter(guide-step); display:grid; place-items:center; min-width:2em; height:2em; border-radius:var(--ui-radius-control); background:var(--brand-primary); color:var(--bg-surface); font-size:var(--ui-font-help); font-weight:600; }
+.guide-step { min-width:0; overflow-wrap:anywhere; }
+.guide-step > p:first-child { margin:0; padding-top:var(--ui-nav-gap); }
+.guide-note strong { margin-right:var(--ui-nav-gap); }
+.guide-copy { align-items:center; margin-block:var(--ui-small-padding) 0; }
+.guide-copy code { padding:var(--ui-small-padding); border-radius:var(--ui-radius-control); background:var(--bg-subtle); }
+.guide-copy button { flex:none; width:auto; margin:0; }
+@media (max-width:480px) {
+  .ideation-modal-backdrop:has(.guide-dialog) { padding:0; place-items:stretch; }
+  .guide-dialog { width:100%; max-height:none; height:100dvh; border-radius:0; }
+  .guide-heading { padding:var(--ui-small-padding) var(--ui-small-padding) var(--ui-small-padding) var(--ui-panel-padding); }
+  .guide-body { padding-inline:var(--ui-small-padding) var(--ui-small-padding); padding-bottom:var(--ui-panel-padding); }
+}
+
+/* 平台連結卡片標題列右側的動作群組（設定教學、測試連線、尚未支援膠囊）。 */
+.card-actions { display:flex; align-items:center; flex-wrap:wrap; gap:var(--ui-small-padding); }
+/* TikTok 卡片沒有內容區，標題列不留下方間距。 */
+.settings-section.guide-card > .card-title { margin-bottom:0; }
