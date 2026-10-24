@@ -1,7 +1,7 @@
 import { ReportReturn } from './ReportReturn';
 import { PageHeader } from './PageHeader';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api, ApiError } from '../api';
+import { api, ApiError, errorMessage } from '../api';
 import type { CommentSync, Metric, Post } from '../api';
 import { commentRows, readPostPlatform, retentionNotice } from '../postComments';
 import type { PostComment, Retention } from '../postComments';
@@ -13,12 +13,16 @@ import { MetricSyncButton } from './MetricSyncButton';
 import { backfillWaitText } from '../backfillWait';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SegmentedControl } from './SegmentedControl';
-import { metricFields, metricValue, snapshotColumns, syncLabel } from '../metricFields';
+import { defaultMetric, delayedYoutubeFields, formatMetric, isVideoPost, metricFields, metricValue, snapshotColumns, syncLabel, videoFields } from '../metricFields';
+import type { MetricDefinition } from '../metricFields';
+import { PostDialog } from './PostDialog';
+import { RetentionChart } from './RetentionChart';
 import { pollWhileVisible } from '../visiblePolling';
 import { locale, t } from '../i18n.ts';
+import { formatTaipei } from '../time.ts';
 
-const time = (value: string) => new Intl.DateTimeFormat(locale(), { timeZone: 'Asia/Taipei',
-  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value));
+const time = (value: string) => formatTaipei(value, {
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
 const tiers: Record<string, string> = { hourly: t('每小時'), daily: t('每天'), weekly: t('每週') };
 // 這些平台的貼文、成效與留言（回覆）由工作檯同步並可在此查看。
 const visibilityLabels: Record<string, string> = { public: t('公開'), unlisted: t('不公開'), private: t('私人') };
@@ -54,12 +58,18 @@ export function Posts({ brand, initialPostId, onLogout, canSync }: { brand: stri
   const scope = useRef(brand), first = useRef(true);
   const requestedPostId = useRef(initialPostId || Number(new URLSearchParams(location.search).get('post_id')));
   const selectedId = selected?.id;
-  // 長內文預設收合，讓留言與成效不被擠到下方；換貼文時重新收合。
-  const [captionOpen, setCaptionOpen] = useState(false);
-  useEffect(() => setCaptionOpen(false), [selectedId]);
-  const caption = selected?.caption || '';
-  const longCaption = caption.split('\n').length > 4 || caption.length > 160;
+  // 內文只留兩行摘要，讓成效佔主要版面；全文改在「完整貼文」視窗看，換貼文時關閉。
+  const [postOpen, setPostOpen] = useState(false);
+  useEffect(() => setPostOpen(false), [selectedId]);
   const latest = metrics.at(-1);
+  const current = metricPostId === selectedId ? latest : null;
+  const video = !!selected && isVideoPost(platform, selected.media_type);
+  const watchFields = video ? videoFields(platform) : [];
+  // 留存曲線不是每次都有（非影片、平台未回傳），取最近一筆有曲線的快照。
+  const retentionCurve = metricPostId === selectedId ? [...metrics].reverse().find(row => Array.isArray(row.extra_json?.retention) && row.extra_json.retention.length > 1)?.extra_json.retention : null;
+  const watchNote = platform === 'tiktok' ? t('TikTok 開放的 API 只提供觀看、按讚、留言、分享次數，沒有觀看時長、完播率或滑走率。')
+    : video && platform === 'threads' ? t('Threads API 的貼文成效沒有觀看時長或留存數據。') : '';
+  const metricCell = ([key, label]: MetricDefinition) => <div key={key}><span>{label}{platform === 'youtube' && delayedYoutubeFields.includes(key) && <small className="metric-delay">{t('約晚 1～2 天')}</small>}</span><strong>{formatMetric(metricValue(current, key), key)}</strong></div>;
   const rows = useMemo(() => commentRows(comments, true, rootIds), [comments, rootIds]);
   const accountById = new Map(accounts.map(account => [account.id, account]));
   const accountName = (post: Post) => accountById.get(post.account_id)?.name || '';
@@ -68,7 +78,7 @@ export function Posts({ brand, initialPostId, onLogout, canSync }: { brand: stri
   const query = () => new URLSearchParams({ ...(brand ? { brand_id: brand } : {}), ...(platform ? { platform } : {}) }).toString();
   function fail(error: unknown) {
     if (error instanceof ApiError && error.status === 401) onLogout();
-    else setError(error instanceof Error ? error.message : t('讀取失敗，請重試'));
+    else setError(errorMessage(error, t('讀取失敗，請重試')));
   }
   useEffect(() => {
     const controller = new AbortController();
@@ -230,13 +240,35 @@ export function Posts({ brand, initialPostId, onLogout, canSync }: { brand: stri
       <div className="pagination"><button className="secondary" disabled={!offset} onClick={() => setOffset(x => x - 50)}>{t('← 上一頁')}</button>
         <span>{t('第 {page} 頁', { page: offset / 50 + 1 })}</span><button className="secondary" disabled={posts.length < 50} onClick={() => setOffset(x => x + 50)}>{t('下一頁 →')}</button></div>
     </div><div className="post-detail">{selected ? <>
+      <aside className="post-metrics section-card" aria-label={t('貼文成效')}>
+        <h3>{t('貼文成效')}</h3>
+        <div className="metric-grid">{metricFields(platform).map(metricCell)}</div>
+        {(watchFields.length > 0 || watchNote) && <section className="watch-metrics" aria-label={t('觀看表現')}>
+          <h4>{t('觀看表現')}</h4>
+          {watchFields.length > 0 && <div className="metric-grid watch-grid">{watchFields.map(metricCell)}</div>}
+          {watchNote && <p className="metric-note">{watchNote}</p>}
+        </section>}
+        <p className="metric-note">{latest ? t('最近抓取：{time}', { time: time(latest.captured_at) }) : t('尚未取得數據快照')}<br />{t('「—」表示平台尚未提供或此貼文不支援；0 表示平台回傳零。')}</p>
+        <MetricChart key={'engagement:' + platform} metrics={metrics} fields={metricFields(platform)} title={t('數據變化')} initial={defaultMetric(platform)} />
+        {watchFields.length > 0 && <MetricChart key={'watch:' + platform} metrics={metrics} fields={watchFields} title={t('觀看變化')} initial="avg_watch_time" className="metric-chart watch-chart" />}
+        {retentionCurve && <RetentionChart points={retentionCurve} />}
+        <h3 className="snapshot-heading">{t('數據快照')} <span>{metrics.length}</span></h3><div className="snapshot-table list-box"><table><thead><tr><th>{t('抓取時間')}</th>{snapshotColumns(platform).map(([key, label]) => <th key={key}>{label}</th>)}</tr></thead>
+          <tbody>{[...metrics].reverse().map(metric => <tr key={metric.id}><td className="snapshot-time">{time(metric.captured_at)}</td>{snapshotColumns(platform).map(([key]) => <td key={key}>{number(metricValue(metric, key))}</td>)}</tr>)}</tbody></table></div>
+        {metrics.length === 100 && <p className="metric-note">{t('顯示最近 100 筆快照。')}</p>}
+      </aside>
       <div className="post-conversation"><div className="post-intro section-card"><ReportReturn /><button className="mobile-back secondary" onClick={() => setSelected(null)}>{t('← 返回貼文')}</button>
-        <p className="eyebrow">{accountName(selected)} · {postKind(selected)}</p>
-        {selected.thumbnail_url && <img className="post-detail-thumb" src={selected.thumbnail_url} alt={t('貼文圖片預覽')} onError={e => { e.currentTarget.hidden = true; }} />}
-        <h2 id="post-caption" className={'post-caption' + (longCaption && !captionOpen ? ' collapsed' : '')}>{selected.caption || t('無文字貼文')}</h2>
-        {longCaption && <button type="button" className="caption-toggle secondary" aria-expanded={captionOpen} aria-controls="post-caption" onClick={() => setCaptionOpen(!captionOpen)}>{captionOpen ? t('收合 ▴') : t('展開全文 ▾')}</button>}
-        <p className="post-timing">{time(selected.published_at)} · {t('{tier}更新 · 台北時間', { tier: tiers[selected.schedule_tier] ?? '' })}</p>
-        {selected.permalink?.startsWith('https://') && <a className="post-link" href={selected.permalink} target="_blank" rel="noreferrer">{t('開啟原始貼文 ↗')}</a>}
+        <div className="post-summary">
+          {selected.thumbnail_url && <img className="post-detail-thumb" src={selected.thumbnail_url} alt={t('貼文圖片預覽')} onError={e => { e.currentTarget.hidden = true; }} />}
+          <div className="post-summary-text">
+            <p className="eyebrow">{accountName(selected)} · {postKind(selected)}</p>
+            <p id="post-caption" className="post-caption collapsed">{selected.caption || t('無文字貼文')}</p>
+            <p className="post-timing">{time(selected.published_at)} · {t('{tier}更新 · 台北時間', { tier: tiers[selected.schedule_tier] ?? '' })}</p>
+          </div>
+        </div>
+        <div className="post-intro-actions"><button type="button" className="secondary" aria-haspopup="dialog" onClick={() => setPostOpen(true)}>{t('完整貼文')}</button>
+          {selected.permalink?.startsWith('https://') && <a className="post-link" href={selected.permalink} target="_blank" rel="noreferrer">{t('開啟原始貼文 ↗')}</a>}</div>
+        {postOpen && <PostDialog eyebrow={accountName(selected) + ' · ' + postKind(selected)} timing={time(selected.published_at)} caption={selected.caption || ''}
+          thumbnail={selected.thumbnail_url || null} permalink={selected.permalink?.startsWith('https://') ? selected.permalink : null} onClose={() => setPostOpen(false)} />}
         </div><section className="post-comments section-card" aria-label={t('留言與回覆')}>
           <div className="comment-heading"><h3>{t('留言與回覆')}</h3><span className="readonly-label">{t('唯讀')}</span></div>
           {retentionNotice(platform, retention) && <p className="comment-retention muted">{retentionNotice(platform, retention)}</p>}
@@ -271,15 +303,6 @@ export function Posts({ brand, initialPostId, onLogout, canSync }: { brand: stri
           </div>}
         </section>
       </div>
-      <aside className="post-metrics section-card" aria-label={t('貼文成效')}>
-        <h3>{t('貼文成效')}</h3>
-        <div className="metric-grid">{metricFields(platform).map(([key, label]) => <div key={key}><span>{label}{platform === 'youtube' && ['shares', 'avg_watch_time', 'watch_hours', 'subscribers_gained'].includes(key) && <small className="metric-delay">{t('約晚 1～2 天')}</small>}</span><strong>{number(metricPostId === selectedId ? metricValue(latest, key) : null)}</strong></div>)}</div>
-        <p className="metric-note">{latest ? t('最近抓取：{time}', { time: time(latest.captured_at) }) : t('尚未取得數據快照')}<br />{t('「—」表示平台尚未提供或此貼文不支援；0 表示平台回傳零。')}</p>
-        <MetricChart key={platform} metrics={metrics} platform={platform} />
-        <h3>{t('數據快照')} <span>{metrics.length}</span></h3><div className="snapshot-table list-box"><table><thead><tr><th>{t('抓取時間')}</th>{snapshotColumns(platform).map(([key, label]) => <th key={key}>{label}</th>)}</tr></thead>
-          <tbody>{[...metrics].reverse().map(metric => <tr key={metric.id}><td className="snapshot-time">{time(metric.captured_at)}</td>{snapshotColumns(platform).map(([key]) => <td key={key}>{number(metricValue(metric, key))}</td>)}</tr>)}</tbody></table></div>
-        {metrics.length === 100 && <p className="metric-note">{t('顯示最近 100 筆快照。')}</p>}
-      </aside>
     </> : <div className="list-empty">{t('選取一篇貼文，查看留言、回覆與數據。')}</div>}</div></div></div>
   </section>;
 }

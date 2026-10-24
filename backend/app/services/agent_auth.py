@@ -16,7 +16,7 @@ from app.db import ensure_write
 from app.models import AuditLog, Brand, Staff
 from app.models.agent_auth import AgentCode, AgentCredential, AgentGrant, OAuthClient, OAuthRequest
 from app.models.base import utc_now
-from app.services import auth
+from app.services import auth, roles
 from app.services.access import BrandAccess
 
 SERVER_VERSION = "0.1.0"
@@ -85,7 +85,7 @@ def web_staff(request, session, *, write=False, csrf=None):
         raise HTTPException(403, "請先變更密碼")
     from app.api.permissions import require_role
 
-    require_role(request.scope["route"].path, request.method, staff.role)
+    require_role(request.scope["route"].path, request.method, session, staff)
     if write:
         auth.validate_origin(request.headers.get("origin"), request.headers.get("sec-fetch-site"),
                              request.app.state.settings)
@@ -154,7 +154,9 @@ def approval_view(request, session, handle):
     staff = web_staff(request, session)
     row, client = pending(session, handle)
     return {"client_name": client.name, "redirect_uri": row.redirect_uri,
-            "display_name": staff.display_name, "role": staff.role}
+            "display_name": staff.display_name, "role": staff.role,
+            "role_name": roles.role_name(session, staff.role),
+            "can_write": roles.can_write(session, staff)}
 
 
 def decide(request, session, body, csrf):
@@ -188,7 +190,7 @@ def valid_grant(session, grant):
         return None
     staff = session.get(Staff, grant.staff_id)
     if (staff is None or not staff.active or not staff.password_hash or staff.must_change_password
-            or staff.role not in {"admin", "marketing", "viewer"}):
+            or not roles.exists(session, staff.role)):
         return None
     return staff
 
@@ -364,7 +366,9 @@ def server_info(factory, grant_id):
             raise ValueError("連線已失效，請重新授權")
         brands = session.scalars(BrandAccess(session, staff).statement(Brand).order_by(Brand.id))
         return {"server_version": SERVER_VERSION, "mcp_api_version": MCP_API_VERSION,
-                "user": {"display_name": staff.display_name, "role": staff.role},
+                "user": {"display_name": staff.display_name, "role": staff.role,
+                         "role_name": roles.role_name(session, staff.role),
+                         "permissions": sorted(roles.permissions_of(session, staff))},
                 "brands": [{"id": brand.id, "name": brand.name} for brand in brands],
                 "connection": {"kind": grant.kind, "name": grant.name}}
 

@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import AwareDatetime, Field, StrictBool, StrictInt, field_validator, model_validator
 
 from app.schemas.agent_content import BrandInput, Empty, Identity, Page, PostInput
-from app.schemas.publish import Platform, PlatformOptions
+from app.schemas.publish import MAX_PLATFORMS, Platform, PlatformOptions
 from app.schemas.publish import PostInput as WebPostInput
 
 
@@ -33,7 +33,7 @@ class SaveDraft(BrandInput):
     format: Literal["video", "image", "carousel", "text", "story"]
     caption: str = Field(default="", max_length=63206)
     platform_captions: dict[Platform, str] = Field(default_factory=dict)
-    platforms: list[Platform] = Field(max_length=4)
+    platforms: list[Platform] = Field(max_length=MAX_PLATFORMS)
     # 省略代表沿用草稿原值（新草稿為 false），避免更新文案時不小心把貼文變成公開。
     facebook_unpublished: StrictBool | None = None
     platform_options: PlatformOptions | None = None

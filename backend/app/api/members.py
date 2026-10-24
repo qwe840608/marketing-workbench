@@ -6,11 +6,15 @@ from app.schemas.members import (
     MemberEdit,
     MemberState,
     MemberView,
+    RoleCatalog,
+    RoleEdit,
+    RoleView,
     TemporaryPasswordView,
 )
-from app.services import members
+from app.services import members, roles
 
 router = APIRouter(prefix="/api/members")
+roles_router = APIRouter(prefix="/api/roles")
 
 
 @router.get("", response_model=list[MemberView])
@@ -36,3 +40,24 @@ def state(identity: int, body: MemberState, access: Access):
 @router.post("/{identity}/reset-password", response_model=TemporaryPasswordView)
 def reset(identity: int, access: Access):
     return members.reset_password(access, identity)
+
+
+@roles_router.get("", response_model=RoleCatalog)
+def role_listing(access: Access):
+    members.require_admin(access)
+    return roles.listing(access.session)
+
+
+@roles_router.post("", status_code=201, response_model=RoleView)
+def role_create(body: RoleEdit, access: Access):
+    return roles.create(access, body)
+
+
+@roles_router.put("/{identity}", response_model=RoleView)
+def role_edit(identity: int, body: RoleEdit, access: Access):
+    return roles.edit(access, identity, body)
+
+
+@roles_router.delete("/{identity}", status_code=204)
+def role_delete(identity: int, access: Access):
+    roles.delete(access, identity)

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultMetric, metricFields, metricValue, snapshotColumns, syncLabel } from '../src/metricFields.ts';
+import { defaultMetric, formatMetric, isVideoPost, metricFields, metricValue, snapshotColumns, syncLabel, videoFields } from '../src/metricFields.ts';
 import { backfillWaitText } from '../src/backfillWait.ts';
 
 const labels = list => list.map(([, label]) => label);
@@ -43,8 +43,9 @@ test('Threads 回覆抓取等待時顯示 Threads，不沿用 Meta 用量字樣'
   assert.equal(backfillWaitText({ ...job, wait_reason: 'threads_unstable' }, now), 'Threads 回應逾時或暫時錯誤，將於 12:05 自動重試');
 });
 
-test('YouTube 七項指標、秒數序列化、Analytics extra 與未知值', () => {
-  assert.deepEqual(labels(metricFields('youtube')), ['觀看', '按讚', '留言', '分享', '平均觀看時長（秒）', '觀看總時數（小時）', '新增訂閱']);
+test('YouTube 五項互動指標加三項觀看表現、秒數序列化、Analytics extra 與未知值', () => {
+  assert.deepEqual(labels(metricFields('youtube')), ['觀看', '按讚', '留言', '分享', '新增訂閱']);
+  assert.deepEqual(labels(videoFields('youtube')), ['平均觀看時長（秒）', '平均觀看百分比（%）', '觀看總時數（小時）']);
   assert.deepEqual(labels(snapshotColumns('youtube')), ['觀看', '按讚', '留言']);
   assert.equal(defaultMetric('youtube'), 'views');
   assert.equal(syncLabel('youtube'), 'YouTube 留言');
@@ -61,4 +62,20 @@ test('TikTok 只有觀看、按讚、留言、分享，預設曲線為觀看', (
   assert.deepEqual(labels(metricFields('tiktok')), ['觀看', '按讚', '留言', '分享']);
   assert.deepEqual(labels(snapshotColumns('tiktok')), ['觀看', '按讚', '留言']);
   assert.equal(defaultMetric('tiktok'), 'views');
+});
+
+test('影片觀看表現：FB／IG 毫秒換成秒，Threads 與 TikTok 沒有', () => {
+  assert.deepEqual(labels(videoFields('facebook')), ['平均觀看時長（秒）', '觀看總時數（小時）']);
+  assert.deepEqual(labels(videoFields('instagram')), ['平均觀看時長（秒）', '觀看總時數（小時）', '前 3 秒滑走率（%）']);
+  assert.deepEqual(videoFields('threads'), []);
+  assert.deepEqual(videoFields('tiktok'), []);
+  const metric = { avg_watch_time: '7521.0000', extra_json: { metric_units: { avg_watch_time: 'milliseconds' }, watch_hours: 4.1783, skip_rate: 42.5 } };
+  assert.equal(metricValue(metric, 'avg_watch_time'), 7.521);
+  assert.equal(metricValue(metric, 'skip_rate'), 42.5);
+  assert.equal(formatMetric(metricValue(metric, 'avg_watch_time'), 'avg_watch_time'), '7.5');
+  assert.equal(formatMetric(metricValue(metric, 'watch_hours'), 'watch_hours'), '4.18');
+  assert.equal(formatMetric(null, 'skip_rate'), '—');
+  assert.equal(formatMetric(1234, 'views'), '1,234');
+  assert.ok(isVideoPost('instagram', 'VIDEO') && isVideoPost('facebook', 'reels') && isVideoPost('tiktok', null));
+  assert.ok(!isVideoPost('instagram', 'IMAGE') && !isVideoPost('facebook', 'photo'));
 });

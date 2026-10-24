@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 
 from app.api.dependencies import Access
-from app.services import export_docx, obsidian
+from app.services import export_docx, obsidian, roles
 
 router = APIRouter(prefix="/api/exports")
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -20,21 +20,21 @@ class ReportInput(BaseModel):
 
 @router.get("/status")
 def status(request: Request, access: Access):
-    if access.staff.role != "admin":
+    if not roles.can(access, "settings.manage"):
         raise HTTPException(403, "僅管理員可查看全域匯出狀態")
     return request.app.state.export_worker.status()
 
 
 @router.post("/sync")
 def sync(request: Request, access: Access):
-    if access.staff.role != "admin":
+    if not roles.can(access, "settings.manage"):
         raise HTTPException(403, "僅管理員可重建全域匯出")
     return request.app.state.export_worker.tick(force=True)
 
 
 @router.post("/obsidian/sync")
 def sync_obsidian(request: Request, access: Access):
-    if access.staff.role != "admin":
+    if not roles.can(access, "settings.manage"):
         raise HTTPException(403, "僅管理員可同步 Obsidian")
     return obsidian.sync(access, request.app.state.obsidian_worker)
 

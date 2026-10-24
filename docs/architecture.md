@@ -99,7 +99,7 @@ Gemini 配額以專案管理，實際限制依模型與方案不同；不將個�
 
 jev 使用 TypeSafe v1 的 Choice／Noul／Score；每題以反引號引用具名 state 欄位，客人文字與待審內容視為資料。同一 state 的獨立問題一次送出，全部經 `redact.scrub` 與 `jev.valid_response`。Choice 保留不符合出口；Noul 是條件成立機率，接近 0.5 並非中等強度；Choice／Score confidence 是分布集中度。既有政策與閾值不變，調整須先用標記資料評估。依據：[提問](https://docs.typesafe.ai/primitives)、[state](https://docs.typesafe.ai/concepts/state)、[confidence](https://docs.typesafe.ai/confidence)。
 
-品牌類別補充說明以 `classification.intents.brand.<id>` 存入 Setting，九個意圖代碼固定，每段去頭尾空白且最多 200 字，未知欄位拒絕。`GET/PUT /api/classifications/intents?brand_id=` 沿用品牌權限、設定版本衝突 409 與 `classification.intents` before／after 稽核。通用服務說明後附加品牌範例，明示範例不是指令；送雲端前仍經 redact。`QUESTION_VERSION=triage-2026-10-04-v2`，raw_json 保存 `intent_notes_version`；補充說明不加入 context／fingerprint，指紋固定沿用 `triage-2026-09-26-v3`，既有結果保持有效，不重算、不重排工作，新設定只影響後續新訊息與手動重新分流。
+品牌類別補充說明以 `classification.intents.brand.<id>` 存入 Setting，九個意圖代碼固定，每段去頭尾空白且最多 200 字，未知欄位拒絕。`GET/PUT /api/classifications/intents?brand_id=` 沿用品牌權限、設定版本衝突 409 與 `classification.intents` before／after 稽核。通用服務說明後附加品牌範例，明示範例不是指令；送雲端前仍經 redact。`QUESTION_VERSION=triage-2026-10-23-v3`，raw_json 保存 `intent_notes_version`；補充說明不加入 context／fingerprint，指紋固定沿用 `triage-2026-09-26-v3`，既有結果保持有效，不重算、不重排工作，新設定只影響後續新訊息與手動重新分流。
 
 分流 state 明定 sender 為客人，訊息與遮蔽計數不受 context 同名欄位覆蓋；提問版本與 input hash 版本分開，措辭改版保留既有結果效力。人工重分流或新的既有工作才採新題目；政策重算仍僅套用已存訊號。主題分類的提問版本同樣獨立於指紋，不因措辭改版觸發付費重算，既有分類流程仍受原 limit／預算限制。
 
@@ -173,12 +173,20 @@ Markdown／Word 位於可設定根目錄下的品牌子目錄。Word 使用工�
 - **已刪除偵測**：只以「完整清單中不存在」判定，不以單篇查詢錯誤判定（FB 未發佈貼文例外，見上）；任何一頁失敗、達分頁上限、格式異常或帳號變更一律不判定。重新出現於清單時清除 deleted_at。
 - **安全**：「允許發佈到平台」總開關（Setting `publishing.enabled`）預設關閉，只有管理員可切換；每次發佈或排程前顯示確認視窗；每次發佈寫稽核；成功、部分成功、失敗、已錯過與權杖即將到期排入既有品牌 LINE 通知群組（不含媒體網址或憑證）。發佈後只保留平台連結，不從工作檯修改或刪除平台貼文。
 
-| 功能 | 管理員 | 行銷 | 檢視者 |
+| 功能權限（`services/roles.py`） | 管理員 | 行銷 | 檢視者 |
 |---|---|---|---|
-| 儀表板、貼文數據 | ✓ | ✓ | 唯讀 |
-| 主題發想、腳本編輯、發佈草稿 | ✓ | ✓ | ✗ |
-| 立即發佈、設定排程 | ✓ | ✓ | ✗ |
-| 總開關、設定、成員管理 | ✓ | ✗ | ✗ |
+| 儀表板、貼文數據（讀取，不需權限） | ✓ | ✓ | 唯讀 |
+| `posts.sync` 立即同步、抓取留言 | ✓ | ✓ | ✗ |
+| `reports.export` 匯出 Word 報告 | ✓ | ✓ | ✗ |
+| `ideation.edit` 主題發想、腳本 | ✓ | ✓ | ✗ |
+| `publish.edit` 發佈草稿 | ✓ | ✓ | ✗ |
+| `publish.submit` 立即發佈、排程、重試、取消、重新套用縮圖／封面 | ✓ | ✓ | ✗ |
+| `connections.manage` 平台連線與憑證 | ✓ | ✗ | ✗ |
+| `ai.manage` AI 金鑰、prompt、模型 | ✓ | ✗ | ✗ |
+| `settings.manage` 訊息分類、工作區、排程、通知、匯出、總開關 | ✓ | ✗ | ✗ |
+| 成員與角色、復原碼、全部品牌（路由政策 `admin`） | ✓ | ✗ | ✗ |
+
+自訂角色（0053 `roles`）：管理員在「設定 → 成員」新增角色並勾選上表的功能權限，成員的 `staff.role` 存內建鍵或自訂角色鍵 `custom_<id>`。內建三種角色寫在程式裡、不可修改；自訂角色一律只看得到被指派品牌，不能勾選成員管理，避免替自己升級成管理員。勾選 `publish.submit` 時後端自動補上 `publish.edit`。沒有任何權限的角色與檢視者相同，整體唯讀。仍有成員使用的角色不能刪除；角色已不存在時視為沒有任何權限，Agent 連線失效。降版 0053 會把自訂角色的成員改成檢視者。MCP 寫入工具各自對應功能權限（`agent_tools.TOOL_PERMISSIONS`），`get_server_info.user.permissions` 列出目前成員的權限。
 
 ## 平台憑證（creds）
 

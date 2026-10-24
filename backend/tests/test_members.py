@@ -5,6 +5,7 @@ import secrets
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from threading import Barrier
+from types import SimpleNamespace
 
 import pytest
 from alembic import command
@@ -18,13 +19,14 @@ from sqlalchemy import func, inspect, select
 from app import config
 from app.api.agent_auth import get_agent_access
 from app.api.dependencies import enforce_password_change, get_access
-from app.api.permissions import ROLE_SETS, ROUTE_POLICY, require_role
+from app.api.permissions import ROUTE_POLICY, require_role
 from app.main import create_app
 from app.models import AuditLog, Brand, Staff, StaffBrand
 from app.models.auth import LoginGuard
 from app.models.base import utc_now
 from app.services import auth
 from app.services.passwords import hash_password, set_password, verify_password
+from app.services.roles import BUILTIN, PERMISSIONS
 
 
 @pytest.fixture(scope="module")
@@ -377,7 +379,7 @@ def test_nonadmins_routes_and_brand_visibility(client, people, member_password, 
     assert own["brand_ids"] == people["brands"][:1]
     assert [b["id"] for b in client.get("/api/brands").json()] == people["brands"][:1]
     for (method, path), policy in ROUTE_POLICY.items():
-        if policy == "admin" or policy == "edit" and username == "reader":
+        if policy in SESSION_POLICIES and not builtin_allows(policy, BUILTIN_OF[username]):
             response = client.request(method, route_url(path))
             assert response.status_code == 403, (method, path, response.status_code)
     assert client.get(f"/api/ideation/reports?brand_id={people['brands'][1]}").status_code == 404
@@ -386,6 +388,14 @@ def test_nonadmins_routes_and_brand_visibility(client, people, member_password, 
 
         session.execute(delete(StaffBrand).where(StaffBrand.staff_id == people[username]))
     assert client.get("/api/brands").json() == []
+
+
+SESSION_POLICIES = {"all", "admin", *PERMISSIONS}
+BUILTIN_OF = {"owner": "admin", "assistant": "marketing", "reader": "viewer"}
+
+
+def builtin_allows(policy, role):
+    return policy == "all" or policy == "admin" and role == "admin" or policy in BUILTIN[role]
 
 
 def dependency_calls(dependency):
@@ -409,19 +419,20 @@ def test_every_route_has_explicit_role_and_guard(client, people):
         assert enforce_password_change in calls
         for method in route.methods:
             policy = ROUTE_POLICY[(method, route.path)]
-            if policy in ROLE_SETS and not route.path.startswith("/api/auth/"):
+            if policy in SESSION_POLICIES and not route.path.startswith("/api/auth/"):
                 expected = get_agent_access if route.path.startswith("/api/agent/") or (
                     route.path == "/api/members/{identity}/revoke-connections"
                 ) else get_access
                 assert expected in calls, (method, route.path)
-            for role in ("admin", "marketing", "viewer"):
-                if role in ROLE_SETS.get(policy, set()):
-                    require_role(route.path, method, role)
+            for role in BUILTIN:
+                staff = SimpleNamespace(role=role)
+                if policy in SESSION_POLICIES and builtin_allows(policy, role):
+                    require_role(route.path, method, None, staff)
                 else:
                     with pytest.raises(HTTPException):
-                        require_role(route.path, method, role)
+                        require_role(route.path, method, None, staff)
     with pytest.raises(HTTPException):
-        require_role("/api/forgotten", "POST", "admin")
+        require_role("/api/forgotten", "POST", None, SimpleNamespace(role="admin"))
 
 
 def test_all_member_writes_require_csrf_and_origin(client, people):

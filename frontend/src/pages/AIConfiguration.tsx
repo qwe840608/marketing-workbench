@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import type { ReactNode } from 'react';
-import { locale, t } from '../i18n.ts';
+import { t } from '../i18n.ts';
+import { taipeiDateTime } from '../time.ts';
 
 const providers = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Anthropic' };
 const hints: Record<string, string> = { openai: 'sk-proj-…', gemini: 'AIza…', anthropic: 'sk-ant-…', jev: 'TypeSafe API key' };
@@ -30,7 +31,7 @@ export function APIKeys({ onChange, fallback }: { onChange: () => void; fallback
         setRows(value); setVerified(null); onChange();
         setNotice(action === 'delete' ? t('UI 金鑰已刪除；未設定時會使用 .env。') : t('金鑰已加密儲存。'));
       }
-    } catch (e) { setError(e instanceof Error ? e.message : t('金鑰操作未完成')); }
+    } catch (e) { setError(errorMessage(e, t('金鑰操作未完成'))); }
     finally { setBusy(false); }
   }
   return <section className="settings-section section-card ai-keys" aria-label={t('API 金鑰')}>
@@ -57,7 +58,7 @@ function PromptEditor({ brandId, canEdit }: { brandId?: string; canEdit: boolean
   async function save(restore: boolean) {
     setBusy(true); setError(''); setNotice('');
     try { accept(await api<History>('/ai/prompts' + (restore ? '/restore' : '') + query, { method: restore ? 'POST' : 'PUT', body: JSON.stringify(restore ? { revision: history!.revision, restore_revision: selected } : { revision: history!.revision, content }) })); setNotice(restore ? t('已還原為新的版本，既有歷史保留。') : t('新版本已儲存。')); }
-    catch (e) { setError(e instanceof Error ? e.message : t('品牌說明未儲存')); }
+    catch (e) { setError(errorMessage(e, t('品牌說明未儲存'))); }
     finally { setBusy(false); }
   }
   const version = history?.versions.find(v => v.revision === selected);
@@ -67,15 +68,15 @@ function PromptEditor({ brandId, canEdit }: { brandId?: string; canEdit: boolean
     {history ? <><label>{t('{title}內容', { title })}<textarea rows={6} value={content} maxLength={12000} disabled={!canEdit || busy} onChange={e => setContent(e.target.value)} /></label>
       <div className="ai-actions"><span className="muted">{t('目前版本 {revision}', { revision: history.revision || t('尚未建立') })}</span>{canEdit ? <button className="primary" disabled={busy || content === (history.versions[0]?.content || '')} onClick={() => void save(false)}>{t('儲存新版本')}</button> : <span className="muted">{brandId ? t('此帳號僅能檢視') : t('僅管理員可修改')}</span>}</div>
       {!!history.versions.length && <details className="prompt-history"><summary>{t('版本紀錄與差異')}</summary>
-        <label>{t('檢視版本')}<select disabled={busy} value={selected || ''} onChange={e => setSelected(Number(e.target.value))}>{history.versions.map(v => <option key={v.revision} value={v.revision}>{t('版本 {revision} · {actor} · {time}', { revision: v.revision, actor: v.actor, time: new Date(v.created_at).toLocaleString(locale(), { timeZone: 'Asia/Taipei' }) })}</option>)}</select></label>
-        {version && <><p className="muted">{t('修改人：{actor} · 台北時間 {time}', { actor: version.actor, time: new Date(version.created_at).toLocaleString(locale(), { timeZone: 'Asia/Taipei' }) })}{version.restored_from && t(' · 還原自版本 {revision}', { revision: version.restored_from })}</p><h4>{t('此版本內容')}</h4><pre>{version.content || t('（空白）')}</pre><h4>{t('與前一版本的差異')}</h4><pre className="prompt-diff">{version.diff || t('內容相同')}</pre>{canEdit && <button className="secondary" disabled={busy || selected === history.revision} onClick={() => void save(true)}>{t('還原此版本')}</button>}</>}
+        <label>{t('檢視版本')}<select disabled={busy} value={selected || ''} onChange={e => setSelected(Number(e.target.value))}>{history.versions.map(v => <option key={v.revision} value={v.revision}>{t('版本 {revision} · {actor} · {time}', { revision: v.revision, actor: v.actor, time: taipeiDateTime(v.created_at) })}</option>)}</select></label>
+        {version && <><p className="muted">{t('修改人：{actor} · 台北時間 {time}', { actor: version.actor, time: taipeiDateTime(version.created_at) })}{version.restored_from && t(' · 還原自版本 {revision}', { revision: version.restored_from })}</p><h4>{t('此版本內容')}</h4><pre>{version.content || t('（空白）')}</pre><h4>{t('與前一版本的差異')}</h4><pre className="prompt-diff">{version.diff || t('內容相同')}</pre>{canEdit && <button className="secondary" disabled={busy || selected === history.revision} onClick={() => void save(true)}>{t('還原此版本')}</button>}</>}
       </details>}</> : !error && <p>{t('正在讀取品牌說明…')}</p>}
     {error && <p className="error" role="alert">{error}</p>}{notice && <p className="success-note notice success" role="status">{notice}</p>}
   </section>;
 }
 
-export function PromptSettings({ brandId, role }: { brandId: string; role: string }) {
+export function PromptSettings({ brandId, canManage }: { brandId: string; canManage: boolean }) {
   return <section className="prompt-settings"><h2>{t('品牌說明')}</h2><p className="muted">{t('AI 產生主題與腳本時參考的品牌背景與語氣')}</p>
-    <PromptEditor canEdit={role === 'admin'} /><PromptEditor key={brandId} brandId={brandId} canEdit={role === 'admin' || role === 'marketing'} />
+    <PromptEditor canEdit={canManage} /><PromptEditor key={brandId} brandId={brandId} canEdit={canManage} />
   </section>;
 }

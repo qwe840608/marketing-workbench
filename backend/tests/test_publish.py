@@ -935,9 +935,9 @@ def test_safety_permissions_and_readiness(ready, caplog):
     assert "/media/" not in text
     for role in ("viewer", "marketing"):
         with pytest.raises(HTTPException):
-            require_role("/api/publish/switch", "PUT", role)
+            require_role("/api/publish/switch", "PUT", None, SimpleNamespace(role=role))
     with pytest.raises(HTTPException):
-        require_role("/api/publish/posts", "POST", "viewer")
+        require_role("/api/publish/posts", "POST", None, SimpleNamespace(role="viewer"))
     post = create(ready)
     before = len(mock.calls)
     with client.app.state.session_factory.begin() as session:
@@ -1191,7 +1191,7 @@ class Listings:
         return httpx.Response(status, json=data)
 
     def install(self, monkeypatch):
-        from app.services.gateway_workers import Workers
+        from app.services.workers import Workers
 
         monkeypatch.setattr(Workers, "http", staticmethod(self.meta))
         monkeypatch.setattr(
@@ -1270,7 +1270,7 @@ def test_presence_incomplete_listing_never_judges(ready, monkeypatch, platform, 
 def test_presence_empty_listing_never_judges(ready, monkeypatch, platform):
     # 有發佈紀錄的帳號不會沒有任何貼文；空清單可能是權限或帳號異常，不能整批判定刪除。
     from app.services import publish_presence
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
 
     client, _, _ = ready
     identity = seed_published(ready, (platform,))
@@ -1323,7 +1323,7 @@ def test_presence_missing_token_and_unlinked_platform(ready, monkeypatch):
 
 
 def test_presence_metrics_reuses_listing_without_extra_calls(ready):
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
 
     client, _, _ = ready
     identity = seed_published(ready, ("facebook", "instagram"))
@@ -1365,8 +1365,8 @@ def test_presence_threads_hourly_only_calls_api_when_needed(ready, monkeypatch):
 
 def test_presence_threads_metrics_reuses_listing_without_extra_calls(ready, monkeypatch):
     """每小時的 metrics 排程已抓過完整 Threads 清單，已刪除偵測不再多打一次（以呼叫次數斷言）。"""
-    from app.services.gateway_workers import Workers
     from app.services.scheduler import Scheduler
+    from app.services.workers import Workers
 
     client, _, _ = ready
     factory, settings = client.app.state.session_factory, client.app.state.settings
@@ -1638,7 +1638,7 @@ def test_facebook_unpublished_validation_and_lock_after_publish(ready):
 
 
 def facebook_metrics_worker(client, lists):
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
 
     def request(method, url, *, headers=None, qs=None, body=None, timeout=15):
         if url.endswith("/published_posts") or url.endswith("/media"):
@@ -1854,6 +1854,34 @@ def test_threads_save_keeps_caption_whole_and_preserves_custom(ready):
     assert post["platform_options"]["threads"]["segments"] == ["手動一", "手動二"]
     post = update_options(ready, post, {"threads": {"segments_custom": False}}).json()
     assert post["platform_options"]["threads"]["segments"] == ["丙" * 501]
+
+
+def test_blank_platform_caption_falls_back_to_shared(ready):
+    # 空白的平台文案（例如 Agent 存成 ""）不算覆寫：存檔時拿掉，預覽與發佈沿用共用文案。
+    post = create(ready, caption="共用文案")
+    post = update_options(ready, post, captions={"facebook": "", "threads": "  "}).json()
+    assert post["captions"] == {}
+    assert post["platform_options"]["threads"]["segments"] == ["共用文案"]
+    # 舊草稿已經存了空白覆寫與空白的 Threads 第一則：讀取時同樣改用共用文案。
+    legacy = SimpleNamespace(
+        caption="共用文案",
+        captions_json={"facebook": "", "youtube": " \n"},
+        platform_options_json={"threads": {"segments": ["", "回覆"], "segments_custom": True}},
+    )
+    assert publish_rules.platform_caption(legacy, "facebook") == "共用文案"
+    assert publish_rules.youtube_caption(legacy) == "共用文案"
+    assert publish_rules.threads_segments(legacy) == ["共用文案", "回覆"]
+    legacy.captions_json = {"facebook": "FB 專用"}
+    assert publish_rules.platform_caption(legacy, "facebook") == "FB 專用"
+
+
+def test_markdown_caption_is_sent_as_plain_text(ready):
+    # 平台不支援 Markdown：文案框保留原稿，送出時轉成純文字。
+    client, _, mock = ready
+    post = create(ready, "video", ["facebook"], caption="# 新品 Sale\n**測試**\n- 項目")
+    assert post["caption"] == "# 新品 Sale\n**測試**\n- 項目"
+    assert action(client, post).status_code == 200
+    assert mock.requests[-1][3]["description"] == "█ 新品 𝗦𝗮𝗹𝗲\n測試\n• 項目"
 
 
 def test_facebook_reels_three_exact_requests(ready):
@@ -2872,7 +2900,7 @@ def test_presence_judges_facebook_videos_and_reels_against_videos_list(ready, mo
 )
 def test_presence_checks_facebook_drafts_one_by_one(ready, monkeypatch, reply, deleted):
     # FB 草稿逐篇查詢：存在→保留；10 或 100/33→已刪除（先確認讀得到粉專）；其他錯誤不判定。
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
 
     draft = seed_published(ready, ("facebook",), unpublished=True, suffix="_draft")
     urls = []
@@ -2896,7 +2924,7 @@ def test_presence_checks_facebook_drafts_one_by_one(ready, monkeypatch, reply, d
 
 
 def test_presence_skips_facebook_drafts_when_page_is_unreadable(ready, monkeypatch):
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
 
     draft = seed_published(ready, ("facebook",), unpublished=True, suffix="_draft")
 

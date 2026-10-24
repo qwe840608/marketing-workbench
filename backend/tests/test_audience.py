@@ -8,7 +8,7 @@ from test_comment_poll import poll_data as poll_data
 
 from app.models import Account, AudienceInsight, MetaApiCall
 from app.services import meta_api
-from app.services.gateway_workers import Workers
+from app.services.workers import Workers
 from app.services.workers import audience as worker_audience
 from app.services.workers.base import WorkerError
 

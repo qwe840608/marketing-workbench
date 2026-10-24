@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.logging_config import log_failure
 from app.models import Account
 from app.schemas import meta as schemas
-from app.services import credentials, ingest, meta_api, oauth
+from app.services import credentials, graph_api, ingest, meta_api, oauth
 from app.services.publish_platforms import TH as THREADS_API
 from app.services.webhook_normalize import dump, secret
 
@@ -73,7 +73,7 @@ def usage_headers(headers):
 
 
 class WorkerBase:
-    """各 worker mixin 共用的狀態與平台／service 呼叫；Workers 由 gateway_workers 組合。"""
+    """各 worker mixin 共用的狀態與平台／service 呼叫；Workers 由 workers/__init__ 組合。"""
 
     def __init__(self, factory, settings, request=None, clock=time.time, sleep=time.sleep):
         self.settings, self.clock = settings, clock
@@ -131,7 +131,7 @@ class WorkerBase:
         try:
             response = self.request(
                 "GET",
-                "https://graph.facebook.com/v26.0/" + "/".join(quote(p, safe="") for p in parts),
+                graph_api.FB + "/" + "/".join(quote(p, safe="") for p in parts),
                 qs=qs,
                 headers={
                     "Authorization": "Bearer " + secret(self.settings, "meta_page_access_token")

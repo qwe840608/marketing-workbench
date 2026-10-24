@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { api, ApiError } from '../api';
+import { api, ApiError, errorMessage } from '../api';
 import { defaultFollowerSelection, followerLabels, followerWeeks, followerWeekLabel, formatDelta } from '../followers';
 import type { FollowerReport } from '../followers';
 import { t, locale } from '../i18n.ts';
@@ -23,7 +23,7 @@ export function Followers({ brand, platform, revision, onLogout, children }: { b
     }).catch(e => {
       if (controller.signal.aborted) return;
       if (e instanceof ApiError && e.status === 401) onLogout();
-      else setError(e instanceof Error ? e.message : t('粉絲數讀取失敗'));
+      else setError(errorMessage(e, t('粉絲數讀取失敗')));
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [brand, platform, selection, revision]);

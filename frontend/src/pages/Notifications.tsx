@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import { t } from '../i18n.ts';
 
 type Policy = {
@@ -22,7 +22,7 @@ export function Notifications({ brandId, canEdit }: { brandId: string; canEdit: 
     try {
       setData(await api<Policy>('/notify/policy?brand_id=' + brandId, { method: 'PUT', body: JSON.stringify({ enabled: data.enabled, urgency_threshold: data.urgency_threshold, public_reputation_risk_threshold: data.public_reputation_risk_threshold, version: data.version, group_id: data.group_id, group_name: data.group_name }) }));
       setNotice(t('通知政策已儲存；待送通知會依新門檻重新判斷'));
-    } catch (e) { setError(e instanceof Error ? e.message : t('儲存失敗')); }
+    } catch (e) { setError(errorMessage(e, t('儲存失敗'))); }
     finally { setBusy(false); }
   }
   return <section className="settings-section workspace-subsection"><h3>{t('LINE 群組通知')}</h3>

@@ -21,7 +21,7 @@ let table: Record<string, string> = {};
 
 export const isLanguage = (value: unknown): value is Language => LANGUAGES.some(item => item.code === value);
 export const language = () => current;
-// 日期與數字格式跟著介面語言；時區仍由各呼叫端固定為 Asia/Taipei。
+// 日期與數字格式跟著介面語言；時區固定為台北，格式化函式集中在 time.ts。
 export const locale = () => current;
 
 export function t(text: string, values?: Record<string, string | number>): string {

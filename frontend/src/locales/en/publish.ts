@@ -1,7 +1,12 @@
 // publish 的 en 翻譯；鍵為繁體中文原文。
 export default {
-  '這些平台不支援 Markdown，*、#、[] 等符號會原樣顯示；英文與數字可轉成 Unicode 粗體／斜體。': 'These platforms don\'t support Markdown, so symbols like *, # and [] appear as-is. Latin letters and numbers can be converted to Unicode bold/italic.',
-  '轉成 Unicode 粗體／斜體': 'Convert to Unicode bold/italic',
+  '大標題': 'Heading',
+  '小標題': 'Subheading',
+  '發佈時會把 Markdown 轉成平台顯示得出來的格式：# 大標題變成「█ 大標題」、## 小標題變成「▍小標題」、- 項目變成「• 」、** 粗體會去掉符號（中文沒有粗體字形，只有英文與數字會變粗），實際樣子請看右側預覽。平台都不能調整文字大小。': 'When publishing, Markdown is converted to a format the platforms can show: # headings become “█ Heading”, ## subheadings become “▍Subheading”, - bullets become “• ”, and ** bold loses its symbols (Chinese has no bold form; only Latin letters and numbers turn bold). See the preview on the right for the actual result. None of the platforms allow changing text size.',
+  '編號清單': 'Numbered list',
+  '項目清單': 'Bulleted list',
+  '粗體': 'Bold',
+  '文案格式': 'Caption formatting',
   '來自 {name}': 'From {name}',
   '共用': 'Shared',
   '收件匣不會帶入文案：送出後到發佈紀錄按「複製文案」，貼到 TikTok App 再發佈。': 'The inbox doesn\'t include the caption. After sending, click “Copy caption” in Publish history, then paste it in the TikTok app and publish.',
@@ -67,7 +72,6 @@ export default {
   '上移': 'Move up',
   '下移': 'Move down',
   '移除': 'Remove',
-  '發佈': 'Publish',
   '關閉發佈': 'Turn off publishing',
   '開啟發佈': 'Turn on publishing',
   '發佈功能尚未開啟，貼文只能存成草稿': 'Publishing is turned off, so posts can only be saved as drafts',
@@ -155,7 +159,6 @@ export default {
   '重新套用縮圖': 'Reapply thumbnail',
   '封面未套用': 'Cover not applied',
   '重新套用封面': 'Reapply cover',
-  '已複製': 'Copied',
   '複製文案': 'Copy caption',
   '查看影片': 'View video',
   '查看貼文': 'View post',
@@ -267,4 +270,5 @@ export default {
   '圖片比例需 0.1:1–10:1': 'Image aspect ratio must be 0.1:1–10:1',
   'preview|留言': 'Comment',
   'preview|分享': 'Share',
+  "此角色只能編輯草稿，發佈需由有權限的成員送出": "This role can only edit drafts. A member with publishing permission must publish.",
 } satisfies Record<string, string>;

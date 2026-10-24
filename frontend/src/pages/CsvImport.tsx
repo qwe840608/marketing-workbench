@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import { platforms } from '../labels';
 import './csv-import.css';
-import { locale, t } from '../i18n.ts';
+import { t } from '../i18n.ts';
+import { taipeiDateTime } from '../time.ts';
 
 type Account = { id: number; platform: string; name: string };
 type Column = { column: string; header: string; field: string | null; suggested?: string; confidence: number | null; method: string; samples: string[] };
@@ -37,21 +38,21 @@ export function CsvImport({ brandId, canEdit }: { brandId: string; canEdit: bool
       for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
       const value = await api<Preview>('/csv/preview', { method: 'POST', body: JSON.stringify({ brand_id: Number(brandId), filename: file.name, content_base64: btoa(binary) }) });
       setPreview(value); setMapping(Object.fromEntries(value.columns.map(c => [c.column, c.field || ''])));
-    } catch (e) { setError(e instanceof Error ? e.message : t('上傳失敗')); }
+    } catch (e) { setError(errorMessage(e, t('上傳失敗'))); }
     finally { setBusy(false); }
   }
   async function validate() {
     if (!preview) return;
     setBusy(true); invalidate();
     try { setValidated(await api<Validation>('/csv/validate', { method: 'POST', body: JSON.stringify({ token: preview.token, columns: mapping, accounts: selected }) })); }
-    catch (e) { setError(e instanceof Error ? e.message : t('預覽失敗')); }
+    catch (e) { setError(errorMessage(e, t('預覽失敗'))); }
     finally { setBusy(false); }
   }
   async function commit() {
     if (!preview || !validated || !confirmed) return;
     setBusy(true); setError('');
     try { setResult(await api<Result>('/csv/confirm', { method: 'POST', body: JSON.stringify({ token: preview.token, revision: validated.revision }) })); }
-    catch (e) { setError(e instanceof Error ? e.message : t('匯入失敗，請重試')); }
+    catch (e) { setError(errorMessage(e, t('匯入失敗，請重試'))); }
     finally { setBusy(false); }
   }
   const errors = result?.errors || validated?.errors || [];
@@ -84,7 +85,7 @@ export function CsvImport({ brandId, canEdit }: { brandId: string; canEdit: bool
       </>}
       {validated && !result && <div className="csv-validation">
         <h3>{t('匯入前預覽')}</h3><p>{t('格式有效 {valid} 列／共 {total} 列。重複與來源衝突於確認時比對現存資料。', { valid: validated.valid, total: validated.total })}</p>
-        {validated.samples.map(sample => <article className="csv-sample" key={sample.row}><strong>{t('第 {row} 列 · {kind}', { row: sample.row, kind: sample.kind })}</strong><p>{t('{time}（台北）', { time: new Date(sample.sent_at).toLocaleString(locale(), { timeZone: 'Asia/Taipei' }) })}</p><p>{sample.text}</p><p className="muted">{sample.source_ref}</p></article>)}
+        {validated.samples.map(sample => <article className="csv-sample" key={sample.row}><strong>{t('第 {row} 列 · {kind}', { row: sample.row, kind: sample.kind })}</strong><p>{t('{time}（台北）', { time: taipeiDateTime(sample.sent_at) })}</p><p>{sample.text}</p><p className="muted">{sample.source_ref}</p></article>)}
         <label><input type="checkbox" checked={confirmed} disabled={busy} onChange={e => setConfirmed(e.target.checked)} />{t('我已核對品牌、帳號與資料，僅匯入有效列')}</label>
         <button className="primary" disabled={busy || !confirmed || !validated.valid} onClick={() => void commit()}>{t('確認匯入歷史資料')}</button>
       </div>}

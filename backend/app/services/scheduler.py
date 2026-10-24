@@ -11,7 +11,7 @@ from app.logging_config import error_fields, log_failure
 from app.models import AuditLog, CommentPoll, Setting
 from app.models.base import utc_now
 from app.services import audit_retention, classify, data_retention, ideation, settings_store
-from app.services.gateway_workers import Workers
+from app.services.workers import Workers
 
 INTERVALS = {
     "classify": 60,
@@ -301,7 +301,9 @@ class Scheduler:
 def jobs_view(access, settings):
     from fastapi import HTTPException
 
-    if access.staff.role != "admin":
+    from app.services import roles
+
+    if not roles.can(access, "settings.manage"):
         raise HTTPException(403, "排程設定僅管理員可操作")
     result = []
     for name, interval in INTERVALS.items():
@@ -376,7 +378,9 @@ def manual_metrics_view(session, now=None):
 def request_manual_metrics(access, settings):
     from fastapi import HTTPException
 
-    if access.staff.role not in {"admin", "marketing"}:
+    from app.services import roles
+
+    if not roles.can(access, "posts.sync"):
         raise HTTPException(403, "此帳號僅能檢視資料")
     scheduler = scheduler_for(settings)
     if not scheduler or not scheduler.healthy():

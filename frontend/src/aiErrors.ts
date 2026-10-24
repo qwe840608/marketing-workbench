@@ -1,4 +1,5 @@
-import { locale, t } from './i18n.ts';
+import { t } from './i18n.ts';
+import { formatTaipei } from './time.ts';
 
 const names: Record<string, string> = { gemini_api: 'Gemini', openai_api: 'OpenAI', anthropic_api: 'Anthropic' };
 
@@ -36,7 +37,7 @@ export function aiErrorMessage(raw: string, provider = '', retryAt: string | nul
   else if (status >= 500) message = t('{name} 服務暫時無法使用', { name });
   if (message) {
     const date = retryAt ? new Date(retryAt) : null;
-    const time = date && !Number.isNaN(date.valueOf()) ? new Intl.DateTimeFormat(locale(), { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date) : null;
+    const time = date && !Number.isNaN(date.valueOf()) ? formatTaipei(date, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : null;
     return time ? t('{message}，將於 {time} 自動重試', { message, time }) : t('{message}，請稍後再試', { message });
   }
   const messages: Record<string, string> = {

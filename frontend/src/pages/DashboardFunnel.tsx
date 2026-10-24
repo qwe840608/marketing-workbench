@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SegmentedControl } from './SegmentedControl';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import { barWidth, conversion, funnelLabels, type Funnel } from '../growth';
 import { t, locale } from '../i18n.ts';
 
@@ -22,7 +22,7 @@ export function DashboardFunnel({ brand, revision }: { brand: string; revision: 
       try {
         const value = await api<Funnel>(`/dashboard/funnel?days=${days}${brand ? `&brand_id=${brand}` : ''}`, { signal: controller.signal });
         if (!controller.signal.aborted) { setData(value); setError(''); }
-      } catch (e) { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : t('轉換漏斗暫時無法讀取')); }
+      } catch (e) { if (!controller.signal.aborted) setError(errorMessage(e, t('轉換漏斗暫時無法讀取'))); }
       finally { running = false; }
     }
     void refresh(); const timer = window.setInterval(refresh, 15000);

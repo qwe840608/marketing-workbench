@@ -440,3 +440,9 @@ def test_cooldown_avoids_repeated_service_calls(client, settings, classified_dat
         assert session.scalar(select(func.count()).select_from(Classification)) == 10
 
 
+
+
+def test_complaint_question_excludes_friendly_jokes():
+    text = classify.QUESTIONS["is_complaint"]["instructions"]
+    assert "real dissatisfaction" in text and "laughing emoji" in text
+    assert "😂" in classify.QUESTIONS["sentiment"]["instructions"]

@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { SegmentedControl } from './SegmentedControl';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import {
   audiencePlatformNames, audiencePlatforms, audienceSections, findInsight, itemLabel, peakHours, periodLabel,
   platformNotes, sectionTitle, shares, unavailableText,
   type AudienceAccount, type AudienceInsight, type AudiencePlatform, type AudienceReport, type AudienceSection,
 } from '../audience';
 import { t, locale } from '../i18n.ts';
+import { taipeiDate } from '../time.ts';
 
 const readPlatform = (): AudiencePlatform => {
   const value = new URLSearchParams(location.search).get('audience_platform');
   return (audiencePlatforms as readonly string[]).includes(value || '') ? value as AudiencePlatform : 'instagram';
 };
-const day = (value: string) => new Date(value).toLocaleDateString(locale(), { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' });
+const day = (value: string) => taipeiDate(value, { month: 'numeric', day: 'numeric' });
 
 function Bars({ section, insight }: { section: AudienceSection; insight: AudienceInsight }) {
   const rows = shares(insight.items, insight.unit);
@@ -56,7 +57,7 @@ export function DashboardAudience({ brand, revision }: { brand: string; revision
     setData(null); setError('');
     api<AudienceReport>(`/dashboard/audience${brand ? `?brand_id=${brand}` : ''}`, { signal: controller.signal })
       .then(value => { if (!controller.signal.aborted) setData(value); })
-      .catch(e => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : t('受眾分析暫時無法讀取')); });
+      .catch(e => { if (!controller.signal.aborted) setError(errorMessage(e, t('受眾分析暫時無法讀取'))); });
     return () => controller.abort();
   }, [brand, revision]);
   function select(value: AudiencePlatform) {

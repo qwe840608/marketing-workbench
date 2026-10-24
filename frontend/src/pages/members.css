@@ -13,9 +13,6 @@
 .member-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
 .member-form, .password-form { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 16px; }
 .member-form label, .password-form label { display: grid; gap: 8px; min-width: 0; }
-.member-role { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 8px; }
-.member-role .segmented-control { width: 100%; overflow: visible; }
-:root body .member-role .segmented-control button[role=radio] { flex: 1 1 0; min-width: 0; }
 .member-brand-options { min-width: 0; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-control); padding: 12px; }
 .member-brand-options label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; overflow-wrap: anywhere; }
 .member-brand-options input { flex-shrink: 0; }
@@ -34,3 +31,19 @@
 }
 .recovery-code { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-subtle); min-width: 0; }
 .recovery-code > p { margin: 12px 0 16px; line-height: 1.8; }
+/* 角色：成員編輯的單選清單附上可做的事；角色卡片列出每個角色勾選的功能。 */
+.member-role-options { min-width: 0; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-control); padding: 12px; display: grid; gap: 12px; }
+.member-role-options label { display: flex; align-items: flex-start; gap: 8px; min-width: 0; cursor: pointer; }
+.member-role-options input { flex-shrink: 0; margin-top: 4px; }
+.member-role-options span { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.member-role-options strong { font-weight: 600; }
+.member-role-options small { color: var(--text-subtle); font-size: var(--ui-font-help); line-height: 1.6; }
+.member-roles { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-subtle); }
+.member-roles .member-card-heading p { margin: 8px 0 0; }
+.role-row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 2.5fr) 96px 176px; gap: 16px; align-items: center; }
+.role-row .action-row { justify-content: flex-end; flex-wrap: nowrap; margin: 0; }
+.role-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
+.role-name strong { font-weight: 600; }
+.role-permissions { color: var(--text-subtle); min-width: 0; overflow-wrap: anywhere; line-height: 1.6; }
+.role-count { color: var(--text-subtle); white-space: nowrap; }
+@media (max-width: 599px) { .role-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; } .role-permissions { grid-column: 1 / -1; } .role-row .action-row:empty { display: none; } }

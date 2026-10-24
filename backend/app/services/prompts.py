@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.models import PromptVersion, Staff
+from app.services import roles
 from app.services.posts import _begin_ingest
 
 # Historical key is shared by marketing prompts; keep existing versions without a migration.
@@ -43,7 +44,7 @@ def context(session, brand_id):
 def authorize(access, brand_id, write=False):
     if brand_id is not None:
         access.require_brand(brand_id, write=write)
-    elif write and access.staff.role != "admin":
+    elif write and not roles.can(access, "ai.manage"):
         raise HTTPException(403, "共用 prompt 僅管理員可修改")
 
 

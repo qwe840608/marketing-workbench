@@ -15,6 +15,7 @@ from app.db import build_engine
 from app.logging_config import log_failure
 from app.models import AICredential, AIKeyVerification, PlatformCredential
 from app.models.base import utc_now
+from app.services import roles
 from app.services.posts import _begin_ingest
 
 PROVIDERS = ("openai", "gemini", "anthropic", "jev")
@@ -74,7 +75,7 @@ def mask(provider, key):
 
 
 def require_admin(access):
-    if access.staff.role != "admin":
+    if not roles.can(access, "ai.manage"):
         raise HTTPException(403, "僅管理員可管理 API 金鑰")
 
 

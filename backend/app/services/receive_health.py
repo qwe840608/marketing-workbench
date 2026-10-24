@@ -15,7 +15,7 @@ from sqlalchemy.dialects.sqlite import insert
 
 from app.models import ReceiveHealthCheck, WebhookFailure
 from app.models.base import utc_now
-from app.services import settings_store
+from app.services import roles, settings_store
 from app.services.posts import _begin_ingest
 
 STATE = "receive_health.state"
@@ -111,7 +111,7 @@ def target(session, settings):
 
 
 def target_view(access, settings):
-    if access.staff.role != "admin":
+    if not roles.can(access, "settings.manage"):
         raise HTTPException(403, "系統警示對象僅管理員可檢視與修改")
     recipient, version, source = target(access.session, settings)
     return {

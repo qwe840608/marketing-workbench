@@ -22,3 +22,10 @@ export function temporaryDirectory(t, prefix) {
   });
   return folder;
 }
+
+// uv puts the venv interpreter under Scripts/ on Windows and bin/ elsewhere.
+export function backendPython(root) {
+  return process.platform === 'win32'
+    ? join(root, 'backend/.venv/Scripts/python.exe')
+    : join(root, 'backend/.venv/bin/python');
+}

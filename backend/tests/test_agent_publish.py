@@ -143,7 +143,7 @@ def test_all_tools_permissions_and_audit(posting, role):
         result = invoke(posting, name, body, role)
         write = agent_tools.SPECS[name][1]
         if role == "viewer" and write:
-            assert result.isError and "行銷或管理員" in result.content[0].text
+            assert result.isError and "功能權限" in result.content[0].text
         elif not write or name in {"save_publish_draft", "create_upload_link", "prepare_publish"}:
             assert not result.isError, result
         else:
@@ -481,6 +481,42 @@ def test_strict_publishing_inputs(posting):
             },
         )
         assert result.isError
+
+
+def test_save_draft_accepts_every_platform_like_the_web(posting):
+    # 加 TikTok 時只改了網頁版上限，網頁存成 5 個平台的草稿，MCP 再更新就一律回參數格式不符。
+    from typing import get_args
+
+    from app.schemas.publish import Platform
+    from app.schemas.publish import PostInput as WebPostInput
+
+    every = list(get_args(Platform))
+    tool = {t.name: t for t in agent_tools.list_tools()}["save_publish_draft"]
+    web = WebPostInput.model_json_schema()["properties"]["platforms"]["maxItems"]
+    assert tool.inputSchema["properties"]["platforms"]["maxItems"] == web == len(every)
+    post = draft(posting, format="video", caption="MV 工作人員名單", platforms=every)
+    assert post["platforms"] == every
+    updated = draft(
+        posting,
+        post_id=post["id"],
+        version=post["version"],
+        format="video",
+        caption="MV 工作人員名單",
+        platforms=every,
+        platform_options={"youtube": {"title": "MV 標題"}},
+    )
+    current = ok(posting, "get_publish_post", {"post_id": post["id"]})
+    assert updated["version"] > post["version"] and current["platforms"] == every
+    assert current["platform_options"]["youtube"]["title"] == "MV 標題"
+    too_many = invoke(
+        posting,
+        "save_publish_draft",
+        {"brand_id": posting.brand_id, "format": "video", "caption": "x", "platforms": every * 2},
+    )
+    assert too_many.isError and "參數格式不符" in too_many.content[0].text
+    # 重複的平台不報錯，存檔時合併成一個（網頁版同一套規則）。
+    merged = draft(posting, platforms=["facebook", "facebook", "threads"])
+    assert merged["platforms"] == ["facebook", "threads"]
 
 
 def test_sdk_upload_prepare_confirm_end_to_end(posting):
@@ -1078,6 +1114,27 @@ def test_youtube_thumbnail_failure_is_reported_through_mcp(posting):
     assert thumbnail["status"] == "failed" and thumbnail["code"] == "forbidden"
     assert "電話驗證" in thumbnail["reason"]
     assert len(posting.mock.youtube.completed) == 1
+
+
+def test_tiktok_inbox_state_is_reported_through_mcp(posting, monkeypatch):
+    # 指南說成功後看 detail.inbox_state 告知「已送到收件匣」；先前被投影濾掉，agent 只看到空白。
+    from publish_http_mock import seed_tiktok
+
+    from app.services import publish_tiktok
+
+    monkeypatch.setattr(publish_tiktok, "POLL_SECONDS", 0)
+    monkeypatch.setattr(publish_tiktok.time, "sleep", lambda seconds: None)
+    with posting.app.state.session_factory.begin() as session:
+        seed_tiktok(session, posting.app.state.settings, posting.brand_id)
+    post = draft(posting, format="video", caption="MCP TikTok", platforms=["tiktok"])
+    attach(posting, post, video_bytes(1920, 1080))
+    post = ok(posting, "get_publish_post", {"post_id": post["id"]})
+    assert not confirm(posting, post, prepared(posting, post)).isError
+    result = ok(posting, "get_publish_post", {"post_id": post["id"]})
+    (target,) = result["targets"]
+    assert target["status"] == "succeeded"
+    assert target["detail"] == {"inbox_state": "SEND_TO_USER_INBOX"}
+    assert "publish_id" not in json.dumps(result)
 
 
 def test_youtube_title_obeys_brand_forbidden_phrases(posting):

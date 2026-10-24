@@ -73,7 +73,7 @@ def no_ai(*args, **kwargs):
 
 def fetch_comments(factory, settings, post_id):
     from app.models.base import utc_now
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
     from app.services import credentials
     from pydantic import SecretStr
 

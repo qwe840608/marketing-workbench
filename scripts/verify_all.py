@@ -148,6 +148,8 @@ def main():
         return 0
 
     LOGS.mkdir(parents=True, exist_ok=True)
+    # pytest 只建立 --basetemp 本身，上層資料夾在乾淨的機器（例如 CI）上要先建好。
+    Path(args.basetemp).parent.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "FRONTEND_DIST_DIR": str(DIST), "PYTHONIOENCODING": "utf-8"}
     selected = None
     if args.only:

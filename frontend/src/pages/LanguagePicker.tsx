@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import type { User } from '../api';
 import { applyLanguage, isLanguage, language, LANGUAGES, t } from '../i18n.ts';
 
@@ -12,7 +12,7 @@ export function LanguagePicker({ className = '', account = false }: { className?
     if (account) {
       setBusy(true);
       try { await api<User>('/auth/language', { method: 'PUT', body: JSON.stringify({ language: value }) }); }
-      catch (e) { setError(e instanceof Error ? e.message : t('語言儲存失敗')); setBusy(false); return; }
+      catch (e) { setError(errorMessage(e, t('語言儲存失敗'))); setBusy(false); return; }
     }
     applyLanguage(value);
   }

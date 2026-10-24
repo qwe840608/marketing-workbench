@@ -14,8 +14,8 @@ from app.models import Account, FollowerSnapshot, MetaApiCall, Setting, Staff
 from app.schemas.followers import FollowerInput
 from app.services import followers, meta_api
 from app.services.access import BrandAccess
-from app.services.gateway_workers import Workers
 from app.services.scheduler import Scheduler
+from app.services.workers import Workers
 
 NOW = datetime(2026, 10, 5, 2, tzinfo=UTC)  # Monday, Taipei 10:00.
 

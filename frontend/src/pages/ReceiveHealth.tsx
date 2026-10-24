@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import { pollWhileVisible } from '../visiblePolling';
-import { locale, t } from '../i18n.ts';
+import { t } from '../i18n.ts';
+import { taipeiDateTime } from '../time.ts';
 
 type Record = { id: number; checked_at: string; healthy: boolean; checks: { scheduler?: boolean; public_probe: boolean; signature_ok: boolean; signature_failures_5m: number }; alert_status: string };
 type Health = { interrupted: boolean; message: string; last_ok_at: string | null; checked_at: string | null; stale: boolean; monitor_enabled: boolean; alerts_enabled: boolean; history: Record[] };
 type Target = { recipient: string; version: number; source: string; alerts_enabled: boolean };
-const date = (v: string | null) => v ? new Date(v).toLocaleString(locale(), { timeZone: 'Asia/Taipei', hour12: false }) : t('尚無紀錄');
+const date = (v: string | null) => v ? taipeiDateTime(v, { hour12: false }) : t('尚無紀錄');
 export function useReceiveHealth() {
   const [health, setHealth] = useState<Health | null>(null);
   useEffect(() => pollWhileVisible(async signal => {
@@ -20,15 +21,15 @@ export function useReceiveHealth() {
 export function ReceiveBanner({ health }: { health: Health | null }) {
   return health?.interrupted ? <aside className="receive-banner" role="alert"><strong>{health.message}</strong><span>{t('上次正常：{time}（台北）', { time: date(health.last_ok_at) })}{health.stale && t(' · 監測紀錄逾時')}</span></aside> : null;
 }
-export function ReceiveHealthSettings({ role }: { role: string }) {
+export function ReceiveHealthSettings({ canManage }: { canManage: boolean }) {
   const health = useReceiveHealth();
   const [target, setTarget] = useState<Target | null>(null), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
-  useEffect(() => { if (role === 'admin') api<Target>('/settings/receive-health').then(setTarget).catch(e => setNotice(e.message)); }, [role]);
+  useEffect(() => { if (canManage) api<Target>('/settings/receive-health').then(setTarget).catch(e => setNotice(e.message)); }, [canManage]);
   async function save() {
     if (!target) return;
     setBusy(true); setNotice('');
     try { setTarget(await api<Target>('/settings/receive-health', { method: 'PUT', body: JSON.stringify({ recipient: target.recipient, version: target.version }) })); setNotice(t('系統警示對象已儲存')); }
-    catch (e) { setNotice(e instanceof Error ? e.message : t('儲存失敗')); }
+    catch (e) { setNotice(errorMessage(e, t('儲存失敗'))); }
     finally { setBusy(false); }
   }
   const alerts: { [key: string]: string } = { none: '—', claimed: t('已領取（不重送）'), sent: t('已通知'), failed: t('通知失敗（不重送）'), unknown: t('通知結果不明（不重送）'), unconfigured: t('通知設定未完成'), suppressed: t('驗收期間暫停推播') };

@@ -29,8 +29,8 @@ from app.models import (
     TopicAnnotation,
 )
 from app.models.base import utc_now
-from app.services.gateway_workers import Workers
 from app.services.scheduler import INTERVALS
+from app.services.workers import Workers
 
 
 def assert_retired(client):

@@ -334,7 +334,7 @@ def install_publish_mock():
 
     mock = PlatformMock()
     publish_platforms.client_factory = mock.client
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
 
     def no_meta(*args, **kwargs):
         raise httpx.ConnectError("isolated Meta transport")

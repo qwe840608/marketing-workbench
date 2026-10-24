@@ -38,8 +38,8 @@ from app.services import (
     youtube,
     youtube_oauth,
 )
-from app.services.gateway_workers import Workers
 from app.services.passwords import hash_password
+from app.services.workers import Workers
 
 KB = 1024
 UPLOAD = youtube_oauth.UPLOAD_SCOPES[0]

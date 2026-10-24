@@ -55,3 +55,15 @@ test('翻譯表沒有程式已不再使用的字串（後端訊息除外）', ()
   }
   assert.deepEqual(stale, []);
 });
+
+test('同一個鍵只出現在一個群組檔（index.ts 用展開合併，重複時後面的群組會悄悄蓋掉前面的）', () => {
+  const duplicated = [];
+  for (const lang of languages) {
+    const owner = new Map();
+    for (const group of groups) for (const key of Object.keys(tables[lang][group])) {
+      if (owner.has(key)) duplicated.push(`${lang}：${key}（${owner.get(key)} 與 ${group}）`);
+      else owner.set(key, group);
+    }
+  }
+  assert.deepEqual(duplicated, []);
+});

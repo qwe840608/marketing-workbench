@@ -29,7 +29,7 @@ PAGE_LIMIT = 50
 
 
 def fail(code):
-    from app.services.gateway_workers import WorkerError
+    from app.services.workers import WorkerError
 
     raise WorkerError(code)
 

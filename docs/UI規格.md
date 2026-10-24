@@ -39,7 +39,7 @@
 - composer2：新增貼文／草稿編輯上方 `.publish-composer-tabs` 為共用、Facebook、Instagram、Threads、YouTube、TikTok 六分頁，支援 tab／tabpanel、方向鍵與 Home／End；平台標籤併入發佈開關。已就緒平台綠色，未連結／權杖失效及未支援平台灰色，開關停用但分頁可進入，顯示「尚未連結」及 secondary「設定 → 平台連結」，沿用 settings_tab=connections 導覽；TikTok 分頁與 YouTube 同樣只支援影片：非影片格式時開關停用（title「僅支援影片發布，圖文需從APP上傳」）、分頁只顯示同一句；影片時顯示 TikTok 文案與 `.notice.tiktok-caption-notice`「收件匣不會帶入文案…」，沒有其他選項。確認視窗的 TikTok 項目為「影片 · 送到 TikTok 收件匣（文案不會送出，需在 App 內貼上並發佈）」。發佈紀錄的 TikTok 成功列加 `.status-badge`「已送到收件匣」（pending）／「已在 App 發佈」（ready）／「TikTok 處理中」，與 secondary「複製文案」（複製 TikTok 文案，未覆寫用共用文案，按後顯示「已複製」）。平台未開啟仍可編輯並標示「未開啟」。
 - composer3：限時動態僅 Facebook／Instagram 兩個平台分頁與標籤開關，連線顏色、停用及設定引導沿用 composer2。每份 1–10 則，一則一張圖或一支影片，支援拖曳、secondary 上移／下移及 primary danger 移除；沒有文案、格式或貼文選項欄位，沿用自動保存，只保留發佈／排程提交按鈕；規格原因合併在同一處紅字。9:16 預覽以 secondary 上一則／下一則切換並顯示則數；非 9:16 僅提示加邊，IG 影片 3–60 秒、圖片 ≤8MB（PNG 以警告提示「Instagram 會自動把 PNG 轉成 JPEG，透明背景會變白底」，其他非 JPEG 格式為錯誤）、FB 影片 ≤60 秒錯誤以紅字阻擋發佈。立即／排程確認列平台、帳號、則數、素材及時間。紀錄標「限時動態」，展開逐則 IG 成效／最終值，缺值顯示「—」；FB 顯示「Facebook 不提供限時動態成效」，不增加儀表板資訊。部分成功後鎖定素材，重試顯示已發則數與失敗位置。
 - `.publish-composer-grid` 左編輯右預覽；共用放格式、共用素材及主文案，平台放預設跟隨共用的文案，修改即專屬，secondary「還原為共用文案」回復跟隨。FB 影片形式為影片貼文／Reels（新草稿預設 Reels、舊稿沿用 feed），未公開選項放 FB 分頁；IG 影片用「同時顯示在動態」開關，預設開；其下 `.publish-thumbnail.publish-cover` 同列放「Reels 封面」、54px 高 9:16 封面預覽、檔名與大小（尚無封面時為 text-subtle 小字「JPG／PNG · 8 MB 內 · 建議 9:16 · 未上傳則用影片第一格」）、secondary「上傳封面」／「更換封面」與 primary danger「移除封面」（檔案輸入 aria-label「上傳 Reels 封面」）；封面當 IG 預覽影片的 poster，非 9:16 或 PNG 只以 `.notice.warning` 提示。IG 已成功／發佈中時封面按鈕停用。確認視窗的 IG 影片項目為「Reels · 同時顯示在動態／不顯示在動態 · 自訂封面／預設封面」。FB 影片在「存成 FB 草稿」下方有 `.publish-thumbnail.publish-cover.publish-facebook-cover`「影片封面」列（54px 高、依原比例、最寬 96px；尚無封面時小字「JPG／PNG · 8 MB 內 · 建議與影片同比例 · 未上傳則由 Facebook 自動選」；按鈕同 IG，檔案輸入 aria-label「上傳 Facebook 影片封面」），缺 pages_manage_engagement 時列內加 `.notice.publish-cover-hint`（中性提示，不是警告）「自訂封面需要 pages_manage_engagement 權限，請重新連結 Meta」；封面當 FB 預覽影片的 poster，比例與影片不同只提示。確認視窗 FB 影片項目為「影片貼文／Reels · 自訂封面／預設封面（· 草稿）」。發佈紀錄 FB 成功但封面失敗時同列顯示 `.status-badge.pending`「封面未套用」、中文原因與 secondary「重新套用封面」（確認視窗「重新套用封面到 Facebook？只會更換封面，不會重傳影片。」；檢視者看不到按鈕）。已成功／發佈中平台及已部分送出的 Threads 選項鎖定。
-- `.publish-preview` 使用品牌首字頭像、帳號名稱、文字與本機素材，不載入外部資源。共用預覽只列已開啟平台的 secondary 小按鈕；平台分頁固定本平台。文字依簡化字數／行數門檻折疊，以 secondary「更多／收合」切換；@／hashtag 使用 link-color，Threads 顯示第一個主題標籤及首段／回覆串文，素材只在首段。IG 圖片用 4:5／正方形用 1:1，Reels 用 9:16，FB 影片貼文／Threads 沿原比例。≤767px 預覽放編輯區頂部，1440／768／390px 無水平溢出。
+- `.publish-preview` 使用品牌首字頭像、帳號名稱、文字與本機素材，不載入外部資源。共用預覽只列已開啟平台的 secondary 小按鈕；平台分頁固定本平台。文字依簡化字數／行數門檻折疊，以 secondary「更多／收合」切換；@／hashtag 使用 link-color，Threads 顯示第一個主題標籤及首段／回覆串文，素材只在首段。IG 圖片用 4:5／正方形用 1:1，Reels 用 9:16，FB 影片貼文／Threads 沿原比例。影片一律完整顯示（contain），框與影片比例不同時以 `--media-letterbox` 補邊（例如直式框裡的橫式影片上下補邊），因為送出的是原檔、平台不裁切；圖片維持填滿。≤767px 預覽放編輯區頂部，1440／768／390px 無水平溢出。
 - Threads 分段優先空行、換行、句號再硬切；Unicode 計數資料與測試向量放 shared/publish_threads_vectors.json，由 pytest 與前端共同驗證。自動模式即時跟隨來源文案，手動修改／新增／刪除即停止重算，最少顯示一段；每段一列段數／字數／primary danger 刪除段。secondary「依主文案重新分段」先用 ConfirmDialog 確認覆蓋，發出文案不加編號。
 - 平台分頁以紅字顯示字數、hashtag、@、素材長度／比例規則錯誤，分頁標籤加紅點；後端提示以 notice warning 顯示。任何已開啟平台阻擋錯誤均停用發佈。錯誤只顯示在一處：`.publish-footer` 第一列的 `#publish-disabled-reason`（紅字、獨占一列，位於「立即發佈／排程」與送出按鈕上方），依「平台：原因」以「；」串接，列出已開啟平台，加上目前正在看但未開啟的平台分頁；分頁內不另列錯誤清單，只保留分頁標籤紅點。Threads 字數超限只標在輸入框下方，不在這裡重複；只剩這類錯誤時顯示「請先修正上方標示的錯誤」。發佈功能未開啟時只顯示「發佈功能尚未開啟」；沒有開啟任何平台時以「請開啟要發佈的平台」開頭，後面接目前分頁的錯誤。按鈕 title 保留完整原因。publish-actions 保留唯一 primary 發佈／排程及 secondary 存成草稿；確認視窗逐平台列形式、IG 動態選項、FB 未公開、Threads 段數及帳號／文案／素材／時間。紀錄的 Threads detail 進度顯示「已發 N／M 段」。
 - 新增貼文初始僅為空白表單。首次文案／平台輸入後延遲自動保存，首次上傳或存成草稿立即保存；切換分頁／導覽前完成未儲存內容。格式選取不單獨建草稿。`publish_post_id` 在跨頁網址保留目前草稿；secondary「新貼文」先保存再清空，單純重整不增草稿。
@@ -70,7 +70,7 @@
 
 ## 貼文數據成效面板寬度（metricwidth）
 
-- 桌面單篇詳細右側成效面板（`.post-metrics`）固定 380px，左側列表 320px、中間留言欄自動。數據快照表沿用每格 16px 文字內距，抓取時間「2026/10/21 13:04」與指標欄名在 1440px 寬都排在同一行；百萬級數字時抓取時間可在日期與時間之間換行，但不可拆開日期或水平溢出。
+- 2026-10-23 起由下方 postcenter 取代：成效改放中間。原規則：桌面單篇詳細右側成效面板（`.post-metrics`）固定 380px，左側列表 320px、中間留言欄自動。數據快照表沿用每格 16px 文字內距，抓取時間「2026/10/21 13:04」與指標欄名在 1440px 寬都排在同一行；百萬級數字時抓取時間可在日期與時間之間換行，但不可拆開日期或水平溢出。
 
 ## Threads 貼文數據（threadsdata）
 
@@ -83,10 +83,11 @@
 
 ## 成員與角色權限（members）
 
-本節覆蓋舊版設定頁籤與非管理員唯讀設定的呈現規則。管理員的設定頁籤依序為 AI、平台連線、訊息分類、工作區、成員、我的帳號；行銷與檢視者僅呈現「我的帳號」，書籤連至其他設定時亦顯示此頁籤。側欄品牌選單只列可存取品牌；沒有品牌的非管理員顯示「尚未指派品牌，請聯絡管理員」。手機保留 `.mobile-logout`。
+本節覆蓋舊版設定頁籤與非管理員唯讀設定的呈現規則。管理員的設定頁籤依序為 AI、平台連線、訊息分類、工作區、成員、我的帳號；其他角色依功能權限顯示（平台連線＝`connections.manage`、AI＝`ai.manage`、訊息分類與工作區＝`settings.manage`，成員只限管理員），行銷與檢視者僅呈現「我的帳號」，書籤連至其他設定時亦顯示此頁籤。側欄品牌選單只列可存取品牌；沒有品牌的非管理員顯示「尚未指派品牌，請聯絡管理員」。手機保留 `.mobile-logout`。
 
+- 成員編輯的角色改為 `fieldset.member-role-options` 單選清單：每列原生 radio，名稱（字重 600，作為 radio 名稱）下方 text-subtle 小字列出可做的事（`aria-describedby`）；內建三種在前，自訂角色在後。成員清單下方 `.member-roles` 為「角色」區：`.role-row` 排列名稱（內建加 neutral「內建」徽章）、權限摘要、「N 位成員」，自訂角色另有 secondary 編輯／刪除（仍有成員時刪除停用並以 title 說明）。新增／編輯角色沿用 `.member-dialog`：角色名稱與「可使用的功能」勾選清單，勾「送出、重試與取消發佈」會一併勾「編輯發佈草稿」，取消後者也取消前者。發佈頁沒有 `publish.submit` 時以 muted 文字取代「發佈／排程」按鈕，並隱藏取消排程、重試與重新套用按鈕。
 - 成員頁使用 `.section-card.members-card`，標題列右側一顆「新增成員」primary；`.list-box.member-list` 內的 `.list-row.member-row` 排列名稱／帳號、角色、品牌、狀態及 secondary 編輯。名稱字重 600，帳號 text-subtle；品牌逗號列出、單行省略並提供完整 title。狀態採 ready／neutral／pending。390px 名稱與角色同列，編輯置右，其餘自然換行。
-- 新增與編輯沿用既有 modal 外框，`.member-dialog` 具 dialog／aria-modal、標題關聯、Esc、Tab 焦點循環與關閉後焦點還原。角色使用 SegmentedControl；非管理員顯示品牌 checkbox，單一品牌預設勾選。管理員隱藏品牌 checkbox，顯示「管理員可存取全部品牌」。
+- 新增與編輯沿用既有 modal 外框，`.member-dialog` 具 dialog／aria-modal、標題關聯、Esc、Tab 焦點循環與關閉後焦點還原。角色使用 `.member-role-options` 單選清單；非管理員顯示品牌 checkbox，單一品牌預設勾選。管理員隱藏品牌 checkbox，顯示「管理員可存取全部品牌」。
 - 提交用 primary，取消／複製／重設密碼／啟用用 secondary，停用用 primary danger 並經 ConfirmDialog 二次確認。保護規則錯誤用 `.notice.danger`，不使用 window.confirm。每個提交區塊只放一顆主要提交按鈕。
 - 我的帳號密碼表單後，管理員多一段 `.recovery-code`：h3「密碼復原碼」與狀態膠囊（已設定 `.ready`／尚未設定 `.neutral`）同列，說明、「確認目前密碼」欄位與 secondary「產生復原碼／重新產生復原碼」。成功後沿用 `.member-dialog` 與 `.temporary-password` 顯示一次復原碼，secondary 複製與「我已保存」。
 - 登入頁在「限已授權的團隊成員使用」下方放收合的 `.login-forgot`「忘記密碼？」：成員說明、展開後才渲染的管理員復原碼表單（管理員帳號、復原碼、設定新密碼兩次、primary「重設密碼」；標籤不和登入表單重名）、無復原碼時的主機指令 `.login-command` 與鎖定提醒。成功後以 `.notice.success` 取代表單，不自動登入。
@@ -163,6 +164,7 @@
 | `--brand-hover` | `color-mix(in srgb, var(--brand-primary) 88%, var(--bg-surface))` | 主要按鈕 hover |
 | `--focus-ring`、`--link-color` | `var(--state-success)` | 焦點與連結；亮綠不足對比時使用深綠 |
 | `--list-red`、`--list-green`、`--list-black` | danger／success／text-main 別名 | 名單圓點與框線 |
+| `--media-letterbox` | text-main 別名 | 發佈預覽影片與框比例不同時的補邊 |
 | `--chart-line`、`--chart-point`、`--chart-intent` | success／info／pending-text 別名 | 圖表獨立線色、點色、意圖長條 |
 | `--ui-font-family` | `system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif` | 全站系統無襯線字體，標題依字重區分 |
 | `--ui-font-mono` | `ui-monospace, Consolas, "Cascadia Mono", Menlo, monospace` | 需要等寬時使用的系統字體 |
@@ -449,3 +451,14 @@ PageHeader 標題與動作垂直置中，工作區小字在動作左側；1440×
 - 文字：全站「工作檯」；側邊欄移除「品牌工作區」標籤與底部標語，只留「品牌營運工作檯」；頁首右上不再重複工作區名稱；標題為「儀表板」「貼文數據」；發佈標題列移除「已開啟／未開啟」膠囊（保留頂部提醒、開關按鈕與按鈕下方原因）；成員列「Agent 連線 N 個」「撤銷全部 Agent 連線」；Webhook 欄位標籤為「公開網址」「Meta 留言通知網址」「LINE 通知網址」；憑證欄位的 .env 名稱改為小號 text-subtle 等寬字。
 - 設定分頁順序為平台連線、AI、訊息分類、工作區、成員、我的帳號；預設分頁為平台連線（網址指定 settings_tab 時照舊）。貼文數據粉絲數列加小標「粉絲數期間」（YouTube 為「訂閱數期間」）。主題發想報告狀態為已完成但匯出檔不存在或未全部產生時，標題顯示「已完成・匯出未完成」。
 - check_brand_scope 驗證單一品牌無選單、多品牌「全部」提示與選擇後內容、文字新值、分頁順序與預設分頁；多品牌以瀏覽器端替身 /api/brands 加第二個品牌，不寫入資料庫。
+
+## 貼文數據成效置中與完整貼文（postcenter）
+
+覆蓋前文 metricwidth、YouTube「成效七項」與內文「展開全文／收合」的描述。
+
+- 桌面（≥1280px）三欄：左貼文列表 280px、中間 `.post-metrics`「貼文成效」自動寬度（最寬）、右側 360px `.post-conversation`（貼文摘要卡＋留言與回覆）。成效數字格依寬度自動排列（每格至少 120px）。
+- 600～1279px 與手機一樣單欄：貼文摘要、貼文成效、留言與回覆依序排列。
+- 貼文摘要卡：72px 縮圖（裁切填滿）在左，右側帳號・類型、兩行內文（`p.post-caption.collapsed`，內文不是標題，不用 h2）、時間；下方一列 secondary「完整貼文」與「開啟原始貼文 ↗」。不再有「展開全文／收合」。
+- 「完整貼文」開啟 `.guide-dialog.post-full-dialog` 視窗（沿用設定教學視窗的外框、焦點進出、Tab 循環、Esc 與「關閉」）：帳號・類型、原比例圖片、完整內文（保留換行）、發文時間、原始貼文連結。手機全螢幕。
+- 「觀看表現」區（`.watch-metrics`，h4）接在成效數字格之後，只在影片貼文出現（FB／IG 影片與 Reels、YouTube 全部、TikTok 全部、Threads 影片）：FB 平均觀看時長（秒）、觀看總時數（小時）；IG 再加「前 3 秒滑走率（%）」；YouTube 為平均觀看時長、平均觀看百分比（%）、觀看總時數，三項都標「約晚 1～2 天」。FB 有留存曲線時另顯示 `.retention-chart`「觀眾留存」與「影片中段仍在看／看到結尾」。TikTok、Threads 只顯示一行說明官方 API 沒有這些數據。曲線卡片都用外框（`.metric-chart`）加分頁籤（`.tabs.chart-tabs`，role=tablist「曲線指標」，標籤多時換行、不橫向捲動）切換指標，不用下拉選單：「數據變化」放互動指標；影片貼文另有「觀看變化」卡片放觀看表現三項；FB 的「觀眾留存」也是同樣外框的卡片。「數據快照」標題與上方卡片至少間隔 28px。YouTube 上方成效數字格改為五項：觀看、按讚、留言、分享、新增訂閱。
+

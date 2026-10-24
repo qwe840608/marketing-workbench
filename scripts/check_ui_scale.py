@@ -521,7 +521,7 @@ def main():
                         expect(page.locator(".metric-grid strong").first).to_have_text(
                             "1,234,567"
                         )
-                        page.locator(".metric-grid").scroll_into_view_if_needed()
+                        page.locator(".metric-grid").first.scroll_into_view_if_needed()
                         capture("post-performance", width, height)
                         page.locator(".post-metrics").screenshot(
                             path=str(
@@ -578,7 +578,9 @@ def main():
                         "es => es.map(e => ({height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width}))"
                     )
                     assert len(columns) == 3 and all(c["height"] >= 624 for c in columns), columns
-                    assert columns[0]["width"] == 320 and columns[2]["width"] == 380, columns
+                    # 依文件順序為列表、成效（中間、最寬）、貼文摘要與留言（postcenter）。
+                    assert columns[0]["width"] == 280 and columns[2]["width"] == 360, columns
+                    assert columns[1]["width"] > columns[2]["width"], columns
                     print("FOLLOWERS_COLUMNS", json.dumps(columns))
                 capture("followers-facebook", width, height)
                 tabs = page.get_by_role("tablist", name="貼文平台", exact=True)

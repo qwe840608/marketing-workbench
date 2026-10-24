@@ -1,4 +1,3 @@
-from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -30,8 +29,3 @@ class ApprovalDecision(BaseModel):
 class ConnectionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
-
-class ConnectionView(BaseModel):
-    id: int
-    name: str
-    kind: Literal["oauth", "token"]

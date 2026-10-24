@@ -5,12 +5,13 @@ import { IdeationPage } from './Ideation';
 import { ReceiveBanner, useReceiveHealth } from './ReceiveHealth';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { api, ApiError, refreshCsrf, setCsrf } from '../api';
+import { api, ApiError, refreshCsrf, setCsrf, errorMessage } from '../api';
 import type { Brand, User } from '../api';
 import { Posts } from './Posts';
 import { Publish } from './Publish';
 import { Dashboard } from './Dashboard';
-import { SettingsHub } from './SettingsHub';
+import { SettingsHub, settingsTabsFor } from './SettingsHub';
+import { can } from '../permissions';
 import { RequiredPassword } from './MyAccount';
 import { TemporaryPasswordDialog } from './Members';
 import { AgentApproval } from './AgentApproval';
@@ -19,7 +20,7 @@ import { NeedBrand } from './NeedBrand';
 import { LanguagePicker } from './LanguagePicker';
 import { applyLanguage, isLanguage, language, t } from '../i18n.ts';
 import { PageHeader } from './PageHeader';
-const readable = (error: unknown) => error instanceof Error ? error.message : t('連線失敗，請重試');
+const readable = (error: unknown) => errorMessage(error, t('連線失敗，請重試'));
 function Wordmark() { const { identity } = useWorkspace(); return <div className="wordmark"><span className="mark" aria-hidden="true">{Array.from(identity.name)[0]}</span><div>{identity.name}<small>{t('品牌營運工作檯')}</small></div></div>; }
 
 export function App() { return <WorkspaceProvider><WorkspaceApp /></WorkspaceProvider>; }
@@ -123,7 +124,7 @@ function BrandRequired({ title }: { title: string }) {
 function Workspace({ user, onChanged, onLogout, onSelfReset }: { user: User; onChanged: (user: User) => void; onLogout: () => void; onSelfReset: (password: string) => void }) {
   const health = useReceiveHealth();
   const [view, setView] = useState<View>(() => readView(location.search));
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => user.role === 'admin' ? readSettingsTab(location.search) : 'account');
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => settingsTabsFor(user).length > 1 ? readSettingsTab(location.search) : 'account');
   const [brand, setBrand] = useState(() => String(positiveId(new URLSearchParams(location.search).get('brand_id')) || ''));
   const [brands, setBrands] = useState<Brand[]>([]), [brandsReady, setBrandsReady] = useState(false);
   const [postId, setPostId] = useState<number | null>(null);
@@ -189,13 +190,13 @@ function Workspace({ user, onChanged, onLogout, onSelfReset }: { user: User; onC
         <button className={view === 'publish' ? 'current' : ''} onClick={() => void navigate('publish')}>{t('發佈')}</button>
         <button className={view === 'settings' ? 'current' : ''} onClick={() => void navigate('settings')}>{t('設定')}</button></nav>
       <div className="sidebar-note"><span className="live-dot" /> {t('品牌營運工作檯')}</div>
-      <div className="user-card"><div className="avatar small">{user.display_name[0]}</div><div><strong>{user.display_name}</strong><small>{user.role === 'admin' ? t('管理員') : user.role === 'marketing' ? t('行銷人員') : t('唯讀成員')}</small></div><button className="quiet" onClick={logout}>{t('登出')}</button></div>
+      <div className="user-card"><div className="avatar small">{user.display_name[0]}</div><div><strong>{user.display_name}</strong><small>{user.role === 'admin' ? t('管理員') : user.role === 'marketing' ? t('行銷人員') : user.role === 'viewer' ? t('唯讀成員') : user.role_name || t('自訂角色')}</small></div><button className="quiet" onClick={logout}>{t('登出')}</button></div>
     </aside>
     {mobile && <nav className="mobile-bottom-nav" aria-label={t('手機導覽')}>
       {([{ view: 'dashboard', label: t('儀表板') }, { view: 'posts', label: t('貼文數據') }, { view: 'ideation', label: t('主題發想') }, { view: 'publish', label: t('發佈') }, { view: 'settings', label: t('設定') }] as const).map(item => <button key={item.view} className={view === item.view ? 'primary current' : 'quiet'} aria-current={view === item.view ? 'page' : undefined} onClick={() => navigate(item.view)}>{item.label}</button>)}
     </nav>}
     {error && <p className="error" role="alert">{error}</p>}
     {mobile && <div className={'mobile-settings-controls' + (brands.length > 1 ? '' : ' in-topbar')}>{brands.length > 1 && <label className="mobile-brand-picker">{t('目前品牌')}<select value={brand} onChange={e => changeBrand(e.target.value)}><option value="">{t('全部可見品牌')}</option>{brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}<button className="secondary mobile-logout" onClick={logout}>{t('登出')}</button></div>}
-    {!brandsReady ? null : view === 'settings' ? <SettingsHub tab={settingsTab} onTab={setSettingsTab} brand={activeBrand} brands={brands} user={user} onChanged={onChanged} onUserChanged={() => void refreshUser()} onSelfReset={onSelfReset} /> : user.role !== 'admin' && !user.brand_ids.length ? <section className="section-card no-brands"><p>{t('尚未指派品牌，請聯絡管理員')}</p></section> : view === 'publish' ? (needBrand ? <BrandRequired title={t('發佈')} /> : <Publish brand={activeBrand} brands={brands} user={user} draftId={publishDraft.id} fromIdea={publishDraft.created} onDraftId={id => setPublishDraft(value => value.id === id ? value : { id, created: false })} beforeLeave={beforePublishLeave} onConnections={() => { setSettingsTab('connections'); void navigate('settings'); }} />) : view === 'ideation' ? needBrand ? <BrandRequired title={t('主題發想')} /> : <IdeationPage brand={activeBrand} brands={brands} canEdit={user.role !== 'viewer'} canConfigure={user.role === 'admin'} onDraft={(id, brandId, created) => { setBrand(String(brandId)); setPublishDraft({ id, created }); setView('publish'); }} /> : view === 'posts' ? <Posts brand={activeBrand} initialPostId={postId} onLogout={onLogout} canSync={user.role !== 'viewer'} /> : <Dashboard brand={activeBrand} canExport={user.role !== 'viewer'} onPost={id => { setPostId(id); setView('posts'); }} />}
+    {!brandsReady ? null : view === 'settings' ? <SettingsHub tab={settingsTab} onTab={setSettingsTab} brand={activeBrand} brands={brands} user={user} onChanged={onChanged} onUserChanged={() => void refreshUser()} onSelfReset={onSelfReset} /> : user.role !== 'admin' && !user.brand_ids.length ? <section className="section-card no-brands"><p>{t('尚未指派品牌，請聯絡管理員')}</p></section> : view === 'publish' ? (needBrand ? <BrandRequired title={t('發佈')} /> : <Publish brand={activeBrand} brands={brands} user={user} draftId={publishDraft.id} fromIdea={publishDraft.created} onDraftId={id => setPublishDraft(value => value.id === id ? value : { id, created: false })} beforeLeave={beforePublishLeave} onConnections={() => { setSettingsTab('connections'); void navigate('settings'); }} />) : view === 'ideation' ? needBrand ? <BrandRequired title={t('主題發想')} /> : <IdeationPage brand={activeBrand} brands={brands} canEdit={can(user, 'ideation.edit')} canConfigure={can(user, 'settings.manage')} onDraft={(id, brandId, created) => { setBrand(String(brandId)); setPublishDraft({ id, created }); setView('publish'); }} /> : view === 'posts' ? <Posts brand={activeBrand} initialPostId={postId} onLogout={onLogout} canSync={can(user, 'posts.sync')} /> : <Dashboard brand={activeBrand} canExport={can(user, 'reports.export')} onPost={id => { setPostId(id); setView('posts'); }} />}
   </main><UpdateNotice /></>;
 }

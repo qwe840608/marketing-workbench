@@ -16,6 +16,7 @@ test('文案折疊門檻、行數、展開與 Unicode 不截斷代理對', () =>
   assert.equal(foldCaption('文'.repeat(500), 'facebook', true).text.length, 500);
   assert.equal(foldCaption('文'.repeat(280), 'threads').folded, false);
   assert.equal(foldCaption('一\n二\n三\n四\n' + '文'.repeat(490), 'threads').folded, false);
+  assert.deepEqual(foldCaption('\n\n\n\n正文在第五行\n', 'facebook'), { text: '正文在第五行', folded: false });
 });
 test('預設 Reels／同時顯示動態與舊草稿 feed', () => {
   assert.equal(defaultPlatformOptions().facebook.video_format, 'reels');
@@ -176,4 +177,11 @@ test('Instagram 一般貼文 PNG 為警告（輪播只列一次），其他格�
   assert.deepEqual(checkComposer('instagram', 'carousel', '', [image, image], o, rules).warnings.length, 1);
   assert(checkComposer('instagram', 'image', '', [{ ...image, mime: 'image/gif' }], o, rules).errors.some(e => e.includes('JPEG 或 PNG')));
   for (const platform of ['facebook', 'threads']) assert.deepEqual(checkComposer(platform, 'image', '', [image], o, rules).warnings, []);
+});
+test('平台文案空白時沿用共用文案，與後端 platform_caption 一致', async () => {
+  const { platformCaption } = await import('../src/publishComposer.ts');
+  assert.equal(platformCaption({ facebook: '' }, '共用', 'facebook'), '共用');
+  assert.equal(platformCaption({ facebook: ' \n' }, '共用', 'facebook'), '共用');
+  assert.equal(platformCaption({}, '共用', 'threads'), '共用');
+  assert.equal(platformCaption({ facebook: 'FB 專用' }, '共用', 'facebook'), 'FB 專用');
 });

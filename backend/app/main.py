@@ -22,6 +22,7 @@ from app.api.dependencies import enforce_password_change
 from app.api.exports import router as exports_router
 from app.api.health import router as health_router
 from app.api.ideation import router as ideation_router
+from app.api.members import roles_router
 from app.api.members import router as members_router
 from app.api.notify import router as notify_router
 from app.api.oauth import router as oauth_router
@@ -155,6 +156,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(agent_auth_router)
     application.include_router(agent_packages_router)
     application.include_router(members_router)
+    application.include_router(roles_router)
     application.include_router(catalog_router)
     application.include_router(notify_router)
     application.include_router(ideation_router)

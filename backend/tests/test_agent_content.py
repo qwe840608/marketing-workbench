@@ -162,7 +162,7 @@ def test_every_tool_roles_annotations_and_audit(content, role):
         result = call(content, tool.name, inputs[tool.name], role)
         write = agent_tools.SPECS[tool.name][1]
         if role == "viewer" and write:
-            assert result.isError and "行銷或管理員" in result.content[0].text
+            assert result.isError and "功能權限" in result.content[0].text
         else:
             assert not result.isError, (tool.name, result)
         assert tool.annotations.readOnlyHint is not write
@@ -723,7 +723,7 @@ def test_script_rechecks_grant_after_jev_review(content, monkeypatch):
         "save_script",
         {"report_id": report_id, "topic_index": 0, "content": script_content()},
     )
-    assert result.isError and "行銷或管理員" in result.content[0].text
+    assert result.isError and "功能權限" in result.content[0].text
     with content.app.state.session_factory() as session:
         assert session.scalar(select(func.count(VideoScript.id))) == 0
 

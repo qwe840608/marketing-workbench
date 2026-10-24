@@ -8,7 +8,7 @@ from sqlalchemy.dialects.sqlite import insert
 
 from app.models import Account, CommentPoll, Message, Post, Thread
 from app.models.base import utc_now
-from app.services import meta_api
+from app.services import meta_api, roles
 from app.services.catalog import get_record
 from app.services.date_ranges import date_bounds
 from app.services.posts import _begin_ingest, require_account
@@ -151,7 +151,7 @@ def request_sync(
     full_rescan=False,
 ):
     session = access.session
-    if access.staff.role not in {"admin", "marketing"}:
+    if not roles.can(access, "posts.sync"):
         raise HTTPException(403, "此帳號僅能檢視資料")
     if not post_id:
         raise HTTPException(410, "請在指定貼文按抓取留言")

@@ -39,6 +39,7 @@
   --list-red:var(--state-danger);
   --list-green:var(--state-success);
   --list-black:var(--text-main);
+  --media-letterbox:var(--text-main);
   --chart-line:var(--state-success);
   --chart-point:var(--state-info);
   --chart-intent:var(--state-pending-text);

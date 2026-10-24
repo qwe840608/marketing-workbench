@@ -1,9 +1,11 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
 Platform = Literal["facebook", "instagram", "threads", "youtube", "tiktok"]
+# 網頁與 MCP 共用的平台數上限，跟著平台清單變：曾因加平台時只改網頁版，MCP 存草稿被舊上限擋下。
+MAX_PLATFORMS = len(get_args(Platform))
 
 
 class FacebookOptions(BaseModel):
@@ -68,7 +70,7 @@ class PostInput(BaseModel):
     format: Literal["video", "image", "carousel", "text", "story"] = "text"
     caption: str = Field(default="", max_length=63206)
     captions: dict[Platform, str] = Field(default_factory=dict)
-    platforms: list[Platform] = Field(default_factory=list, max_length=5)
+    platforms: list[Platform] = Field(default_factory=list, max_length=MAX_PLATFORMS)
     # 只影響 Facebook：貼文建立在粉專但不出現在粉專動態；Instagram／Threads 照常公開。
     facebook_unpublished: StrictBool = False
     platform_options: PlatformOptions | None = None

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_session
 from app.models import Staff
-from app.services import auth
+from app.services import auth, roles
 from app.services.access import BrandAccess
 
 Database = Annotated[Session, Depends(get_session)]
@@ -34,7 +34,7 @@ def get_access(request: Request, session: Database) -> BrandAccess:
         raise HTTPException(403, "請先變更密碼")
     from app.api.permissions import require_role
 
-    require_role(request.scope["route"].path, request.method, staff.role)
+    require_role(request.scope["route"].path, request.method, session, staff)
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         auth.validate_origin(
             request.headers.get("origin"),
@@ -42,7 +42,8 @@ def get_access(request: Request, session: Database) -> BrandAccess:
             request.app.state.settings,
         )
         auth.require_csrf(session, token, request.headers.get("x-csrf-token"))
-        if staff.role not in {"admin", "marketing"}:
+        # 沒有任何功能權限的角色（例如檢視者）整體唯讀；個別功能另由路由政策把關。
+        if not roles.can_write(session, staff):
             raise HTTPException(403, "此帳號僅能檢視資料")
     return BrandAccess(session, staff)
 

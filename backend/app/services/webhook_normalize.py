@@ -229,6 +229,3 @@ def iter_meta_envelopes(payload, page, instagram):
             )
             yield envelope
 
-
-def meta_envelopes(payload, page, instagram):
-    return list(iter_meta_envelopes(payload, page, instagram))

@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import type { Brand, User } from '../api';
 import { AgentConnections } from './AgentConnections';
 import { AgentInstall } from './AgentInstall';
 import { MemberDialog } from './Members';
 import { LanguagePicker } from './LanguagePicker';
-import { locale, t } from '../i18n.ts';
+import { t } from '../i18n.ts';
+import { formatTaipei } from '../time.ts';
+import { roleLabel } from '../permissions';
 
-export const roleLabel = (role: string) => role === 'admin' ? t('管理員') : role === 'marketing' ? t('行銷') : t('檢視者');
+export { roleLabel };
 
 export function PasswordForm({ onChanged }: { onChanged: (user: User) => void }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
@@ -20,7 +22,7 @@ export function PasswordForm({ onChanged }: { onChanged: (user: User) => void })
     try {
       const user = await api<User>('/auth/change-password', { method: 'POST', body: JSON.stringify({ current_password: values.get('current_password'), new_password: values.get('new_password') }) });
       form.reset(); setMessage(t('密碼已變更')); onChanged(user);
-    } catch (e) { setError(e instanceof Error ? e.message : t('變更失敗')); }
+    } catch (e) { setError(errorMessage(e, t('變更失敗'))); }
     finally { setBusy(false); }
   }
   return <form className="password-form" onSubmit={submit}>
@@ -34,7 +36,7 @@ export function PasswordForm({ onChanged }: { onChanged: (user: User) => void })
 
 export function MyAccount({ user, brands, onChanged }: { user: User; brands: Brand[]; onChanged: (user: User) => void }) {
   return <section className="section-card my-account"><h2>{t('我的帳號')}</h2>
-    <p className="account-summary"><strong>{user.display_name}</strong><span>{user.username}</span><span className="status-badge neutral">{roleLabel(user.role)}</span><span>{user.role === 'admin' ? t('全部品牌') : brands.filter(b => user.brand_ids.includes(b.id)).map(b => b.name).join('、') || t('尚未指派品牌')}</span></p>
+    <p className="account-summary"><strong>{user.display_name}</strong><span>{user.username}</span><span className="status-badge neutral">{roleLabel(user.role, user.role_name)}</span><span>{user.role === 'admin' ? t('全部品牌') : brands.filter(b => user.brand_ids.includes(b.id)).map(b => b.name).join('、') || t('尚未指派品牌')}</span></p>
     <LanguagePicker className="account-language" account />
     <PasswordForm onChanged={onChanged} />
     {user.role === 'admin' && <RecoveryCode />}
@@ -45,13 +47,13 @@ export function MyAccount({ user, brands, onChanged }: { user: User; brands: Bra
 
 export function RequiredPassword({ onChanged, onLogout }: { onChanged: (user: User) => void; onLogout: () => void }) {
   const [error, setError] = useState('');
-  return <main className="password-required"><section className="section-card"><div className="member-card-heading"><h1>{t('請設定新密碼')}</h1><button className="secondary" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); onLogout(); } catch (e) { setError(e instanceof Error ? e.message : t('登出失敗')); } }}>{t('登出')}</button></div>
+  return <main className="password-required"><section className="section-card"><div className="member-card-heading"><h1>{t('請設定新密碼')}</h1><button className="secondary" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); onLogout(); } catch (e) { setError(errorMessage(e, t('登出失敗'))); } }}>{t('登出')}</button></div>
     {error && <p className="notice danger" role="alert">{error}</p>}<PasswordForm onChanged={onChanged} />
   </section></main>;
 }
 
 type RecoveryStatus = { configured: boolean; created_at: string | null };
-const takenOn = (value: string) => new Intl.DateTimeFormat(locale(), { timeZone: 'Asia/Taipei', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(value));
+const takenOn = (value: string) => formatTaipei(value, { year: 'numeric', month: 'long', day: 'numeric' });
 
 // 工作檯沒有寄信管道，管理員忘記密碼時只能靠事先保存的一次性復原碼在登入頁自助重設。
 function RecoveryCode() {
@@ -60,7 +62,7 @@ function RecoveryCode() {
   useEffect(() => {
     const controller = new AbortController();
     api<RecoveryStatus>('/auth/recovery-code', { signal: controller.signal }).then(setStatus).catch(e => {
-      if (!controller.signal.aborted) setError(e instanceof Error ? e.message : t('復原碼狀態載入失敗'));
+      if (!controller.signal.aborted) setError(errorMessage(e, t('復原碼狀態載入失敗')));
     });
     return () => controller.abort();
   }, []);
@@ -70,7 +72,7 @@ function RecoveryCode() {
     try {
       const result = await api<RecoveryStatus & { recovery_code: string }>('/auth/recovery-code', { method: 'POST', body: JSON.stringify({ current_password: values.get('current_password') }) });
       form.reset(); setStatus({ configured: result.configured, created_at: result.created_at }); setCode(result.recovery_code);
-    } catch (e) { setError(e instanceof Error ? e.message : t('產生失敗')); }
+    } catch (e) { setError(errorMessage(e, t('產生失敗'))); }
     finally { setBusy(false); }
   }
   return <section className="recovery-code" aria-labelledby="recovery-code-title">

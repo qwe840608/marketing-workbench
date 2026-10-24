@@ -196,7 +196,8 @@ def exercise(page, unused, shot, checks):
         elif path.endswith("/metrics"):
             data = [dict(id=1, captured_at=stamp, views=1000, likes=20, comments=3, shares=5,
                          reach=None, saves=None, avg_watch_time="30.0000",
-                         extra_json={"watch_hours": 2.5, "subscribers_gained": 3})]
+                         extra_json={"watch_hours": 2.5, "subscribers_gained": 3,
+                                     "avg_view_percentage": 48.25})]
         elif path.endswith("/comment-threads"):
             data = dict(items=[message], total=1, range_total=1, root_total=1,
                         root_ids=[601], next_offset=None)
@@ -222,9 +223,11 @@ def exercise(page, unused, shot, checks):
     widths()
     capture("posts-youtube-list", page.locator(".post-items"))
     page.locator(".post-items .post-card").click()
-    expect(page.locator(".metric-grid > div")).to_have_count(7)
-    expect(page.locator(".metric-delay")).to_have_count(4)
-    expect(page.locator(".metric-grid strong")).to_have_text(["1,000", "20", "3", "5", "30", "2.5", "3"])
+    # 互動五項在上，觀看表現（平均觀看時長、平均觀看百分比、總時數）另成一區。
+    expect(page.locator(".post-metrics > .metric-grid > div")).to_have_count(5)
+    expect(page.locator(".post-metrics > .metric-grid strong")).to_have_text(["1,000", "20", "3", "5", "3"])
+    expect(page.locator(".watch-grid strong")).to_have_text(["30", "48.3", "2.5"])
+    expect(page.locator(".metric-delay")).to_have_count(5)
     expect(page.locator(".post-comment .comment-text")).to_contain_text("[REDACTED_PHONE]")
     expect(page.get_by_role("button", name="抓取留言", exact=True)).to_be_enabled()
     expect(page.locator(".post-intro .eyebrow")).to_contain_text("Shorts")
@@ -239,7 +242,7 @@ def exercise(page, unused, shot, checks):
     page.get_by_role("button", name="訂閱數說明").click()
     expect(page.locator(".follower-hint [role=tooltip]")).to_have_text("頻道隱藏訂閱數，無法取得統計")
     widths()
-    checks.append("youtube-posts-shorts-seven-metrics-delay-comments-sync-hidden-subscribers-all-widths")
+    checks.append("youtube-posts-shorts-five-plus-three-watch-metrics-delay-comments-sync-hidden-subscribers-all-widths")
 
 
 if __name__ == "__main__":

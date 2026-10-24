@@ -4264,7 +4264,7 @@
           "method": "GET",
           "url": "https://graph.facebook.com/v26.0/fixture-facebook/insights",
           "qs": {
-            "metric": "post_video_avg_time_watched",
+            "metric": "post_video_avg_time_watched,post_video_view_time,post_video_retention_graph",
             "period": "lifetime"
           },
           "headers": {
@@ -4287,6 +4287,28 @@
                 "values": [
                   {
                     "value": 1890
+                  }
+                ]
+              },
+              {
+                "name": "post_video_view_time",
+                "period": "lifetime",
+                "values": [
+                  {
+                    "value": 37800
+                  }
+                ]
+              },
+              {
+                "name": "post_video_retention_graph",
+                "period": "lifetime",
+                "values": [
+                  {
+                    "value": {
+                      "0": 1,
+                      "1": 0.82,
+                      "2": 0.475
+                    }
                   }
                 ]
               }
@@ -4331,11 +4353,19 @@
                 "metric_names": {
                   "views": "post_media_view",
                   "reach": "post_total_media_view_unique",
-                  "avg_watch_time": "post_video_avg_time_watched"
+                  "avg_watch_time": "post_video_avg_time_watched",
+                  "watch_hours": "post_video_view_time",
+                  "retention": "post_video_retention_graph"
                 },
                 "metric_units": {
                   "avg_watch_time": "milliseconds"
-                }
+                },
+                "watch_hours": 0.0105,
+                "retention": [
+                  100.0,
+                  82.0,
+                  47.5
+                ]
               },
               "views": 0,
               "reach": null,
@@ -4836,7 +4866,7 @@
           "method": "GET",
           "url": "https://graph.facebook.com/v26.0/fixture-instagram/insights",
           "qs": {
-            "metric": "ig_reels_avg_watch_time",
+            "metric": "ig_reels_avg_watch_time,ig_reels_video_view_total_time,reels_skip_rate",
             "period": "lifetime"
           },
           "headers": {
@@ -4859,6 +4889,24 @@
                 "values": [
                   {
                     "value": 7521
+                  }
+                ]
+              },
+              {
+                "name": "ig_reels_video_view_total_time",
+                "period": "lifetime",
+                "values": [
+                  {
+                    "value": 15042000
+                  }
+                ]
+              },
+              {
+                "name": "reels_skip_rate",
+                "period": "lifetime",
+                "values": [
+                  {
+                    "value": 42.5
                   }
                 ]
               }
@@ -4904,11 +4952,15 @@
                   "comments": "comments",
                   "shares": "shares",
                   "saves": "saved",
-                  "avg_watch_time": "ig_reels_avg_watch_time"
+                  "avg_watch_time": "ig_reels_avg_watch_time",
+                  "watch_hours": "ig_reels_video_view_total_time",
+                  "skip_rate": "reels_skip_rate"
                 },
                 "metric_units": {
                   "avg_watch_time": "milliseconds"
-                }
+                },
+                "watch_hours": 4.1783,
+                "skip_rate": 42.5
               },
               "views": 0,
               "reach": null,

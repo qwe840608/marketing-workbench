@@ -32,6 +32,7 @@ from app.services import (
     publish_rules,
     publish_tiktok,
     publish_youtube,
+    roles,
     settings_store,
     tiktok_oauth,
     youtube_oauth,
@@ -180,7 +181,7 @@ def get(access, identity, *, include_drafts=False):
         raise HTTPException(404, "找不到貼文")
     if (
         not include_drafts
-        and access.staff.role == "viewer"
+        and not roles.can(access, "publish.edit")
         and post.status
         in {
             "draft",
@@ -280,7 +281,7 @@ def listing(access, brand_id=None, report_id=None, *, include_drafts=False):
         recent = access.statement(PublishPost, brand_id).with_only_columns(PublishPost.id)
         recent = recent.order_by(PublishPost.id.desc()).limit(200)
         query = query.where(or_(PublishPost.status == "draft", PublishPost.id.in_(recent)))
-    if access.staff.role == "viewer" and not include_drafts:
+    if not include_drafts and not roles.can(access, "publish.edit"):
         query = query.where(PublishPost.status.in_(["done", "partial", "failed", "missed"]))
     return [
         view(access.session, post)
@@ -374,6 +375,8 @@ def save(access, body, identity=None, *, agent_source=None):
         raise HTTPException(409, "限時動態已部分發佈，不可變更素材、平台或格式")
     if body.format == "story" and len(media_rows(session, post.id)) > 10:
         raise HTTPException(422, "限時動態最多 10 則")
+    # 空白的平台文案等於沒有覆寫（沿用共用文案），不存進草稿。
+    captions = {platform: text for platform, text in body.captions.items() if text.strip()}
     previous_options = publish_rules.platform_options(post)
     options = deepcopy(publish_rules.DEFAULT_OPTIONS) if identity is None else previous_options
     options = deepcopy(options)
@@ -389,7 +392,7 @@ def save(access, body, identity=None, *, agent_source=None):
         threads["segments_custom"] = True
     if not threads["segments_custom"]:
         # 未手動指定回覆：Threads 文案原樣當第一則，超過上限由發佈規則提示，不自動拆段。
-        threads["segments"] = [body.captions.get("threads", body.caption)]
+        threads["segments"] = [captions.get("threads", body.caption)]
     for target in targets(session, post.id):
         # 影片已在 YouTube 建立（video_id）但目標失敗：選項不能再改，否則重試不會套用到那支影片。
         sent = target.status in {"succeeded", "publishing"} or bool(
@@ -401,7 +404,7 @@ def save(access, body, identity=None, *, agent_source=None):
             )
     post.platform_options_json = options
     post.format, post.caption = body.format, body.caption
-    post.captions_json, post.platforms_json = body.captions, list(dict.fromkeys(body.platforms))
+    post.captions_json, post.platforms_json = captions, list(dict.fromkeys(body.platforms))
     post.facebook_unpublished = body.facebook_unpublished
     if agent_source:
         post.source_json = agent_source
@@ -505,7 +508,7 @@ def rule_check(post, platform, media, thumbnail, cover=None):
     return publish_rules.check(
         platform,
         post.format,
-        post.captions_json.get(platform, post.caption),
+        publish_rules.platform_caption(post, platform),
         media,
         platform_options,
         unpublished=post.facebook_unpublished,
@@ -637,8 +640,8 @@ def queue_notice(session, post):
 def set_enabled(access, body):
     session = access.session
     ensure_write(session)
-    if access.staff.role != "admin":
-        raise HTTPException(403, "僅管理員可使用此功能")
+    if not roles.can(access, "settings.manage"):
+        raise HTTPException(403, "此帳號沒有這項功能的權限")
     row = settings_store.get(session, "publishing.enabled")
     settings_store.put(session, "publishing.enabled", {"enabled": body.enabled}, row)
     now = utc_now()

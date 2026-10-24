@@ -6,7 +6,7 @@ import re
 
 from app.logging_config import log_failure
 from app.schemas.posts import MetricsInput, PostsInput
-from app.services import credentials, posts
+from app.services import credentials, graph_api, posts
 from app.services.webhook_normalize import instant, secret, valid_id
 from app.services.workers.base import WorkerError
 
@@ -30,6 +30,67 @@ def insight_value(data, name):
     first = values[0] if isinstance(values, list) and values and isinstance(values[0], dict) else {}
     total = row.get("total_value")
     return first.get("value", total.get("value") if isinstance(total, dict) else None)
+
+
+# 影片觀看指標合併成一次 insights 呼叫，不多耗 Meta 每小時配額；
+# 新指標（IG 前 3 秒滑走率標示為開發中）若讓整批被拒，退回只讀平均觀看時長，多花一次呼叫。
+VIDEO_METRICS = {
+    "instagram": dict(
+        avg_watch_time="ig_reels_avg_watch_time",
+        watch_hours="ig_reels_video_view_total_time",
+        skip_rate="reels_skip_rate",
+    ),
+    "facebook": dict(
+        avg_watch_time="post_video_avg_time_watched",
+        watch_hours="post_video_view_time",
+        retention="post_video_retention_graph",
+    ),
+}
+
+
+def finite(value, high=None):
+    ok = type(value) in (int, float) and math.isfinite(value) and value >= 0
+    return value if ok and (high is None or value <= high) else None
+
+
+def retention_curve(value):
+    """FB 留存曲線：{"0": 1.0, "1": 0.83, …} 依區間排序後換成百分比；格式不符回傳 None。"""
+    if not isinstance(value, dict) or not 2 <= len(value) <= 101:
+        return None
+    try:
+        points = sorted((int(key), finite(rate)) for key, rate in value.items())
+    except (TypeError, ValueError):
+        return None
+    rates = [rate for _, rate in points]
+    if any(rate is None for rate in rates) or max(rates) > 100:
+        return None
+    scale = 100 if max(rates) <= 1.5 else 1
+    return [round(rate * scale, 1) for rate in rates]
+
+
+def video_insights(platform, post, graph, metric, extra, value):
+    names = VIDEO_METRICS[platform]
+    path = post["external_id"] + "/insights"
+    data = graph(path, dict(metric=",".join(names.values()), period="lifetime"))
+    if data.get("unavailable"):
+        data = graph(path, dict(metric=names["avg_watch_time"], period="lifetime"))
+    extra["metric_units"] = {"avg_watch_time": "milliseconds"}
+    for field, name in names.items():
+        raw = value(data, name)
+        if field == "avg_watch_time":
+            metric[field] = finite(raw)
+            parsed = metric[field]
+        elif field == "watch_hours":
+            parsed = extra[field] = (
+                round(raw / 3_600_000, 4) if finite(raw) is not None else None
+            )
+        elif field == "skip_rate":
+            parsed = extra[field] = finite(raw, 100)
+        else:
+            parsed = extra[field] = retention_curve(raw)
+        extra["metric_names"][field] = name
+        if parsed is None:
+            extra["unavailable"][field] = data.get("code") or "not_returned"
 
 
 class MetricsMixin:
@@ -287,7 +348,7 @@ class MetricsMixin:
                 )["inserted"]
 
     def threads_snapshot(self, post, token):
-        extra = dict(api_version="v1.0", unavailable={}, metric_names={})
+        extra = dict(api_version=graph_api.THREADS_VERSION, unavailable={}, metric_names={})
         metric = dict(
             post_external_id=post["external_id"],
             captured_at=instant(self.clock() * 1000, True),
@@ -319,7 +380,7 @@ class MetricsMixin:
         return metric
 
     def snapshot(self, platform, post, graph):
-        extra = dict(api_version="v26.0", unavailable={}, metric_names={})
+        extra = dict(api_version=graph_api.GRAPH_VERSION, unavailable={}, metric_names={})
         metric = dict(
             post_external_id=post["external_id"],
             captured_at=instant(self.clock() * 1000, True),
@@ -377,20 +438,7 @@ class MetricsMixin:
                     extra["unavailable"][field] = data.get("code") or "not_returned"
             extra["unavailable"]["saves"] = "not_available"
         if re.search("video|reels", post.get("media_type") or "", re.I):
-            name = (
-                "ig_reels_avg_watch_time"
-                if platform == "instagram"
-                else "post_video_avg_time_watched"
-            )
-            data = graph(post["external_id"] + "/insights", dict(metric=name, period="lifetime"))
-            val = value(data, name)
-            metric["avg_watch_time"] = (
-                val if type(val) in (int, float) and math.isfinite(val) and val >= 0 else None
-            )
-            extra["metric_names"]["avg_watch_time"] = name
-            extra["metric_units"] = {"avg_watch_time": "milliseconds"}
-            if metric["avg_watch_time"] is None:
-                extra["unavailable"]["avg_watch_time"] = data.get("code") or "not_returned"
+            video_insights(platform, post, graph, metric, extra, value)
         else:
             extra["unavailable"]["avg_watch_time"] = "not_applicable"
         extra["unavailable"]["completion_rate"] = "not_available"

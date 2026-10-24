@@ -3,7 +3,7 @@ import { executionLabel, isRetiredProvider } from '../providers';
 import { APISetupGuide } from './APISetupGuide';
 import { APIKeys, PromptSettings } from './AIConfiguration';
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import type { Brand } from '../api';
 import { t } from '../i18n.ts';
 const labels: Record<string, string> = { defaultChoice: t('預設 AI（主題發想）'), gemini_api: 'Gemini API', openai_api: 'OpenAI API', anthropic_api: 'Anthropic API' };
@@ -13,7 +13,7 @@ type Run = { id: number; task: string; provider: string; model: string; tokens_i
 type Settings = { config: Config; options: Option[]; budget: { estimated_usd: number; warning: boolean; unknown_cost_runs: number }; runs: Run[] };
 const taskLabels: Record<string, string> = { classify: t('訊息分流'), classification: t('訊息分流'), ideation: t('主題發想'), script: t('腳本'), video_script: t('腳本'), script_review: t('腳本檢查'), publish_caption: t('發佈文案') };
 
-export function AISettingsPage({ brands, brand, canEdit, role }: { brands: Brand[]; brand: string; canEdit: boolean; role: string }) {
+export function AISettingsPage({ brands, brand, canEdit, canManage }: { brands: Brand[]; brand: string; canEdit: boolean; canManage: boolean }) {
   const tabs = [{ id: 'basic', label: t('基本') }, { id: 'brand', label: t('品牌說明') }, { id: 'keys', label: t('AI 金鑰') }];
   const readTab = () => {
     const value = new URLSearchParams(location.search).get('ai_tab') || '';
@@ -30,7 +30,7 @@ export function AISettingsPage({ brands, brand, canEdit, role }: { brands: Brand
     const restore = () => setTab(readTab());
     window.addEventListener('popstate', restore);
     return () => window.removeEventListener('popstate', restore);
-  }, [role]);
+  }, [canManage]);
   const [keyRevision, setKeyRevision] = useState(0);
   const brandId = brand || String(brands[0]?.id || '');
   const [data, setData] = useState<Settings | null>(null), [config, setConfig] = useState<Config | null>(null), [error, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
@@ -41,7 +41,7 @@ export function AISettingsPage({ brands, brand, canEdit, role }: { brands: Brand
   async function save() {
     setBusy(true); setError(''); setNotice('');
     try { const value = await api<Settings>('/ai/settings?brand_id=' + brandId, { method: 'PUT', body: JSON.stringify(config) }); setData(value); setConfig(value.config); setNotice(t('AI 設定已儲存')); }
-    catch (e) { setError(e instanceof Error ? e.message : t('儲存失敗')); } finally { setBusy(false); }
+    catch (e) { setError(errorMessage(e, t('儲存失敗'))); } finally { setBusy(false); }
   }
   function fallback(name: string) {
     if (!config || !['gemini', 'openai', 'anthropic'].includes(name)) return null;
@@ -69,12 +69,12 @@ export function AISettingsPage({ brands, brand, canEdit, role }: { brands: Brand
       <p className="muted">{t('費用以已知 Standard 付費牌價估算，含思考 token；不折抵免費額度，未知單價保留空值。實際帳單以供應商為準。月上限尚未設定時不會限制 AI 呼叫。')}</p></section></>}
     </div>
     <div role="tabpanel" id="ai-panel-brand" aria-labelledby="ai-tab-brand" hidden={activeTab !== 'brand'} tabIndex={0}>
-      {brandId && <PromptSettings key={brandId} brandId={brandId} role={role} />}
+      {brandId && <PromptSettings key={brandId} brandId={brandId} canManage={canManage} />}
     </div>
     <div role="tabpanel" id="ai-panel-keys" aria-labelledby="ai-tab-keys" hidden={activeTab !== 'keys'} tabIndex={0}>
       {data && !data.options.some(o => o.available) && <APISetupGuide />}
       {error && <p className="error" role="alert">{aiErrorMessage(error)}</p>}{notice && <p role="status">{notice}</p>}
-      {role === 'admin' ? <APIKeys fallback={fallback} onChange={() => setKeyRevision(v => v + 1)} /> : <section className="settings-section section-card"><div className="key-overview">{['gemini', 'openai', 'anthropic'].map(name => <div key={name}><strong>{labels[name + '_api']}</strong>{fallback(name)}</div>)}</div></section>}
+      {canManage ? <APIKeys fallback={fallback} onChange={() => setKeyRevision(v => v + 1)} /> : <section className="settings-section section-card"><div className="key-overview">{['gemini', 'openai', 'anthropic'].map(name => <div key={name}><strong>{labels[name + '_api']}</strong>{fallback(name)}</div>)}</div></section>}
       {config && canEdit && <div className="action-row"><button className="primary" disabled={busy} onClick={() => void save()}>{t('儲存 AI 設定')}</button></div>}
     </div>
   </section>;

@@ -11,7 +11,14 @@ from app.models import AuditLog
 from app.models.agent_auth import AgentGrant
 from app.schemas import agent_content as schema
 from app.schemas import agent_publish as posting
-from app.services import agent_auth, agent_content, agent_publish, agent_queries, ideation
+from app.services import (
+    agent_auth,
+    agent_content,
+    agent_publish,
+    agent_queries,
+    ideation,
+    roles,
+)
 from app.services.agent_packages import client_info
 
 MAX_TEXT = 60_000
@@ -125,7 +132,7 @@ SPECS = {
         schema.StartIdeation,
         True,
         "建立 Agent 主題報告並抓留言、jev 分類及彙整證據；使用者確認品牌、來源貼文與"
-        "留言期間後使用，需行銷或管理員。brand_id、post_ids 必填；comment_range 預設 30，"
+        "留言期間後使用，需對應功能權限。brand_id、post_ids 必填；comment_range 預設 30，"
         "可為 7／30／60／90／custom；custom 另填 comment_from／comment_to（台北 YYYY-MM-DD）。"
         "排除留言有兩種，id 皆取自 list_comments，須屬於所選貼文且在留言期間內："
         "excluded_message_ids 只放使用者在對話中明確同意排除的；"
@@ -149,7 +156,7 @@ SPECS = {
     "save_ideation_ideas": (
         schema.SaveIdeas,
         True,
-        "存回使用者已定案並指示儲存的 Agent 主題；需行銷或管理員，不自動存回。"
+        "存回使用者已定案並指示儲存的 Agent 主題；需對應功能權限，不自動存回。"
         "report_id 與 ideas 必填；只接受 awaiting_ideas，ideas 為 output_format 的主題陣列，"
         "變現型／流量型／引流型各 5 題，引用須屬於該分類證據，欄位完整且無品牌禁語。"
         "回傳 report_id、ready 狀態及版本，並沿用網頁匯出。"
@@ -158,7 +165,7 @@ SPECS = {
     "edit_idea": (
         schema.EditIdeaInput,
         True,
-        "儲存使用者已確認的主題修改，保留歷史；需行銷或管理員。report_id、index（零起算）、"
+        "儲存使用者已確認的主題修改，保留歷史；需對應功能權限。report_id、index（零起算）、"
         "version（讀取報告取得）與 fields 必填，fields 含 title／hook／angle／visual／keyword。"
         "回傳 report_id 與新版本。錯誤時下一步：版本衝突先 get_ideation_report 重讀並"
         "重新確認；欄位或禁語錯誤先修改，不能更改分類與來源證據。",
@@ -166,7 +173,7 @@ SPECS = {
     "save_script": (
         schema.SaveScript,
         True,
-        "存回在對話中定案且使用者指示儲存的腳本；需行銷或管理員，不自動儲存。"
+        "存回在對話中定案且使用者指示儲存的腳本；需對應功能權限，不自動儲存。"
         "report_id、topic_index（零起算）與 content 必填；content 遵循 get_brand_guide 的"
         "ScriptContent schema，報告須 ready。正規化及格式／禁語驗證後做 jev 檢查，"
         "新增一份腳本與歷史快照，保留同主題舊稿，沿用匯出。回傳 script_id 與 review 摘要。"
@@ -214,7 +221,7 @@ PUBLISH_SPECS = {
     "save_publish_draft": (
         posting.SaveDraft,
         True,
-        "存回使用者定案的草稿，需行銷或管理員；brand_id、format、platforms必填，貼文caption必填，限動可省略為空白，platform_captions可選；"
+        "存回使用者定案的草稿，需對應功能權限；brand_id、format、platforms必填，貼文caption必填，限動可省略為空白，platform_captions可選；"
         "format=story為限時動態，只含最多10則素材與Facebook／Instagram，不能帶文字、platform_options或FB草稿選項；"
         "media_ids可選完整素材id順序，省略沿用；每則一張圖或一支影片，上傳使用create_upload_link；"
         "facebook_unpublished可選，預設false，只影響Facebook，"
@@ -236,20 +243,20 @@ PUBLISH_SPECS = {
     "create_draft_from_idea": (
         posting.IdeaDraft,
         True,
-        "從主題建立發佈草稿，需行銷或管理員；report_id、零起算idea_index、使用者定案caption必填。"
+        "從主題建立發佈草稿，需對應功能權限；report_id、零起算idea_index、使用者定案caption必填。"
         "直接使用傳入文案，不觸發工作檯AI。回post與created；已有未發佈草稿回既有id且不覆寫。"
         "下一步：get_publish_post讀草稿再上傳媒體；禁語須修改並重新定案。",
     ),
     "delete_publish_draft": (
         schema.PostInput,
         True,
-        "刪除草稿，破壞性動作，需行銷或管理員且先詢問使用者；post_id必填。只接受draft，回cancelled草稿。"
+        "刪除草稿，破壞性動作，需對應功能權限且先詢問使用者；post_id必填。只接受draft，回cancelled草稿。"
         "下一步：先 get_publish_post 確認，排程須先取消；已送出不可刪除。",
     ),
     "create_upload_link": (
         posting.Upload,
         True,
-        "取得草稿一次性媒體上傳連結，需行銷或管理員；post_id、filename必填（僅檔名），role可選media（預設，發佈素材）"
+        "取得草稿一次性媒體上傳連結，需對應功能權限；post_id、filename必填（僅檔名），role可選media（預設，發佈素材）"
         "或thumbnail（YouTube自訂縮圖，僅影片草稿、JPG／PNG、2MB內，取代舊縮圖、不算素材）"
         "或cover（Instagram Reels封面，僅影片草稿、JPG／PNG、8MB內、建議9:16，"
         "取代舊封面、不算素材）或fb_cover（Facebook影片／Reels封面，僅影片草稿、JPG／PNG、8MB內，"
@@ -260,14 +267,14 @@ PUBLISH_SPECS = {
     "remove_publish_media": (
         posting.RemoveMedia,
         True,
-        "移除草稿媒體，破壞性動作，需行銷或管理員並先詢問使用者；post_id、media_id必填。回更新草稿。"
+        "移除草稿媒體，破壞性動作，需對應功能權限並先詢問使用者；post_id、media_id必填。回更新草稿。"
         "下一步：先get_publish_post確認媒體id；排程先取消，已送出不可修改。",
     ),
     "prepare_publish": (
         posting.Prepare,
         True,
         "限時動態明細列平台與story_count、素材及已成功／失敗位置，不能帶文字。"
-        "準備發佈但不送出，需行銷或管理員；post_id、version必填，scheduled_at可選含時區ISO8601、"
+        "準備發佈但不送出，需對應功能權限；post_id、version必填，scheduled_at可選含時區ISO8601、"
         "須在一分鐘後（省略立即發佈），retry預設false，true只重送失敗平台。檢查總開關、版本、狀態、"
         "規則與帳號，回完整details（品牌帳號、主文案全文、覆寫、facebook_unpublished、platform_options、有效形式、Threads分段全文與成功段數、"
         "youtube（標題、公開狀態、兒童內容、是否有自訂縮圖、是否歸為Shorts）、"
@@ -281,7 +288,7 @@ PUBLISH_SPECS = {
     "confirm_publish": (
         posting.Confirm,
         True,
-        "依使用者明確同意發佈或排程，對外且破壞性動作，需行銷或管理員；post_id、confirmation_code必填，"
+        "依使用者明確同意發佈或排程，對外且破壞性動作，需對應功能權限；post_id、confirmation_code必填，"
         "只能使用prepare_publish提供且已完整呈現使用者的明細，10分鐘內一次性、同一成員、版本與雜湊未變。"
         "回目前狀態；立即發佈後get_publish_post查各平台結果。下一步：任何不符、過期、總開關關閉都要"
         "重新prepare_publish再詢問使用者，不得自動確認；已送出不可改刪。",
@@ -289,19 +296,25 @@ PUBLISH_SPECS = {
     "retry_failed_platforms": (
         posting.Retry,
         True,
-        "準備重試失敗平台但不送出，需行銷或管理員；post_id、version必填。等同prepare_publish(retry=true)，"
+        "準備重試失敗平台但不送出，需對應功能權限；post_id、version必填。等同prepare_publish(retry=true)，"
         "只選失敗平台，成功平台永不重送；Threads串文從失敗段接續，不重發成功段。回details、一次性10分鐘confirmation_code；完整呈現並取得使用者"
         "明確同意才confirm_publish。下一步：先查平台是否已發佈，再準備重試；版本衝突重讀。",
     ),
     "cancel_schedule": (
         schema.PostInput,
         True,
-        "取消排程改回草稿，需行銷或管理員並先詢問使用者；post_id必填，接受scheduled／paused。"
+        "取消排程改回草稿，需對應功能權限並先詢問使用者；post_id必填，接受scheduled／paused。"
         "回draft；發佈前一分鐘鎖定後不可取消。下一步：get_publish_post確認；改時間或文案先取消，"
         "save_publish_draft後重新兩段式確認。已送出不可改刪。",
     ),
 }
 SPECS.update(PUBLISH_SPECS)
+
+# 寫入工具對應的功能權限；讀取工具任何成員都能用（仍受品牌範圍限制）。
+TOOL_PERMISSIONS = {
+    name: "ideation.edit" for name in ("start_ideation", "save_ideation_ideas", "edit_idea",
+                                       "save_script")
+} | {name: agent_publish.tool_permission(name) for name in PUBLISH_SPECS}
 
 
 def list_tools():
@@ -381,8 +394,8 @@ def dispatch(factory, settings, grant_id, name, arguments, origin=None, plugin_v
             if client["incompatible"] and name not in {"get_server_info", "get_guide"}:
                 raise HTTPException(409, "plugin 版本過舊；下一步：更新 plugin 後重新開始對話")
             model, write, _ = spec
-            if write and access.staff.role not in {"marketing", "admin"}:
-                raise HTTPException(403, "此工具需要行銷或管理員角色；下一步：請有權限的成員操作")
+            if write and not roles.can(access, TOOL_PERMISSIONS[name]):
+                raise HTTPException(403, agent_content.PERMISSION_MESSAGE)
             body = model.model_validate(arguments or {})
             reads = {
                 "list_publish_posts": agent_publish.list_posts,

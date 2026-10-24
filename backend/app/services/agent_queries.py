@@ -156,12 +156,20 @@ def get_dashboard(access, body):
 
 def metric(row):
     result = {field: getattr(row, field) for field in METRICS if hasattr(row, field)}
-    # Threads 的轉發與引用存在 extra_json；FB／IG 沒有這兩項就不輸出。
+    # Threads 的轉發與引用、影片觀看指標存在 extra_json；平台沒有提供的項目不輸出。
     extra = row.extra_json if isinstance(getattr(row, "extra_json", None), dict) else {}
     result.update({
-        key: extra[key] for key in ("reposts", "quotes", "watch_hours", "subscribers_gained")
+        key: extra[key]
+        for key in (
+            "reposts", "quotes", "watch_hours", "subscribers_gained", "skip_rate",
+            "avg_view_percentage",
+        )
         if type(extra.get(key)) in {int, float}
     })
+    # FB／IG 的平均觀看時長是毫秒、YouTube 是秒；註明單位，agent 才不會差一千倍。
+    if result.get("avg_watch_time") is not None:
+        units = extra.get("metric_units") if isinstance(extra.get("metric_units"), dict) else {}
+        result["avg_watch_time_unit"] = units.get("avg_watch_time", "seconds")
     return result
 
 

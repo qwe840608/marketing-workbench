@@ -344,7 +344,8 @@ def test_current_role_and_brands_and_disabled_directly(agent_client):
     assert agent_client.put(f"/api/members/{identity}", json={"display_name": "新名稱",
         "role": "viewer", "brand_ids": []}).status_code == 200
     info = mcp_call(agent_client, token).json()["result"]["structuredContent"]
-    assert info["user"] == {"display_name": "新名稱", "role": "viewer"}
+    assert info["user"] == {"display_name": "新名稱", "role": "viewer", "role_name": None,
+                            "permissions": []}
     assert info["brands"] == []
     with agent_client.app.state.session_factory.begin() as session:
         session.get(Staff, identity).active = False

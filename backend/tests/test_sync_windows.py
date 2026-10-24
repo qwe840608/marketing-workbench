@@ -10,7 +10,7 @@ from test_comment_poll import NOW, claim, complete, login, queue, start_api_call
 from test_comment_poll import poll_data as poll_data
 
 from app.models import AuditLog, CommentBackfill, CommentPoll, Message, Post
-from app.services.gateway_workers import Workers
+from app.services.workers import Workers
 
 
 def response(rows, after=None):

@@ -14,7 +14,7 @@ from test_tiktok_oauth import tt as tt
 from app.models import FollowerSnapshot, MetricSnapshot, Post
 from app.models.base import utc_now
 from app.services import oauth, tiktok
-from app.services.gateway_workers import Workers
+from app.services.workers import Workers
 
 ACCESS = "isolated-tiktok-access"
 

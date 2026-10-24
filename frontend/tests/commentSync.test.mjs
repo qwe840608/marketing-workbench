@@ -1,4 +1,4 @@
-import { temporaryDirectory } from '../../scripts/runtime_tmp.mjs';
+import { backendPython, temporaryDirectory } from '../../scripts/runtime_tmp.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -12,7 +12,7 @@ test('React 單篇留言抓取：權限、排隊、等待、完成、停止及 7
     cwd: path.join(root, 'frontend'), encoding: 'utf8',
   });
   assert.equal(build.status, 0, build.stdout + build.stderr);
-  const result = spawnSync(path.join(root, 'backend/.venv/Scripts/python.exe'), ['../scripts/check_comment_sync_frontend.py'], {
+  const result = spawnSync(backendPython(root), ['../scripts/check_comment_sync_frontend.py'], {
     cwd: path.join(root, 'backend'), encoding: 'utf8', timeout: 100000,
     env: { ...process.env, PYTHONUTF8: '1', FRONTEND_DIST_DIR: dist },
   });

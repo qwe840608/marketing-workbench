@@ -247,3 +247,36 @@
 :root body .login-panel .login-language label { flex-direction:row; margin-top:0; font-size:var(--ui-font-help); }
 .account-language { margin:0 0 24px; }
 @media (max-width:600px) { :root body .login-panel .login-language { position:static; justify-self:end; margin-bottom:16px; } }
+/* 貼文數據：成效放中間佔主要寬度；右側是貼文摘要與留言，全文在「完整貼文」視窗。 */
+@media (min-width:1280px) {
+  :root body .batch2-posts .posts-layout { grid-template-columns:280px minmax(0,1fr); }
+  :root body .batch2-posts .post-detail { grid-template-columns:minmax(0,1fr) 360px; }
+  :root body .batch2-posts .post-metrics .metric-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); }
+}
+@media (min-width:600px) and (max-width:1279px) {
+  :root body .batch2-posts .post-detail { display:flex; flex-direction:column; overflow-y:auto; }
+  :root body .batch2-posts .post-conversation { display:contents; }
+  :root body .batch2-posts .post-intro.section-card { order:0; margin:0; flex:none; }
+  :root body .batch2-posts .post-metrics { order:1; flex:none; }
+  :root body .batch2-posts .post-comments { order:2; margin:0; flex:none; }
+}
+.post-summary { display:flex; align-items:flex-start; gap:12px; min-width:0; }
+.post-summary-text { flex:1; min-width:0; }
+.post-summary-text .eyebrow { margin:0; }
+:root body .post-summary .post-detail-thumb { flex:none; width:72px; height:72px; margin:0; object-fit:cover; }
+:root body .batch2-posts .post-summary .post-caption { margin:4px 0; font-size:var(--ui-font-body); line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+.post-detail .post-summary .post-caption.collapsed { -webkit-line-clamp:2; }
+.post-summary-text .post-timing { margin:0; }
+.post-intro-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; margin-top:12px; }
+:root body .post-intro-actions button { width:auto; margin:0; padding:6px 12px; font-size:var(--ui-font-button); }
+:root body .post-intro-actions .post-link { margin:0; }
+.watch-metrics { margin:0 0 16px; }
+.watch-metrics h4 { margin:0 0 8px; font-size:var(--ui-font-body); font-weight:600; }
+:root body .batch2-posts .watch-metrics .metric-grid { margin:0 0 12px; }
+/* 曲線卡片的指標改用分頁籤；觀看變化、觀眾留存沿用數據變化的外框。 */
+:root body .metric-chart .chart-tabs { margin:12px 0 0; flex-wrap:wrap; gap:0 12px; overflow-x:visible; }
+.retention-line { fill:none; stroke:var(--chart-line); stroke-width:3; stroke-linejoin:round; }
+:root body .batch2-posts .post-metrics .snapshot-heading { margin-top:32px; }
+.post-full-dialog .eyebrow { margin:0 0 8px; }
+.post-full-image { display:block; max-width:100%; max-height:50dvh; margin:0 0 12px; object-fit:contain; border-radius:var(--ui-radius-card); background:var(--bg-subtle); }
+.post-full-caption { margin:0 0 12px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; }

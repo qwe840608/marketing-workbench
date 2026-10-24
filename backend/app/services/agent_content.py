@@ -23,23 +23,28 @@ from app.services import (
     ideation,
     ideation_exports,
     ideation_posts,
+    roles,
     video_scripts,
 )
 from app.services.access import BrandAccess
 from app.services.redact import redact, scrub
 
+PERMISSION_MESSAGE = (
+    "此工具需要對應的功能權限；下一步：請管理員在成員角色勾選權限，或請有權限的成員操作"
+)
 GUIDES = Path(__file__).resolve().parents[1] / "agent_guides"
 
 
-def access_for(session, grant_id, *, write=False):
+def access_for(session, grant_id, *, write=False, permission=None):
     if write:
         ensure_write(session)
     grant = session.get(AgentGrant, grant_id)
     staff = agent_auth.valid_grant(session, grant)
     if staff is None:
         raise HTTPException(401, "連線已失效；下一步：重新授權後再呼叫")
-    if write and staff.role not in {"admin", "marketing"}:
-        raise HTTPException(403, "此工具需要行銷或管理員角色；下一步：請有權限的成員操作")
+    granted = roles.permissions_of(session, staff)
+    if write and (permission not in granted if permission else not granted):
+        raise HTTPException(403, PERMISSION_MESSAGE)
     return BrandAccess(session, staff), grant
 
 
@@ -83,7 +88,7 @@ def check_exclusions(session, body, agent_ids, now):
 
 def start(factory, settings, grant_id, body):
     with factory() as session:
-        access, grant = access_for(session, grant_id, write=True)
+        access, grant = access_for(session, grant_id, write=True, permission="ideation.edit")
         access.require_brand(body.brand_id, write=True)
         selected = [agent_queries.get_post_row(access, post_id) for post_id in body.post_ids]
         if any(
@@ -192,7 +197,7 @@ def check_phrases(content, phrases, *, prefix=""):
 
 def save_ideas(factory, settings, grant_id, body):
     with factory() as session:
-        access, grant = access_for(session, grant_id, write=True)
+        access, grant = access_for(session, grant_id, write=True, permission="ideation.edit")
         row = waiting_report(access, body.report_id)
         access.require_brand(row.brand_id, write=True)
         # 修正前已進入等待的報告可能沒有任何留言，同樣不接受憑空撰寫的主題。
@@ -249,7 +254,7 @@ def save_ideas(factory, settings, grant_id, body):
 
 def edit_idea(factory, settings, grant_id, body):
     with factory() as session:
-        access, grant = access_for(session, grant_id, write=True)
+        access, grant = access_for(session, grant_id, write=True, permission="ideation.edit")
         row = ideation.get(access, body.report_id)
         request = EditIdea.model_validate({**body.fields, "version": body.version})
         check_phrases(
@@ -269,8 +274,8 @@ def edit_idea(factory, settings, grant_id, body):
 def save_script(factory, settings, grant_id, body):
     with factory() as session:
         access, grant = access_for(session, grant_id)
-        if access.staff.role not in {"admin", "marketing"}:
-            raise HTTPException(403, "此工具需要行銷或管理員角色；下一步：請有權限的成員操作")
+        if not roles.can(access, "ideation.edit"):
+            raise HTTPException(403, PERMISSION_MESSAGE)
         report = ideation.get(access, body.report_id)
         access.require_brand(report.brand_id, write=True)
         if report.status != "ready" or body.topic_index >= len(report.data_json.get("ideas", [])):
@@ -298,7 +303,7 @@ def save_script(factory, settings, grant_id, body):
     content = scrub(content)
     checked = video_scripts.review(factory, settings, brand_id, content, quotes, context)
     with factory.begin() as session:
-        access, grant = access_for(session, grant_id, write=True)
+        access, grant = access_for(session, grant_id, write=True, permission="ideation.edit")
         report = ideation.get(access, body.report_id)
         access.require_brand(report.brand_id, write=True)
         if (

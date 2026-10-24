@@ -30,8 +30,8 @@ from app.services import (
     tiktok,
     youtube,
 )
-from app.services.gateway_workers import Workers
-from app.services.webhook_normalize import meta_envelopes
+from app.services.webhook_normalize import iter_meta_envelopes
+from app.services.workers import Workers
 
 ORACLE = json.loads(
     (Path(__file__).parent / "fixtures/workflow_oracle.json").read_text(encoding="utf-8-sig")
@@ -116,9 +116,8 @@ def test_normalization_matches_node_every_field(row):
         assert result == (200, {"ok": True, "events": 0}, [])
         return
     else:
-        result = meta_envelopes(
-            payload, row["env"]["META_PAGE_ID"], row["env"]["META_IG_ACCOUNT_ID"]
-        )
+        page, instagram = row["env"]["META_PAGE_ID"], row["env"]["META_IG_ACCOUNT_ID"]
+        result = list(iter_meta_envelopes(payload, page, instagram))
     if row["name"] == "meta-inbound":
         expected = [
             e

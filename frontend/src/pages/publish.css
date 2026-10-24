@@ -62,8 +62,7 @@
 .publish-account.off { background: var(--bg-subtle); }
 .publish-account.off .publish-account-dot { background: var(--text-muted); }
 .publish-account.off strong { color: var(--text-subtle); font-weight: 500; }
-.publish-editor-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ui-shell-gap); }
-.publish-editor-heading { margin-bottom: 12px; }
+.publish-editor-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ui-shell-gap); margin-bottom: 12px; }
 .publish-editor-heading h2 { margin-bottom: 0; }
 .publish-caption-start { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .publish-tabs button { min-width: 0; }
@@ -114,6 +113,8 @@
 .publish-preview-media { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 8px; margin-top: 12px; }
 .publish-preview-media > div { max-width: 100%; overflow: hidden; border-radius: var(--ui-radius-control); background: var(--bg-subtle); }
 .publish-preview-media img,.publish-preview-media video { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* 影片送出的是原檔，平台不裁切：直式框（Reels、TikTok）裡的橫式影片要完整顯示並補邊，裁切會讓人誤以為發出去是直式。 */
+.publish-preview-media video { object-fit: contain; background: var(--media-letterbox); }
 .publish-preview-post + .publish-preview-post { border-top: 1px solid var(--border-subtle); margin-top: 16px; padding-top: 16px; }
 .publish-preview-thread.is-thread .publish-preview-post + .publish-preview-post { border-left: 2px solid var(--border-subtle); padding-left: 16px; }
 .publish-preview-empty { margin: 0; color: var(--text-subtle); }
@@ -204,3 +205,7 @@
 .publish-editor-top > .publish-composer-tabs { flex: 1 1 auto; margin: 0; }
 .publish-editor-top > .publish-editor-heading { order: 2; margin: 0 0 0 auto; }
 @media (max-width: 767px) { .publish-editor-top > .publish-editor-heading { order: 0; flex-basis: 100%; } }
+.publish-format-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.publish-format-button { display: inline-flex; align-items: center; justify-content: center; width: 40px; min-width: 40px; padding: 0; }
+.publish-format-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.publish-format-button.is-bold svg { stroke-width: 2.4; }

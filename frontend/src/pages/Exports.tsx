@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { download } from '../api';
+import { download, errorMessage } from '../api';
 import { t } from '../i18n.ts';
+import { taipeiDateKey } from '../time.ts';
 
-const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const today = () => taipeiDateKey();
 export function ReportExport({ brand }: { brand: string }) {
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -12,7 +13,7 @@ export function ReportExport({ brand }: { brand: string }) {
   async function save() {
     setBusy(true); setError('');
     try { await download('/exports/report/docx', t('營運報表_{start}_{end}.docx', { start, end }), { brand_id: Number(brand), start, end }); }
-    catch (e) { setError(e instanceof Error ? e.message : t('匯出失敗')); }
+    catch (e) { setError(errorMessage(e, t('匯出失敗'))); }
     finally { setBusy(false); }
   }
   return <><button className="secondary" ref={trigger} aria-haspopup="dialog" aria-expanded={open} onClick={() => { dialog.current?.showModal(); setOpen(true); }}>{t('匯出報表')}</button>

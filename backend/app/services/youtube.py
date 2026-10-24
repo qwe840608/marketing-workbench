@@ -26,12 +26,13 @@ ANALYTICS_METRICS = (
     "estimatedMinutesWatched",
     "shares",
     "subscribersGained",
+    "averageViewPercentage",
 )
 PACIFIC = ZoneInfo("America/Los_Angeles")
 
 
 def fail(code):
-    from app.services.gateway_workers import WorkerError
+    from app.services.workers import WorkerError
 
     raise WorkerError(code)
 
@@ -412,7 +413,7 @@ class Sync:
                 try:
                     delayed = self.analytics(post)
                 except Exception as error:
-                    from app.services.gateway_workers import WorkerError
+                    from app.services.workers import WorkerError
 
                     if not isinstance(error, WorkerError) or error.code not in {
                         "youtube_permission_missing",
@@ -428,6 +429,7 @@ class Sync:
                 extra["watch_hours"] = minutes / 60 if minutes is not None else None
                 gained = number(delayed.get("subscribersGained"))
                 extra["subscribers_gained"] = gained
+                extra["avg_view_percentage"] = number(delayed.get("averageViewPercentage"))
                 result["snapshots"] += self.worker.service(
                     post_service.upsert_metrics,
                     MetricsInput.model_validate(

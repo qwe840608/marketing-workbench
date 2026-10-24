@@ -24,6 +24,7 @@ from app.models import (
 from app.models.base import utc_now
 from app.services import auth, credentials, settings_store
 from app.services.ai_keys import cipher
+from app.services.graph_api import DIALOG, FB
 
 # published_posts, media, comments/replies, followers_count and post insights;
 # pages_manage_metadata retains the existing public-comment webhook subscription.
@@ -50,7 +51,6 @@ THREADS_SCOPES = THREADS_PUBLISH_SCOPES + THREADS_DATA_SCOPES
 # 無法由授權範圍判斷時，以平台的權限錯誤標記；換權杖（重新連結）立即失效，否則一天後再試一次。
 DATA_BLOCK_KEY = "oauth.threads.data_blocked"
 DATA_BLOCK_RETRY = timedelta(hours=24)
-FB = "https://graph.facebook.com/v26.0"
 TH = "https://graph.threads.net"
 # YouTube 的範圍以 youtube_oauth.SCOPES 為準（測試比對兩者一致）；此處只供授權網址組合。
 SCOPES = {"meta": META_SCOPES + META_OPTIONAL_SCOPES, "threads": THREADS_SCOPES, "youtube": (
@@ -204,7 +204,7 @@ def start(access, settings, cookie, platform, origin):
         params = tiktok_oauth.authorize_params(session, settings, nonce)
         return {"url": tiktok_oauth.AUTHORIZE_URL + "?" + urlencode(params)}
     endpoint = (
-        "https://www.facebook.com/v26.0/dialog/oauth"
+        DIALOG
         if platform == "meta"
         else "https://accounts.google.com/o/oauth2/v2/auth"
         if platform == "youtube"

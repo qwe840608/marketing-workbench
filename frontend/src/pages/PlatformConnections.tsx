@@ -1,6 +1,7 @@
 import { Fragment, Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { api } from '../api';
-import { locale, t, tx } from '../i18n.ts';
+import { api, errorMessage } from '../api';
+import { t, tx } from '../i18n.ts';
+import { taipeiDateTime } from '../time.ts';
 import { tiktokCommentNotice, type GuideId } from '../platformGuides';
 import { ConfirmDialog } from './ConfirmDialog';
 const GuideModal = lazy(() => import('./GuideModal'));
@@ -47,7 +48,7 @@ function CredentialField({ row, editing, setEditing, onChange }: { row: Credenti
       });
       if (input.current) input.current.value = '';
       onChange(await pending); setEditing(false);
-    } catch (e) { setError(e instanceof Error ? e.message : t('憑證未儲存')); }
+    } catch (e) { setError(errorMessage(e, t('憑證未儲存'))); }
     finally { setBusy(false); }
   }
   return <form className="credential-field" aria-label={row.name} onSubmit={e => { e.preventDefault(); void perform(false); }}>
@@ -79,36 +80,36 @@ function ConnectionGroup({ group, data, onChange, oauth, refresh }: { group: typ
   async function link() {
     setBusy(true); setError('');
     try { const response = await api<{ url: string }>('/oauth/' + group.id + '/start', { method: 'POST', body: '{}' }); location.assign(response.url); }
-    catch (e) { setError(e instanceof Error ? e.message : t('帳號連結失敗')); setBusy(false); }
+    catch (e) { setError(errorMessage(e, t('帳號連結失敗'))); setBusy(false); }
   }
   async function disconnect() {
     setBusy(true); setError('');
     try { await api('/oauth/' + group.id + '/disconnect', { method: 'POST', body: '{}' }); await refresh(); onChange(await api<Configuration>('/credentials')); }
-    catch (e) { setError(e instanceof Error ? e.message : t('中斷連結失敗')); }
+    catch (e) { setError(errorMessage(e, t('中斷連結失敗'))); }
     finally { setBusy(false); }
   }
   async function saveCategory(categoryId: string) {
     setBusy(true); setNotice(''); setError('');
     try { await api('/oauth/youtube/category', { method: 'PUT', body: JSON.stringify({ category_id: categoryId }) }); await refresh(); setNotice(t('已儲存上傳類別')); }
-    catch (e) { setError(e instanceof Error ? e.message : t('類別未儲存')); }
+    catch (e) { setError(errorMessage(e, t('類別未儲存'))); }
     finally { setBusy(false); }
   }
   async function choose() {
     setBusy(true); setError('');
     try { await api('/oauth/meta/page', { method: 'POST', body: JSON.stringify({ page_id: pageId || oauth?.pages[0]?.id }) }); await refresh(); onChange(await api<Configuration>('/credentials')); setNotice(t('帳號連結成功')); }
-    catch (e) { setError(e instanceof Error ? e.message : t('粉絲專頁未選定')); }
+    catch (e) { setError(errorMessage(e, t('粉絲專頁未選定'))); }
     finally { setBusy(false); }
   }
   async function test() {
     setBusy(true); setNotice(''); setError('');
     try { if (oauthPlatform) { const response = await refresh(true); if (response.platforms[group.id]?.verified === false) throw new Error(t('權限檢查失敗，請重新連結')); setNotice(t('權限檢查完成')); } else { const result = await api<{ ok: boolean; filled?: string[] }>('/credentials/' + group.id + '/test', { method: 'POST', body: '{}' }); if (result.filled?.length) { onChange(await api('/credentials')); setNotice(t('連線成功，已自動填入官方帳號 User ID')); } else setNotice(t('連線成功')); } }
-    catch (e) { setError(e instanceof Error ? e.message : t('連線測試失敗')); }
+    catch (e) { setError(errorMessage(e, t('連線測試失敗'))); }
     finally { setBusy(false); }
   }
   return <section className="settings-section section-card connection-card" aria-labelledby={'connection-' + group.id}>
     <div className="card-title"><h2 id={'connection-' + group.id}>{group.title}</h2><div className="card-actions">{guide && <button className="secondary" type="button" onClick={() => setGuideOpen(true)}>{t('設定教學')}</button>}<button className="secondary" disabled={busy} onClick={() => void test()}>{busy ? t('測試中…') : t('測試連線')}</button></div></div>
     {oauthPlatform && <>
-      <div className="oauth-account"><span>{status?.name || (status?.linked ? t('已設定帳號') : t('尚未連結'))}{status?.ig_username && ' · @' + status.ig_username}</span><span className={'status-badge ' + (status?.state || 'neutral')}>{status?.state === 'ready' ? t('已連結') : status?.state === 'pending' ? t('即將到期') : status?.state === 'failed' ? t('需重新連結') : t('未連結')}</span>{clientApp && <span className="muted">{status?.state === 'failed' ? t('權杖失效，請重新連結') : status?.linked ? t('存取權杖自動換發') : status?.configured ? t('尚未授權') : t('尚未設定用戶端')}</span>}{status?.expires_at && <time dateTime={status.expires_at}>{t('{time} 到期', { time: new Date(status.expires_at).toLocaleString(locale(), { timeZone: 'Asia/Taipei' }) })}</time>}{status?.never_expires && <span className="muted">{t('授權不會過期')}</span>}</div>
+      <div className="oauth-account"><span>{status?.name || (status?.linked ? t('已設定帳號') : t('尚未連結'))}{status?.ig_username && ' · @' + status.ig_username}</span><span className={'status-badge ' + (status?.state || 'neutral')}>{status?.state === 'ready' ? t('已連結') : status?.state === 'pending' ? t('即將到期') : status?.state === 'failed' ? t('需重新連結') : t('未連結')}</span>{clientApp && <span className="muted">{status?.state === 'failed' ? t('權杖失效，請重新連結') : status?.linked ? t('存取權杖自動換發') : status?.configured ? t('尚未授權') : t('尚未設定用戶端')}</span>}{status?.expires_at && <time dateTime={status.expires_at}>{t('{time} 到期', { time: taipeiDateTime(status.expires_at) })}</time>}{status?.never_expires && <span className="muted">{t('授權不會過期')}</span>}</div>
       {!!status?.missing.length && status.linked && <p className="notice danger oauth-permissions">{t('缺少權限：{permissions}', { permissions: status.missing.join(t('、')) })}</p>}
       {dataHint && <p className="notice warning oauth-permissions" role="status">{youtube ? t('需要重新連結以取得上傳權限') : t('需要重新連結以取得數據與回覆權限')}</p>}
       {youtube && status?.linked && !!status.categories?.length && <label className="youtube-category">{t('上傳類別')}<select aria-label={t('YouTube 上傳類別')} value={status.category_id} disabled={busy} onChange={e => void saveCategory(e.target.value)}>{status.categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
@@ -126,13 +127,13 @@ function ConnectionGroup({ group, data, onChange, oauth, refresh }: { group: typ
   </section>;
 }
 
-export function PlatformConnections({ role }: { role: string }) {
+export function PlatformConnections({ canManage }: { canManage: boolean }) {
   const [data, setData] = useState<Configuration | null>(null), [error, setError] = useState('');
   const [oauth, setOAuth] = useState<OAuthStatus | null>(null);
   const [result, setResult] = useState('');
   async function refresh(force = false) { const response = await api<OAuthStatus>('/oauth/status' + (force ? '?force=true' : '')); setOAuth(response); return response; }
   useEffect(() => {
-    if (role !== 'admin') return;
+    if (!canManage) return;
     const c = new AbortController();
     api<Configuration>('/credentials', { signal: c.signal }).then(setData).catch(e => { if (!c.signal.aborted) setError(e.message); });
     api<OAuthStatus>('/oauth/status', { signal: c.signal }).then(setOAuth).catch(e => { if (!c.signal.aborted) setError(e.message); });
@@ -146,8 +147,8 @@ export function PlatformConnections({ role }: { role: string }) {
         .catch(() => { if (!c.signal.aborted) setResult('failed'); });
     }
     return () => c.abort();
-  }, [role]);
-  if (role !== 'admin') return <section className="settings-page platform-connections"><p className="muted">{t('平台連線由管理員管理。')}</p></section>;
+  }, [canManage]);
+  if (!canManage) return <section className="settings-page platform-connections"><p className="muted">{t('平台連線由管理員管理。')}</p></section>;
   return <section className="settings-page platform-connections">
     {result && <p className={'notice ' + (result === 'linked' || result === 'select' ? 'success' : 'danger')} role={result === 'linked' || result === 'select' ? 'status' : 'alert'}>{({ linked: t('帳號連結成功'), select: t('請選擇粉絲專頁'), no_pages: t('沒有可管理的粉絲專頁'), cancelled: t('已取消帳號授權') } as Record<string, string>)[result] || t('帳號連結失敗，請確認應用程式設定與授權後重試')}</p>}
     {error && <p className="error" role="alert">{error}</p>}

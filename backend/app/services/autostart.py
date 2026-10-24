@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
+from app.services import roles
 from app.services.posts import _begin_ingest
 from app.services.processes import hidden_process_kwargs
 
@@ -138,7 +139,7 @@ def execute(mode="read"):
 
 
 def require_admin(access):
-    if access.staff.role != "admin":
+    if not roles.can(access, "settings.manage"):
         raise HTTPException(403, "僅管理員可操作開機自動啟動")
 
 

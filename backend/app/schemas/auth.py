@@ -18,6 +18,9 @@ class StaffView(BaseModel):
     username: str
     display_name: str
     role: str
+    # 自訂角色的名稱；內建角色為 None，由前端依介面語言翻譯。
+    role_name: str | None = None
+    permissions: list[str] = []
     must_change_password: bool
     language: str | None = None
     brand_ids: list[int]

@@ -49,7 +49,8 @@ class Staff(Versioned, Base):
     display_name: Mapped[str] = mapped_column(String(200))
     # 未設定密碼即無法登入；seed 不替使用者產生或猜測憑證。
     password_hash: Mapped[str | None] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(choices("staff_role", "admin", "marketing", "viewer"))
+    # 內建角色 admin／marketing／viewer，或自訂角色的 roles.key（由成員服務驗證存在）。
+    role: Mapped[str] = mapped_column(String(40))
     active: Mapped[bool] = mapped_column(default=True)
     must_change_password: Mapped[bool] = mapped_column(default=False, server_default="0")
     # 管理員自助復原用的一次性復原碼，只存雜湊；使用或重新產生後舊碼即失效。
@@ -57,6 +58,16 @@ class Staff(Versioned, Base):
     recovery_code_created_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     # 介面語言偏好；空值表示沿用瀏覽器記住的語言（預設繁體中文）。
     language: Mapped[str | None] = mapped_column(String(10))
+
+
+class Role(Versioned, Base):
+    """管理員自訂的角色；內建角色寫在程式裡，不存在這張表。"""
+
+    __tablename__ = "roles"
+
+    key: Mapped[str] = mapped_column(String(40), unique=True)
+    name: Mapped[str] = mapped_column(String(80))
+    permissions: Mapped[list[str]] = mapped_column(JSON, default=list)
 
 
 class StaffBrand(Base):

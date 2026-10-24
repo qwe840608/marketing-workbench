@@ -263,6 +263,44 @@ def test_emergency_conditions(kind, intent, urgency, risk, expected):
     )
 
 
+@pytest.mark.parametrize(
+    "values,expected",
+    [
+        # 實際誤報：Threads 上調侃貼文內容的玩笑留言，模型把反諷當客訴但語氣友善。
+        ({"intent": "other", "is_complaint": 0.9, "sentiment": 0.75}, None),
+        ({"intent": "other", "is_complaint": 0.9, "sentiment": 1.0}, None),
+        ({"intent": "other", "is_complaint": 0.9, "sentiment": 0.5}, "complaint"),
+        ({"intent": "other", "is_complaint": 0.9}, "complaint"),
+        ({"intent": "complaint", "is_complaint": 0.9, "sentiment": 0.75}, "complaint"),
+    ],
+)
+def test_friendly_sarcasm_is_not_a_complaint(values, expected):
+    assert notify.emergency("comment_thread", values, NotificationPolicy()) == expected
+
+
+def test_compose_names_the_comment_platforms(setup, settings):
+    factory, brand_id, _ = setup
+    incoming(setup, platform="threads", text="Threads 留言")
+    incoming(setup, platform="threads", text="另一則 Threads 留言")
+    notify.plan(factory, DAY)
+    work = notify.claim_deliveries(factory, settings, DAY)[0]
+    text = "".join(m["text"] for m in work["messages"])
+    assert "請到 Threads 原生 App 處理。" in text and "Facebook" not in text
+    incoming(setup, platform="youtube", text="YouTube 留言")
+    incoming(setup, platform="instagram", text="IG 留言")
+    with factory() as session:
+        brand = session.get(Brand, brand_id)
+        rows = [
+            Notification(thread_id=t.id, message_id=m.id, reason="complaint")
+            for t, m in session.execute(
+                select(Thread, Message).join(Message).where(Thread.brand_id == brand_id)
+                .order_by(Message.id)
+            )
+        ]
+        header = notify.compose(session, brand, rows, settings)[0]["text"].splitlines()[1]
+    assert header == "請到 Threads／YouTube／Instagram 原生 App 處理。"
+
+
 def test_h13_now_h26_never_and_reputation_threshold_reuses_answers(setup, settings):
     factory, brand_id, clock = setup
     clock[0] = NIGHT

@@ -1,4 +1,5 @@
-import { t, locale } from './i18n.ts';
+import { t } from './i18n.ts';
+import { formatTaipei } from './time.ts';
 
 export type BackfillWait = {
   state: string;
@@ -11,9 +12,7 @@ export type BackfillWait = {
 export function backfillWaitText(job: BackfillWait, now = Date.now()): string | null {
   if (!['waiting', 'throttled'].includes(job.state)) return null;
   const retry = job.retry_at ? new Date(job.retry_at) : null;
-  const time = retry && new Intl.DateTimeFormat(locale(), {
-    timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-  }).format(retry);
+  const time = retry && formatTaipei(retry, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const action = job.wait_reason === 'meta_unstable' || job.wait_reason === 'threads_unstable' || job.wait_reason === 'youtube_unstable' ? t('重試') : t('繼續');
   const continuation = retry && retry.getTime() > now
     ? t('將於 {time} 自動{action}', { time: time as string, action })

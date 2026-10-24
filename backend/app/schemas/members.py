@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -10,7 +9,8 @@ class MemberEdit(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     display_name: str = Field(min_length=1, max_length=200)
-    role: Literal["admin", "marketing", "viewer"]
+    # 內建 admin／marketing／viewer 或自訂角色鍵；是否存在由服務層查表驗證。
+    role: str = Field(min_length=1, max_length=40)
     brand_ids: list[int] = Field(default_factory=list, max_length=1000)
 
     @field_validator("display_name")
@@ -46,3 +46,31 @@ class MemberView(StaffView):
 class TemporaryPasswordView(BaseModel):
     member: MemberView
     temporary_password: str
+
+
+class RoleEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=80)
+    permissions: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("name")
+    @classmethod
+    def nonempty(cls, value):
+        if not value.strip():
+            raise ValueError("角色名稱不可空白")
+        return value.strip()
+
+
+class RoleView(BaseModel):
+    id: int | None
+    key: str
+    name: str | None
+    builtin: bool
+    permissions: list[str]
+    member_count: int
+
+
+class RoleCatalog(BaseModel):
+    permissions: list[str]
+    roles: list[RoleView]

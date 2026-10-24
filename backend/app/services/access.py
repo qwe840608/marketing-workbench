@@ -26,6 +26,7 @@ from app.models import (
     StaffBrand,
     Thread,
 )
+from app.services import roles
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,6 @@ class BrandAccess:
         brand = self.session.scalar(self.statement(Brand).where(Brand.id == brand_id))
         if brand is None:
             raise HTTPException(404, "找不到資料")
-        if write and self.staff.role not in {"admin", "marketing"}:
+        if write and not roles.can_write(self.session, self.staff):
             raise HTTPException(403, "此帳號僅能檢視資料")
         return brand

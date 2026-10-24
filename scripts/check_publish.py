@@ -657,16 +657,48 @@ def check_composer(page, settings, checks):
     expected = 480 if page.viewport_size['width'] > 767 else 320
     assert abs(media_box['height'] - expected) <= 2 or media_box['width'] >= page.locator('.publish-preview-media').bounding_box()['width'] - 1, media_box
     main.fill('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。')
-    # Markdown：偵測到語法才提示；可轉成 Unicode 粗體／斜體，轉完提示消失；預覽照實顯示原樣符號。
+    # Markdown：偵測到語法才說明發佈時會轉換；文案框保留原稿，預覽顯示轉換後實際送出的文字。
     expect(page.locator('.publish-markdown-hint')).to_have_count(0)
-    main.fill('**New** 新品 *now*')
+    main.fill('**New** 新品 *now*\n**測試**\n- 項目')
     hint = page.locator('.publish-markdown-hint')
-    expect(hint).to_contain_text('不支援 Markdown')
-    expect(page.locator('.publish-preview-caption')).to_have_text('**New** 新品 *now*')
+    expect(hint).to_contain_text('發佈時會把 Markdown 轉成')
+    expect(hint.get_by_role('button')).to_have_count(0)
+    page.locator('.publish-preview-more').click() if page.locator('.publish-preview-more').count() else None
+    expect(page.locator('.publish-preview-caption')).to_contain_text('𝗡𝗲𝘄 新品 𝘯𝘰𝘸\n測試\n• 項目')
+    expect(main).to_have_value('**New** 新品 *now*\n**測試**\n- 項目')
     capture('markdown-hint')
-    hint.get_by_role('button', name='轉成 Unicode 粗體／斜體', exact=True).click()
-    expect(main).to_have_value('𝗡𝗲𝘄 新品 𝘯𝘰𝘸')
-    expect(page.locator('.publish-markdown-hint')).to_have_count(0)
+    # 全形符號可直接輸入；格式按鈕（圖示）在選取的行插入 Markdown，預覽顯示轉換後的樣子。
+    main.fill('')
+    main.press_sequentially('＜新品＞ ')
+    page.keyboard.insert_text('第一點\n第二點')
+    expect(main).to_have_value('＜新品＞ 第一點\n第二點')
+    expect(page.locator('.publish-preview-caption')).to_contain_text('＜新品＞')
+    toolbar = page.get_by_role('toolbar', name='文案格式')
+    main.evaluate("e => e.setSelectionRange(e.value.indexOf('第一點'), e.value.length)")
+    toolbar.get_by_role('button', name='編號清單', exact=True).click()
+    expect(main).to_have_value('1. ＜新品＞ 第一點\n2. 第二點')
+    # 按鈕在下一個畫格才把選取範圍設回整段；先等它套用，否則之後設的游標會被蓋掉。
+    main.evaluate('''e => new Promise(resolve => {
+        const done = () => document.activeElement === e && e.selectionStart === 0 && e.selectionEnd === e.value.length;
+        const wait = () => done() ? resolve() : requestAnimationFrame(wait);
+        wait();
+    })''')
+    main.evaluate('e => e.setSelectionRange(0, 0)')
+    toolbar.get_by_role('button', name='大標題', exact=True).click()
+    expect(main).to_have_value('# ＜新品＞ 第一點\n2. 第二點')
+    # 同樣先等標題按鈕在下一個畫格把選取範圍設回該行，否則之後填入的內容與游標會被蓋掉。
+    main.evaluate('''e => new Promise(resolve => {
+        const done = () => document.activeElement === e && e.selectionStart === 0 && e.selectionEnd === e.value.indexOf('\\n');
+        const wait = () => done() ? resolve() : requestAnimationFrame(wait);
+        wait();
+    })''')
+    assert toolbar.locator('button svg').count() == 5 and toolbar.locator('button').first.inner_text() == ''
+    main.fill('New 新品')
+    main.evaluate('e => e.setSelectionRange(0, 3)')
+    toolbar.get_by_role('button', name='粗體', exact=True).click()
+    expect(main).to_have_value('**New** 新品')
+    expect(page.locator('.publish-preview-caption')).to_have_text('𝗡𝗲𝘄 新品')
+    capture('caption-format')
     main.fill('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。')
     for name in ('Instagram', 'Threads', 'Facebook'):
         page.get_by_role('group', name='預覽平台').get_by_role('button', name=name, exact=True).click()
@@ -1430,7 +1462,7 @@ def check_tiktok(page, settings, checks):
         expect(panel).to_contain_text('僅支援影片發布，圖文需從APP上傳')
         tab('共用')
         page.get_by_role('radio', name='影片', exact=True).click()
-        page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'tt-isolated.mp4', 'mimeType': 'video/mp4', 'buffer': video_bytes(1080, 1920)})
+        page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'tt-isolated.mp4', 'mimeType': 'video/mp4', 'buffer': video_bytes(1920, 1080)})
         expect(page.locator('.publish-media-row')).to_contain_text('12.0 秒')
         page.get_by_label('主文案', exact=True).fill(caption)
         switch().check()
@@ -1438,6 +1470,12 @@ def check_tiktok(page, settings, checks):
         expect(panel.locator('.tiktok-caption-notice')).to_contain_text('收件匣不會帶入文案')
         expect(panel).to_contain_text('影片會送到 TikTok 收件匣')
         expect(page.get_by_label('TikTok 文案', exact=True)).to_have_value(caption)
+        # 橫式影片在直式框裡要完整顯示並上下補邊：送出的是原檔，預覽裁成直式會誤導。
+        frame = page.locator('.publish-preview .publish-preview-media > div').first
+        expect(frame.locator('video')).to_have_css('object-fit', 'contain')
+        expect(frame.locator('video')).to_have_css('background-color', 'rgb(15, 23, 42)')
+        box = frame.bounding_box()
+        assert abs(box['width'] / box['height'] - 9 / 16) < 0.01, box
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         idle()
         page.locator('.publish-actions').get_by_role('button', name='發佈', exact=True).click()
@@ -1463,7 +1501,7 @@ def check_tiktok(page, settings, checks):
         with factory() as session:
             target = session.scalar(select(PublishTarget).where(PublishTarget.platform == 'tiktok').order_by(PublishTarget.id.desc()))
             assert target.status == 'succeeded' and target.detail_json['inbox_state'] == 'SEND_TO_USER_INBOX'
-        checks.append('tiktok-publish-video-only-inbox-copy-caption')
+        checks.append('tiktok-publish-video-only-inbox-copy-caption-landscape-preview')
     finally:
         engine.dispose()
 

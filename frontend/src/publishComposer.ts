@@ -1,5 +1,6 @@
 import vectors from '../../shared/publish_threads_vectors.json' with { type: 'json' };
 import { t } from './i18n.ts';
+import { toPlatformText } from './markdownText.ts';
 
 export type Platform = 'facebook' | 'instagram' | 'threads' | 'youtube' | 'tiktok';
 export type Format = 'video' | 'image' | 'carousel' | 'text' | 'story';
@@ -18,6 +19,10 @@ export function loadedPlatformOptions(value?: Omit<PlatformOptions, 'facebook' |
   const youtube = { title: value?.youtube?.title ?? defaults.youtube.title, privacy: value?.youtube?.privacy ?? defaults.youtube.privacy, made_for_kids: value?.youtube?.made_for_kids ?? defaults.youtube.made_for_kids };
   return { facebook: { video_format: value?.facebook?.video_format ?? 'feed' }, instagram: { share_to_feed: value?.instagram?.share_to_feed ?? defaults.instagram.share_to_feed }, threads: { ...defaults.threads, ...value?.threads }, youtube, tiktok: {} };
 }
+// 平台專用文案只有在有內容時才取代共用文案；空白的覆寫（例如 Agent 存成 ""）沿用共用文案，與後端 publish_rules.platform_caption 一致。
+export const platformCaption = (captions: Partial<Record<Platform, string>>, caption: string, platform: Platform) => captions[platform]?.trim() ? captions[platform]! : caption;
+// 實際送出的文案：Markdown 轉成平台顯示得出來的純文字（與後端 publish_rules.platform_caption 一致）。
+export const sentCaption = (captions: Partial<Record<Platform, string>>, caption: string, platform: Platform) => toPlatformText(platformCaption(captions, caption, platform));
 const emoji = new RegExp(vectors.emoji_pattern, 'u');
 const encoder = new TextEncoder();
 // 使用後端 Unicode 資料，避免瀏覽器 Unicode 版本影響 emoji 與組合字邊界。
@@ -146,7 +151,7 @@ export function checkComposer(platform: Platform, format: Format, caption: strin
     });
     return { errors: [...new Set(errors)], warnings };
   }
-  const segments = platform === 'threads' ? options.threads.segments : [caption];
+  const segments = platform === 'threads' ? options.threads.segments.map(toPlatformText) : [caption];
   for (const [i, segment] of segments.entries()) {
     // Threads 文案是第一則，之後是各則回覆。
     const label = platform === 'threads' ? (i === 0 ? t('Threads 文案') : t('回覆 {n}', { n: i })) : t('文案');
@@ -206,7 +211,9 @@ export function checkComposer(platform: Platform, format: Format, caption: strin
 }
 // 簡化預覽採字元／行數門檻，避免假裝平台實際像素版面。
 export const previewLimits = { facebook: 480, instagram: 125, threads: 280, youtube: 100, tiktok: 100 };
-export function foldCaption(text: string, platform: Platform, expanded = false) {
+export function foldCaption(raw: string, platform: Platform, expanded = false) {
+  // 開頭的空行不算在折疊的行數裡，否則前三行都是空白時預覽只剩「…更多」。
+  const text = raw.trim();
   // Threads 每段最多 500 字且平台不折疊，整段顯示。
   if (platform === 'threads') return { text, folded: false };
   const chars = Array.from(text), lineEnd = text.split('\n').slice(0, platform === 'instagram' ? 2 : 3).join('\n');

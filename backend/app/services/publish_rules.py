@@ -4,6 +4,8 @@ import re
 import unicodedata
 from copy import deepcopy
 
+from app.services.caption_markdown import to_platform_text
+
 MB = 1024 * 1024
 GB = 1024 * MB
 IG_PNG_WARNING = "Instagram 會自動把 PNG 轉成 JPEG，透明背景會變白底"
@@ -305,11 +307,26 @@ def over_limit_reason(label, text, limit, platform="threads"):
     )
 
 
+def raw_caption(post, platform):
+    """平台專用文案有內容才取代共用文案；空白覆寫（例如 Agent 存成 ""）沿用共用文案。"""
+    value = post.captions_json.get(platform)
+    return value if value and value.strip() else post.caption
+
+
+def platform_caption(post, platform):
+    """實際送出的文案：raw_caption 再把 Markdown 轉成平台顯示得出來的純文字。"""
+    return to_platform_text(raw_caption(post, platform))
+
+
 def threads_segments(post):
     options = platform_options(post)["threads"]
     if options["segments"] or options["segments_custom"]:
-        return options["segments"]
-    return [post.captions_json.get("threads", post.caption)]
+        segments = [to_platform_text(segment) for segment in options["segments"]]
+        # 第一則就是 Threads 文案：舊草稿存成空白時改用實際文案，不送出空白貼文。
+        if segments and not segments[0].strip():
+            segments[0] = platform_caption(post, "threads")
+        return segments
+    return [platform_caption(post, "threads")]
 
 
 def rules_view():
@@ -317,7 +334,7 @@ def rules_view():
 
 
 def youtube_caption(post):
-    return post.captions_json.get("youtube", post.caption)
+    return platform_caption(post, "youtube")
 
 
 def youtube_title(options, caption):

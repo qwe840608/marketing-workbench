@@ -1,0 +1,68 @@
+# 跑和本機相同的完整驗收（scripts/verify_all.py）。
+# 啟動腳本與部分介面檢查只支援 Windows，所以用 Windows 機器。
+# 私有 repo 直接推 master、不自動觸發（避免消耗私有 repo 的 Actions 時數）；
+# 公開 repo 推 main 或收到 PR 時自動跑，也可以在 Actions 頁面手動執行。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend
+        working-directory: backend
+        run: uv sync --locked
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+
+      # 雲端機器只有 4 核心，4 支平行時介面檢查會因負載互相拖慢而不穩，改成 2 支。
+      - name: Verify
+        run: uv run --project backend python scripts/verify_all.py --jobs 2
+
+      - name: Show failed logs
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-ChildItem .runtime/verify/*.log | ForEach-Object {
+            if (Select-String -Path $_ -Pattern 'Traceback|^not ok ' -Quiet) {
+              "===== $($_.Name)"
+              Get-Content $_ -Tail 80
+            }
+          }
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: verify-logs
+          path: .runtime/verify/
+          retention-days: 7

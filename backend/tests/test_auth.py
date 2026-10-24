@@ -406,7 +406,7 @@ def test_service_scope_covers_all_brand_owned_tables(client, auth_data, model):
 def test_write_guard_checks_csrf_and_readonly_role(client, auth_data, password, monkeypatch):
     from app.api.permissions import ROUTE_POLICY
 
-    monkeypatch.setitem(ROUTE_POLICY, ("POST", "/api/test-write"), "edit")
+    monkeypatch.setitem(ROUTE_POLICY, ("POST", "/api/test-write"), "ideation.edit")
 
     @client.app.post("/api/test-write")
     def test_write(access: Access):

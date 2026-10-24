@@ -1,6 +1,6 @@
 # 發佈、排程與重試
 
-1. get_server_info、get_brand_guide、get_publish_options，確認品牌規範、總開關及帳號。檢視者只讀；總開關關閉只能存草稿，請管理員在網頁處理，不代改開關。
+1. get_server_info、get_brand_guide、get_publish_options，確認品牌規範、總開關及帳號。檢視者只讀；存草稿需要 `publish.edit`，確認發佈、重試、取消排程需要 `publish.submit`（見 `get_server_info` 的 `user.permissions`）；總開關關閉只能存草稿，請管理員在網頁處理，不代改開關。
 2. 一般貼文先 get_guide("post") 完成定案文案、存草稿與上傳；限時動態用 save_publish_draft(format="story", platforms=["facebook", "instagram"]) 建空白草稿，caption 省略或空字串，沿既有上傳碼流程上傳 1–10 張圖／影片，一則一份素材。限動不能帶文字、captions、platform_options、未公開選項或 Threads；media_ids 可傳完整既有素材排序。get_publish_post 取得 version 與各平台 checks，所有選定平台須符合規則且帳號就緒。
 3. 詢問使用者立即發佈或台北排程時間；prepare_publish(post_id, version, scheduled_at?) 不送出。時間須含時區（+08:00）且在一分鐘後，省略代表立即。
 4. **完整呈現** details：品牌、每個平台帳號名稱、限動的 story_count／各平台接續進度／素材順序（沒有文案），一般貼文的主文案全文、平台覆寫全文、平台選項與實際生效選項、Threads 各段全文及已成功段數、提示、媒體檔名／型別／大小／尺寸／長度、立即或 +08:00 時間、是否只重試失敗平台。不得省略截斷；truncated 時禁止確認，縮短草稿後重新準備。details.facebook_unpublished 為 true 時，必須明確告知「Facebook 會存成草稿不發佈（可在 Meta Business Suite 草稿匣編輯後再發）（Instagram／Threads 照常公開）」。confirmation_code 是授權秘密，不必顯示給使用者。
@@ -11,6 +11,8 @@
 取消排程先詢問，cancel_schedule 回草稿；發佈前一分鐘鎖定後不可取消。改時間、文案或媒體先取消，save_publish_draft 後重新兩段式確認。已送出不可修改或刪除。
 
 失敗／部分成功先告知各平台結果，逾時或中斷請使用者到平台確認是否已發佈，避免重複。retry_failed_platforms(post_id, version) 等同 prepare_publish(retry=true)，只準備失敗平台，成功平台永不重送，限動依成功則數只接續失敗那則與後續素材，已有成功則時素材不可修改；完整呈現、明確同意後才 confirm_publish。重新排程可 prepare_publish(retry=true, scheduled_at=...)。
+
+文案可以用 Markdown（# 大標題、## 小標題、**粗體**、*斜體*、- 項目、1. 編號）。平台不支援 Markdown，發佈時工作檯會自動轉成純文字：# 大標題變「█ 大標題」、## 小標題變「▍小標題」、粗體與斜體的英文與數字轉成 Unicode 字形（中文只去掉符號）、- 項目變 •、編號不變；platform_captions 空白或只有空白字元時沿用共用文案。字數與 hashtag 規則依轉換後的文字檢查；prepare_publish 明細的 sent_captions 列出轉換後與原稿不同的平台實際送出的文字，呈現給使用者確認時以它為準。
 
 facebook_unpublished 只在使用者明確要求「存成 FB 草稿」時才設為 true（預設 false，只影響 Facebook；更新草稿時省略代表沿用原值）；改了選項要重新 prepare_publish 並再次取得同意，已送出不可更改。
 

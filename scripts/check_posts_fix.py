@@ -267,10 +267,12 @@ def main():
             expect(page.locator('.post-comment[data-depth="0"]')).to_have_count(50)
             expect(page.locator(".post-comment")).to_have_count(50)
             expect(page.locator(".comment-range-total")).to_have_text("此範圍 205 則")
-            assert (
-                page.locator(".post-metrics").evaluate("e => e.getBoundingClientRect().width")
-                == 380
-            )
+            # 成效在中間且是最寬的欄；貼文摘要與留言在右側。
+            assert page.locator(".post-metrics").evaluate("""e => {
+                const m = e.getBoundingClientRect(),
+                    c = document.querySelector('.post-conversation').getBoundingClientRect();
+                return m.right <= c.left && m.width > c.width;
+            }""")
             capture("fix-comments-1440x900")
             assert len(comment_requests) == 1 and "limit=50" in comment_requests[0]
             page.wait_for_timeout(3200)
@@ -345,7 +347,7 @@ def main():
                 metrics_first = page.locator(".post-metrics").evaluate("""e =>
                     e.getBoundingClientRect().bottom
                     <= document.querySelector('.post-comments').getBoundingClientRect().top""")
-                assert metrics_first == (width < 600)
+                assert metrics_first
             page.set_viewport_size({"width": 390, "height": 844})
             assert page.locator(".post-metrics").evaluate("""e =>
                     e.getBoundingClientRect().bottom
@@ -366,7 +368,7 @@ def main():
             expect(post_dates.get_by_role("radio", name="全部", exact=True)).to_have_attribute(
                 "aria-checked", "true"
             )
-            checks.append("mobile-metrics-before-comments-desktop-three-columns")
+            checks.append("mobile-tablet-metrics-before-comments-desktop-metrics-center")
             assert not errors and not external, (errors, external)
             browser.close()
         summary = {

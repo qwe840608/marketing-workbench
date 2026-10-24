@@ -15,8 +15,8 @@ from app.config import REPO_ROOT
 from app.models import Account, AuditLog, CommentPoll, Message, MetaApiCall, Post, Thread
 from app.schemas.meta import PollCheckpoint
 from app.services import comment_poll, date_ranges
-from app.services.gateway_workers import Workers
 from app.services.scheduler import Scheduler
+from app.services.workers import Workers
 
 
 def response(rows, after=None):

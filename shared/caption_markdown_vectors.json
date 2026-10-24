@@ -1,0 +1,19 @@
+{
+  "cases": [
+    { "name": "中文粗體只去掉符號", "text": "**測試**", "expected": "測試" },
+    { "name": "英數粗體", "text": "**New 2026** 新品", "expected": "𝗡𝗲𝘄 𝟮𝟬𝟮𝟲 新品" },
+    { "name": "底線粗體", "text": "__Hi__", "expected": "𝗛𝗶" },
+    { "name": "斜體", "text": "這是 *now* 喔", "expected": "這是 𝘯𝘰𝘸 喔" },
+    { "name": "標題", "text": "# 標題 Sale\n內文", "expected": "█ 標題 𝗦𝗮𝗹𝗲\n內文" },
+    { "name": "標題內含粗體", "text": "## **重點** A", "expected": "▍重點 𝗔" },
+    { "name": "大小標題", "text": "# 大標題\n### 小標題", "expected": "█ 大標題\n▍小標題" },
+    { "name": "項目清單", "text": "- 測試\n* 第二\n+ 第三", "expected": "• 測試\n• 第二\n• 第三" },
+    { "name": "編號清單不變", "text": "1. 甲\n2. 乙", "expected": "1. 甲\n2. 乙" },
+    { "name": "連結與程式碼", "text": "[看這裡](https://example.com) `code`", "expected": "看這裡 https://example.com code" },
+    { "name": "hashtag 不是標題", "text": "#主題 #標籤", "expected": "#主題 #標籤" },
+    { "name": "算式與檔名不變", "text": "2*3*4 snake_case_name https://a.com/x_y_z", "expected": "2*3*4 snake_case_name https://a.com/x_y_z" },
+    { "name": "減號與全形符號不變", "text": "價格 -50% ＜限定＞\n-不是清單", "expected": "價格 -50% ＜限定＞\n-不是清單" },
+    { "name": "粗體不跨行", "text": "**甲\n乙**", "expected": "**甲\n乙**" },
+    { "name": "空白文案", "text": "", "expected": "" }
+  ]
+}

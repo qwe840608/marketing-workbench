@@ -1,4 +1,5 @@
 import { t, locale } from './i18n.ts';
+import { TAIPEI } from './time.ts';
 
 export type FollowerSelection = { year: number; month: number; week: number };
 export type FollowerWeek = { week: number; date_from: string; date_to: string };
@@ -28,7 +29,7 @@ export function followerWeeks(year: number, month: number): FollowerWeek[] {
 }
 
 export function defaultFollowerSelection(now = new Date()): FollowerSelection {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TAIPEI, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
   const part = (name: string) => Number(parts.find(p => p.type === name)!.value);
   const year = part('year'), month = part('month'), day = part('day');
   const week = followerWeeks(year, month).find(w => Number(w.date_to.slice(-2)) >= day)!.week;

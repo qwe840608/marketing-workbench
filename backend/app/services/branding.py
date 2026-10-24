@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from app.config import REPO_ROOT
 from app.models import PromptVersion
-from app.services import ideation_settings, prompts, settings_store
+from app.services import ideation_settings, prompts, roles, settings_store
 from app.services.posts import _begin_ingest
 
 DEFAULT_NAME = "行銷管理工作檯"
@@ -20,7 +20,7 @@ def identity(session):
 
 
 def admin(access):
-    if access.staff.role != "admin":
+    if not roles.can(access, "settings.manage"):
         raise HTTPException(403, "僅管理員可修改工作區名稱及套用範本")
 
 

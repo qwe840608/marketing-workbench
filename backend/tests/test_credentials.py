@@ -17,7 +17,7 @@ from test_classify import classified_data as classified_data  # noqa: F401
 
 from app.models import AuditLog, PlatformCredential, Staff
 from app.services import credentials, jev, notify, receive_health
-from app.services.gateway_workers import Workers
+from app.services.workers import Workers
 
 
 def fake_value(name):

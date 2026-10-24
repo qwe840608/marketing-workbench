@@ -32,8 +32,8 @@ from app.schemas import agent_content
 from app.services import comment_poll, ideation_posts, oauth, youtube, youtube_oauth
 from app.services.access import BrandAccess
 from app.services.agent_queries import list_comments, list_posts, post_view
-from app.services.gateway_workers import WorkerError, Workers
 from app.services.passwords import hasher
+from app.services.workers import WorkerError, Workers
 
 CHANNEL = "UC_isolated"
 VIDEO = "test_video"
@@ -151,7 +151,7 @@ def yt(client, settings, monkeypatch):
             assert qs["ids"] == "channel==" + CHANNEL
             data = {
                 "columnHeaders": [{"name": name} for name in youtube.ANALYTICS_METRICS],
-                "rows": [[30, 120, 4, 2]],
+                "rows": [[30, 120, 4, 2, 62.5]],
             }
         elif edge == "commentThreads":
             page = int(qs.get("pageToken", "0"))
@@ -362,7 +362,9 @@ def test_metrics_followers_comments_mcp(yt):
         for m in snapshots
     )
     assert all(
-        m.extra_json["watch_hours"] == 2 and m.extra_json["subscribers_gained"] == 2
+        m.extra_json["watch_hours"] == 2
+        and m.extra_json["subscribers_gained"] == 2
+        and m.extra_json["avg_view_percentage"] == 62.5
         for m in snapshots
     )
     assert yt.worker.followers()["inserted"] == 1

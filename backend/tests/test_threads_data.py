@@ -33,17 +33,17 @@ from app.schemas.meta import PollClaim
 from app.services import (
     comment_poll,
     followers,
-    gateway_workers,
     ideation_posts,
     oauth,
     publish_presence,
 )
 from app.services import posts as posts_service
+from app.services import workers as gateway_workers
 from app.services.access import BrandAccess
 from app.services.agent_queries import list_posts as mcp_list_posts
 from app.services.agent_queries import post_view
-from app.services.gateway_workers import Workers
 from app.services.passwords import hasher
+from app.services.workers import Workers
 from app.services.workers import metrics as worker_metrics
 
 TOKEN = "isolated-threads-token"

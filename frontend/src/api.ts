@@ -5,6 +5,9 @@ export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
+// 各頁面把例外轉成可顯示的訊息：Error 取 message，其他一律用該頁的預設文字。
+export const errorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+
 let csrf = '';
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
@@ -44,14 +47,15 @@ export async function download(path: string, filename: string, body?: unknown) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-export type User = { id: number; username: string; display_name: string; role: string; must_change_password: boolean; language?: string | null; brand_ids: number[] };
+export type User = { id: number; username: string; display_name: string; role: string; role_name?: string | null; permissions?: string[]; must_change_password: boolean; language?: string | null; brand_ids: number[] };
 export type Brand = { id: number; name: string; slug: string };
 export type Post = { id: number; account_id: number; external_id: string; caption: string;
   permalink: string | null; media_type: string; visibility?: string | null; published_at: string; schedule_tier: string; thumbnail_url?: string | null };
 export type Metric = { id: number; captured_at: string; views: number | null; reach: number | null;
   likes: number | null; comments: number | null; shares: number | null; saves: number | null;
   avg_watch_time?: number | string | null;
-  extra_json: { watch_hours?: number | null; subscribers_gained?: number | null; unavailable?: Record<string, string | number>; reposts?: number | null; quotes?: number | null } };
+  extra_json: { watch_hours?: number | null; subscribers_gained?: number | null; unavailable?: Record<string, string | number>; reposts?: number | null; quotes?: number | null;
+    skip_rate?: number | null; avg_view_percentage?: number | null; retention?: number[] | null; metric_units?: Record<string, string> } };
 export type Message = {
   has_text: boolean;
   id: number; text: string; direction: string; contact_name: string; sent_at: string;

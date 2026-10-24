@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import type { Brand } from '../api';
 import { intents } from '../labels';
 import { t } from '../i18n.ts';
@@ -36,7 +36,7 @@ function IntentNotesEditor({ brandId, canEdit }: { brandId: string; canEdit: boo
     try {
       const value = await api<IntentNotes>('/classifications/intents?brand_id=' + brandId, { method: 'PUT', body: JSON.stringify(data) });
       if (mounted.current) { setData(value); setNotice(t('類別說明已儲存')); }
-    } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : t('儲存失敗')); }
+    } catch (e) { if (mounted.current) setError(errorMessage(e, t('儲存失敗'))); }
     finally { if (mounted.current) setBusy(false); }
   }
   return <section className="settings-section section-card intent-notes" aria-labelledby="intent-notes-title" aria-busy={busy}>

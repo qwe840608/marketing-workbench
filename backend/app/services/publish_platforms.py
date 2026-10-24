@@ -12,11 +12,9 @@ import httpx
 from fastapi import HTTPException
 
 from app.services import publish_rules
+from app.services.graph_api import FB, RUPLOAD, TH, VIDEO
 from app.services.publish_media import path_for
 
-FB = "https://graph.facebook.com/v26.0"
-VIDEO = "https://graph-video.facebook.com/v26.0"
-TH = "https://graph.threads.net/v1.0"
 HOSTS = {"graph.facebook.com", "graph-video.facebook.com", "graph.threads.net"}
 
 logger = logging.getLogger("mwb.publish")
@@ -234,7 +232,7 @@ def publish_reel(client, settings, account, token, post, media):
     value = request(client, FB, account + "/video_reels", token, data={"upload_phase": "start"})
     identity = safe_id(value.get("video_id"))
     # 僅允許本次 ID 的官方 rupload endpoint，禁止任意 URL 或重新導向。
-    upload_url = "https://rupload.facebook.com/video-upload/v26.0/" + identity
+    upload_url = RUPLOAD + identity
     if value.get("upload_url") != upload_url:
         raise PlatformFailure("unknown")
     item = media[0]
@@ -268,7 +266,7 @@ def publish_reel(client, settings, account, token, post, media):
             "upload_phase": "finish",
             "video_id": identity,
             "video_state": "DRAFT" if post.facebook_unpublished else "PUBLISHED",
-            "description": post.captions_json.get("facebook", post.caption),
+            "description": publish_rules.platform_caption(post, "facebook"),
         },
     )
     if finished.get("success") is not True:
@@ -406,7 +404,7 @@ def publish_single(
     cover_url=None,
 ):
     account = safe_id(account)
-    caption = post.captions_json.get(platform, post.caption)
+    caption = publish_rules.platform_caption(post, platform)
     with client_factory() as client:
         if platform == "facebook":
             # 「存成 FB 草稿」只影響 Facebook：貼文進 Business Suite 草稿匣、不發佈；
@@ -634,7 +632,7 @@ def facebook_story(client, settings, account, token, item):
         return safe_id(body.get("post_id", body.get("id")))
     start = request(client, FB, account + "/video_stories", token, data={"upload_phase": "start"})
     identity = safe_id(start.get("video_id"))
-    upload_url = "https://rupload.facebook.com/video-upload/v26.0/" + identity
+    upload_url = RUPLOAD + identity
     if start.get("upload_url") != upload_url:
         raise PlatformFailure("unknown")
     try:

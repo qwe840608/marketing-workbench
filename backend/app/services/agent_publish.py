@@ -32,7 +32,9 @@ from app.services.publish_rules import (
     VIDEO_MIMES,
     effective_options,
     is_short,
+    platform_caption,
     platform_options,
+    raw_caption,
     threads_segments,
     youtube_caption,
     youtube_title,
@@ -72,6 +74,8 @@ def public_targets(rows):
                 # Facebook：封面套用結果（status／code）。
                 "cover",
                 "privacy_status",
+                # TikTok：收件匣進度，指南據此說明「已送到收件匣」；publish_id、貼文編號不外露。
+                "inbox_state",
             }
         }
     return rows
@@ -325,6 +329,12 @@ def details(access, settings, post, selected, scheduled_at, retry):
         "accounts": {p: accounts[p].name for p in selected},
         "caption": post.caption,
         "platform_captions": post.captions_json,
+        # 只列出 Markdown 轉換後與原稿不同的平台（實際送出的文字），避免長文案在明細重複兩次。
+        "sent_captions": {}
+        if post.format == "story"
+        else {
+            p: text for p in selected if (text := platform_caption(post, p)) != raw_caption(post, p)
+        },
         "platform_options": platform_options(post),
         "effective_platform_options": effective_options(post),
         "threads_segments": threads_segments(post),
@@ -379,10 +389,20 @@ def kickoff(factory, settings, post_id):
     ).start()
 
 
+# confirm／retry／cancel 會對平台送出或撤回，與網頁的「送出發佈」同一個權限。
+SUBMIT_TOOLS = {"confirm_publish", "retry_failed_platforms", "cancel_schedule"}
+
+
+def tool_permission(name):
+    return "publish.submit" if name in SUBMIT_TOOLS else "publish.edit"
+
+
 def write(factory, settings, grant_id, name, body, origin=None):
     execute = False
     with factory() as session:
-        access, grant = agent_content.access_for(session, grant_id, write=True)
+        access, grant = agent_content.access_for(
+            session, grant_id, write=True, permission=tool_permission(name)
+        )
         source = {"agent": grant.name, "grant_id": grant.id}
         if name == "save_publish_draft":
             access.require_brand(body.brand_id, write=True)
@@ -598,7 +618,9 @@ async def upload(request, token):
             )
             if not row or row.used_at or row.expires_at <= utc_now():
                 raise HTTPException(410, "上傳連結已使用或過期；請重新取得上傳連結")
-            access, grant = agent_content.access_for(session, row.grant_id, write=True)
+            access, grant = agent_content.access_for(
+                session, row.grant_id, write=True, permission="publish.edit"
+            )
             if grant.staff_id != row.staff_id:
                 raise HTTPException(410, "上傳連結已失效")
             post = draft(access, row.post_id)
@@ -621,7 +643,9 @@ async def upload(request, token):
 
         def revalidate(session):
             session.expire_all()
-            access, grant = agent_content.access_for(session, grant_id, write=True)
+            access, grant = agent_content.access_for(
+                session, grant_id, write=True, permission="publish.edit"
+            )
             post = draft(access, identity)
             post_safety(access, post)
             record(

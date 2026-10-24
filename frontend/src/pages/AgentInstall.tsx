@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import { SegmentedControl } from './SegmentedControl';
 import './agent-auth.css';
 import { t } from '../i18n.ts';
@@ -21,7 +21,7 @@ export function AgentInstall() {
   useEffect(() => {
     const controller = new AbortController();
     api<InstallInfo>('/workspace/identity', { signal: controller.signal }).then(setInfo).catch(e => {
-      if (!controller.signal.aborted) setError(e instanceof Error ? e.message : t('安裝資訊載入失敗'));
+      if (!controller.signal.aborted) setError(errorMessage(e, t('安裝資訊載入失敗')));
     });
     return () => controller.abort();
   }, []);

@@ -33,6 +33,15 @@ REASONS = {
     "public_reputation_risk": "公開留言聲譽風險",
 }
 
+PLATFORM_NAMES = {
+    "line": "LINE",
+    "facebook": "Facebook",
+    "instagram": "Instagram",
+    "threads": "Threads",
+    "youtube": "YouTube",
+    "tiktok": "TikTok",
+}
+
 OAUTH_NOTICES = {
     "meta": "Meta 授權即將到期，請重新連結",
     "threads": "Threads 授權即將到期，請重新連結",
@@ -166,7 +175,10 @@ def emergency(thread_kind, values, policy):
         and values.get("public_reputation_risk", 0) > policy.public_reputation_risk_threshold
     ):
         return "public_reputation_risk"
-    if values.get("intent") == "complaint" or values.get("is_complaint", 0) >= 0.5:
+    # 友善語氣（玩笑、😂、同理貼文內容）時單憑 is_complaint 不算客訴，避免把調侃誤報為緊急。
+    if values.get("intent") == "complaint" or (
+        values.get("is_complaint", 0) >= 0.5 and values.get("sentiment", 0) < 0.75
+    ):
         return "complaint"
     if values.get("urgency", 0) >= policy.urgency_threshold:
         return "urgency"
@@ -295,17 +307,18 @@ def plan(factory, now):
 
 
 def compose(session, brand, notifications, settings):
-    lines = [f"緊急留言通知｜{brand.name}", "請到 Facebook／Instagram 原生 App 處理。"]
+    rows = []
     for row in notifications[:16]:
         thread = session.get(Thread, row.thread_id)
         account = session.get(Account, thread.account_id)
+        rows.append((row, PLATFORM_NAMES.get(account.platform, "原平台")))
+    platforms = list(dict.fromkeys(platform for _, platform in rows))
+    lines = [
+        f"緊急留言通知｜{brand.name}",
+        f"請到 {'／'.join(platforms) or '原平台'} 原生 App 處理。",
+    ]
+    for row, platform in rows:
         message = session.get(Message, row.message_id)
-        platform = {
-            "line": "LINE",
-            "facebook": "Facebook",
-            "instagram": "Instagram",
-            "threads": "Threads",
-        }.get(account.platform, "原平台")
         lines.append(
             f"{platform}｜{REASONS.get(row.reason, '緊急留言')}｜{redact(message.text).text[:180]}"
         )

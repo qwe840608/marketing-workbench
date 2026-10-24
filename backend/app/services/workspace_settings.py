@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile
 
 from fastapi import HTTPException
 
-from app.services import settings_store
+from app.services import roles, settings_store
 from app.services.export_data import validate_root
 from app.services.posts import _begin_ingest
 
@@ -11,7 +11,7 @@ EXPORT_KEY = "export_root"
 
 
 def export_view(access, settings, *, key=EXPORT_KEY):
-    if access.staff.role != "admin":
+    if not roles.can(access, "settings.manage"):
         raise HTTPException(403, "匯出目錄為全域設定，僅管理員可操作")
     row = settings_store.get(access.session, key)
     return {

@@ -1,4 +1,4 @@
-import { temporaryDirectory } from '../../scripts/runtime_tmp.mjs';
+import { backendPython, temporaryDirectory } from '../../scripts/runtime_tmp.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -12,7 +12,7 @@ test('React 粉絲數：平台切換、預設年月週、歷史標籤與數值�
     cwd: path.join(root, 'frontend'), encoding: 'utf8',
   });
   assert.equal(build.status, 0, build.stdout + build.stderr);
-  const result = spawnSync(path.join(root, 'backend/.venv/Scripts/python.exe'), ['../scripts/check_followers_frontend.py'], {
+  const result = spawnSync(backendPython(root), ['../scripts/check_followers_frontend.py'], {
     cwd: path.join(root, 'backend'), encoding: 'utf8', timeout: 100000,
     env: { ...process.env, PYTHONUTF8: '1', FRONTEND_DIST_DIR: dist },
   });

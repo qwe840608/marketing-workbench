@@ -7,6 +7,7 @@ from sqlalchemy import delete, func, select
 from app.db import ensure_write
 from app.models import AuditLog, AuthSession, Brand, Staff, StaffBrand
 from app.schemas.members import MemberCreate, MemberEdit
+from app.services import roles
 from app.services.passwords import hash_password
 
 PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
@@ -23,6 +24,8 @@ def staff_view(session, staff):
         "username": staff.username,
         "display_name": staff.display_name,
         "role": staff.role,
+        "role_name": roles.role_name(session, staff.role),
+        "permissions": sorted(roles.permissions_of(session, staff)),
         "must_change_password": staff.must_change_password,
         "language": staff.language,
         "brand_ids": list(
@@ -117,8 +120,14 @@ def protect_admin(session, staff):
         raise HTTPException(409, "最後一位啟用中的管理員不可停用或降級")
 
 
+def require_role_exists(session, key):
+    if not roles.exists(session, key):
+        raise HTTPException(422, "角色不存在")
+
+
 def create(access, body: MemberCreate):
     begin(access)
+    require_role_exists(access.session, body.role)
     if any(
         name.casefold() == body.username.casefold()
         for name in access.session.scalars(select(Staff.username))
@@ -138,6 +147,7 @@ def create(access, body: MemberCreate):
 
 def edit(access, identity, body: MemberEdit):
     staff = begin(access, identity)
+    require_role_exists(access.session, body.role)
     if body.role != "admin":
         protect_admin(access.session, staff)
     before = {

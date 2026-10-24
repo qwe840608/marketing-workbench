@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import { ConfirmDialog } from './ConfirmDialog';
 import { MemberDialog } from './Members';
 import './agent-auth.css';
-import { locale, t } from '../i18n.ts';
+import { t } from '../i18n.ts';
+import { taipeiDateTime } from '../time.ts';
 
 type Connection = { id: number; name: string; kind: 'oauth' | 'token'; created_at: string; last_used_at: string; expires_at: string };
-const time = (value: string) => new Date(value).toLocaleString(locale(), { timeZone: 'Asia/Taipei' });
+const time = (value: string) => taipeiDateTime(value);
 
 function CreateConnection({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [token, setToken] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState(''), [copied, setCopied] = useState(false);
@@ -17,7 +18,7 @@ function CreateConnection({ onClose, onCreated }: { onClose: () => void; onCreat
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const values = new FormData(event.currentTarget); setBusy(true); setError('');
     try { const result = await api<{ token: string }>('/agent/connections', { method: 'POST', body: JSON.stringify({ name: values.get('name') }) }); setToken(result.token); onCreated(); }
-    catch (e) { setError(e instanceof Error ? e.message : t('建立失敗')); }
+    catch (e) { setError(errorMessage(e, t('建立失敗'))); }
     finally { setBusy(false); }
   }
   function close() { if (!busy) { setToken(''); onClose(); } }
@@ -30,12 +31,12 @@ function CreateConnection({ onClose, onCreated }: { onClose: () => void; onCreat
 
 export function AgentConnections() {
   const [rows, setRows] = useState<Connection[]>([]), [loading, setLoading] = useState(true), [creating, setCreating] = useState(false), [error, setError] = useState(''), [revoking, setRevoking] = useState<Connection | null>(null), [busy, setBusy] = useState(false);
-  async function load() { try { setRows(await api<Connection[]>('/agent/connections')); } catch (e) { setError(e instanceof Error ? e.message : t('載入失敗')); } finally { setLoading(false); } }
+  async function load() { try { setRows(await api<Connection[]>('/agent/connections')); } catch (e) { setError(errorMessage(e, t('載入失敗'))); } finally { setLoading(false); } }
   useEffect(() => { void load(); }, []);
   async function revoke() {
     if (!revoking || busy) return; setBusy(true); setError(''); setRevoking(null);
     try { await api('/agent/connections/' + revoking.id, { method: 'DELETE' }); await load(); }
-    catch (e) { setError(e instanceof Error ? e.message : t('撤銷失敗')); }
+    catch (e) { setError(errorMessage(e, t('撤銷失敗'))); }
     finally { setBusy(false); }
   }
   return <section className="agent-connections" aria-busy={loading}>

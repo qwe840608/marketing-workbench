@@ -29,9 +29,9 @@ from app.models import (
 )
 from app.models.base import utc_now
 from app.services import ingest
-from app.services.gateway_workers import Workers
 from app.services.scheduler import INTERVALS, Scheduler
 from app.services.webhook_normalize import dump, verify_control, verify_signature
+from app.services.workers import Workers
 
 KEY = "isolated-fixture-key-" + "x" * 32
 BOT = "U" + "a" * 32
@@ -328,7 +328,7 @@ def test_scheduler_lease_restart_disable_and_results(gateway, monkeypatch):
     assert not first.claim("comments", now) and not second.claim("comments", now)
     assert second.claim("comments", now + timedelta(seconds=121))
     monkeypatch.setattr(
-        "app.services.gateway_workers.Workers.comments",
+        "app.services.workers.Workers.comments",
         lambda *a, **k: {"ok": True, "completed": 2, "paused": False},
     )
     second.execute("comments")
@@ -385,7 +385,7 @@ def test_scheduler_independent_jobs_no_overlap_and_heartbeat(gateway, monkeypatc
 )
 def test_same_payload_database_matches_baseline(gateway, row, monkeypatch):
     client, settings, factory = gateway
-    from app.services.webhook_normalize import meta_envelopes
+    from app.services.webhook_normalize import iter_meta_envelopes
 
     payload = json.loads(base64.b64decode(row["raw"]))
     expected = [
@@ -394,7 +394,7 @@ def test_same_payload_database_matches_baseline(gateway, row, monkeypatch):
     envelopes = (
         []
         if row["name"] == "line-inbound"
-        else meta_envelopes(payload, settings.meta_page_id, settings.meta_ig_account_id)
+        else list(iter_meta_envelopes(payload, settings.meta_page_id, settings.meta_ig_account_id))
     )
     if row["name"] == "line-inbound" or any("messaging" in e for e in payload.get("entry", [])):
         raw = dump(payload).encode()
@@ -648,7 +648,7 @@ def test_scheduler_settings_admin_csrf_version_and_audit(client, send_data, sett
 
 
 def test_missing_transport_credentials_never_call_platform(settings):
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
 
     # 沒有資料庫工廠：任何 service 呼叫都會在開 session 時失敗，等同舊測試的「後端不得被呼叫」。
     worker = Workers(

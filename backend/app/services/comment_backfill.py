@@ -5,11 +5,11 @@ from sqlalchemy import func, select
 
 from app.models import Account, CommentBackfill, CommentPoll, Message, Thread
 from app.models.base import utc_now
-from app.services import meta_api
+from app.services import meta_api, roles
 
 
 def start(access, brand_id=None, platform=None, *, settings):
-    if access.staff.role not in {"admin", "marketing"}:
+    if not roles.can(access, "posts.sync"):
         raise HTTPException(403, "此帳號僅能檢視資料")
     if brand_id is not None:
         access.require_brand(brand_id, write=True)

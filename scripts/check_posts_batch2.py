@@ -162,8 +162,14 @@ def main():
                         likes=index * 3,
                         shares=0,
                         saves=None,
+                        # IG Reels 有影片觀看表現：平均觀看時長以毫秒保存，另有總時數、滑走率與留存。
+                        avg_watch_time=index * 1500 if platform == "instagram" else None,
                         extra_json={"reposts": index, "quotes": index // 2}
                         if platform == "threads"
+                        else {"metric_units": {"avg_watch_time": "milliseconds"},
+                              "watch_hours": index * 0.25, "skip_rate": 40 + index,
+                              "retention": [100, 80, 61.5, 40]}
+                        if platform == "instagram"
                         else {},
                     )
                 )
@@ -314,6 +320,32 @@ def main():
             page.locator(".post-card").click()
             expect(page.locator(".post-comment")).to_have_count(5)
             capture("ig-reels-1440x900")
+            watch = page.get_by_role("region", name="觀看表現")
+            expect(watch.locator(".watch-grid span")).to_have_text(
+                ["平均觀看時長（秒）", "觀看總時數（小時）", "前 3 秒滑走率（%）"]
+            )
+            expect(watch.locator(".watch-grid strong")).to_have_text(["4.5", "0.75", "43"])
+            expect(page.locator(".retention-chart .metric-note")).to_have_text(
+                "影片中段仍在看：61.5% · 看到結尾：40%"
+            )
+            # 觀看變化與觀眾留存各自一張有外框的卡片，觀看指標用分頁籤切換。
+            watch_chart = page.get_by_role("region", name="觀看變化")
+            watch_tabs = watch_chart.get_by_role("tab")
+            expect(watch_tabs).to_have_text(["平均觀看時長（秒）", "觀看總時數（小時）", "前 3 秒滑走率（%）"])
+            expect(watch_tabs.first).to_have_attribute("aria-selected", "true")
+            watch_tabs.nth(2).click()
+            expect(watch_tabs.nth(2)).to_have_attribute("aria-selected", "true")
+            expect(watch_chart.locator("svg")).to_have_attribute("aria-label", "前 3 秒滑走率（%）變化，4筆有效快照，最高43")
+            for name in ("數據變化", "觀看變化", "觀眾留存"):
+                assert page.get_by_role("region", name=name).evaluate("e => getComputedStyle(e).borderTopStyle") == "solid", name
+            expect(page.locator(".post-metrics .metric-chart select")).to_have_count(0)
+            # 數據快照標題與上方卡片留出間距。
+            assert page.locator(".snapshot-heading").evaluate(
+                "e => e.getBoundingClientRect().top - e.previousElementSibling.getBoundingClientRect().bottom >= 28"
+            )
+            page.locator(".post-metrics").evaluate("e => e.scrollTop = e.querySelector('.watch-chart').offsetTop - 120")
+            capture("ig-watch-charts-1440x900")
+            checks.append("ig-reels-watch-time-skip-rate-retention")
             panel.get_by_role("tab", name="Threads", exact=True).click()
             expect(panel.get_by_role("tab", name="Threads", exact=True)).to_have_attribute(
                 "aria-selected", "true"
@@ -411,8 +443,9 @@ def check_threads_detail(page, expect):
     assert page.locator(".metric-grid > div strong").all_inner_texts() == ["360", "9", "6", "3", "1", "0"]
     for missing in ("觸及", "收藏"):
         assert page.locator(".post-metrics").get_by_text(missing, exact=True).count() == 0, missing
-    expect(page.locator(".metric-chart select option")).to_have_text(names)
-    expect(page.locator(".metric-chart select")).to_have_value("views")
+    tabs = page.get_by_role("region", name="數據變化").get_by_role("tab")
+    expect(tabs).to_have_text(names)
+    expect(tabs.first).to_have_attribute("aria-selected", "true")
     assert page.locator(".snapshot-table th").all_inner_texts() == ["抓取時間", "觀看", "按讚", "回覆"]
     # 成效面板 380px：抓取時間「日期 時間」與指標欄名都排在同一行，不拆開、不直排。
     lines = page.locator(".snapshot-table").evaluate(

@@ -179,7 +179,7 @@ def threads_listing(token):
 
 
 def meta_listing(workers, platform, account, edge=None):
-    from app.services.gateway_workers import WorkerError
+    from app.services.workers import WorkerError
 
     ids, after = set(), None
     context = {"platform": platform, "account_external_id": account, "source": "metrics"}
@@ -220,7 +220,7 @@ def draft_presence(workers, account, targets):
     不存在的影片回 100/33；不存在的貼文回 10，但 10 也可能是權限不足，
     所以先確認同一權杖讀得到粉專本身，才把 10 視為不存在。
     """
-    from app.services.gateway_workers import WorkerError
+    from app.services.workers import WorkerError
 
     context = {"platform": "facebook", "account_external_id": account, "source": "metrics"}
     present, missing = set(), set()
@@ -252,7 +252,7 @@ def draft_presence(workers, account, targets):
 
 def youtube_listing(workers):
     """頻道 uploads 清單（含私人與不公開影片）；任何失敗都不判定。"""
-    from app.services.gateway_workers import WorkerError
+    from app.services.workers import WorkerError
     from app.services.youtube import Sync
 
     try:
@@ -266,7 +266,7 @@ def youtube_listing(workers):
 
 def run(factory, settings, *, brand_id=None, platforms=tuple(NAMES), workers=None, now=None):
     """排程與手動共用的判定入口；FB／IG 重新抓完整清單（經 Meta 呼叫配額）。"""
-    from app.services.gateway_workers import Workers
+    from app.services.workers import Workers
 
     now = now or utc_now()
     result = {"checked": 0, "newly_deleted": 0, "restored": 0, "unresolved": []}

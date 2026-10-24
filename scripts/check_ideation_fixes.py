@@ -611,7 +611,9 @@ def check_ideapolish(page, origin, report_id, width, height):
         expect(action).to_have_class("secondary")
     # Hold a mocked creation request to prove the immediate one-second clock.
     page.clock.install()
-    began = page.evaluate("Date.now()")
+    # 暫停時鐘，只有 run_for 會前進；否則慢機器（例如 CI）上 reload 的實際耗時會灌進計時。
+    began = page.evaluate("Date.now()") + 1000
+    page.clock.pause_at(datetime.fromtimestamp(began / 1000, UTC))
     page.get_by_role("button", name="立即發想", exact=True).click()
     expect(page.locator('[role=timer]').first).to_contain_text("已執行 0:00")
     # Optimistic timing renders before the CSRF fetch and mocked POST arrive.
@@ -1237,7 +1239,7 @@ def main():
                         assert parse_qs(urlsplit(page.url).query)["post_id"] == [
                             str(post_id)
                         ]
-                        expect(page.locator(".post-intro h2")).to_have_text(
+                        expect(page.locator(".post-intro .post-caption")).to_have_text(
                             "[隔離驗收] 原話留言定位貼文"
                         )
                     capture(kind + "-focused")

@@ -529,7 +529,7 @@ def main(extra_checks=None):
             page.set_viewport_size({"width": 390, "height": 844})
             page.locator(".metric-chart").screenshot(path=str(output_dir() / "curve-mobile.png"))
             page.set_viewport_size({"width": 1440, "height": 980})
-            page.get_by_role("combobox", name="曲線指標", exact=True).select_option("saves")
+            page.get_by_role("tablist", name="曲線指標", exact=True).get_by_role("tab", name="收藏", exact=True).click()
             expect(page.locator(".metric-chart")).to_contain_text("尚無「收藏」的有效快照")
             one_brand(page)
             page.reload()

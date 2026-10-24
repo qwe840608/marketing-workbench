@@ -1,6 +1,6 @@
 import { PageHeader } from './PageHeader';
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, errorMessage } from '../api';
 import { intents } from '../labels';
 import { ReportExport } from './Exports';
 import { DashboardTrend } from './DashboardTrend';
@@ -9,13 +9,14 @@ import { DashboardAudience } from './DashboardAudience';
 import { growthDirection, growthText } from '../growth';
 import { pollWhileVisible } from '../visiblePolling';
 import { t, locale } from '../i18n.ts';
+import { formatTaipei } from '../time.ts';
 
 type RankedPost = { id: number; caption: string; platform: string; reach: number; captured_at: string; thumbnail_url?: string | null };
 type Summary = { week_start: string; as_of: string; new_messages: number; new_comments: number;
   previous?: { start: string; end: string; new_comments: number };
   top_intent: { intent: string; count: number } | null;
   intents: { intent: string; count: number }[]; highest_reach: RankedPost[]; lowest_reach: RankedPost[] };
-const date = (value: string) => new Intl.DateTimeFormat(locale(), { timeZone: 'Asia/Taipei', month: 'long', day: 'numeric' }).format(new Date(value));
+const date = (value: string) => formatTaipei(value, { month: 'long', day: 'numeric' });
 const number = (value: number) => value.toLocaleString(locale());
 
 export function Dashboard({ brand, canExport, onPost }: { brand: string; canExport: boolean; onPost: (id: number) => void }) {
@@ -28,7 +29,7 @@ export function Dashboard({ brand, canExport, onPost }: { brand: string; canExpo
       try {
         const value = await api<Summary>(`/dashboard${brand ? `?brand_id=${brand}` : ''}`, { signal });
         if (!signal.aborted) { setData(value); setError(''); }
-      } catch (e) { if (!signal.aborted) setError(e instanceof Error ? e.message : t('儀表板暫時無法讀取')); }
+      } catch (e) { if (!signal.aborted) setError(errorMessage(e, t('儀表板暫時無法讀取'))); }
     }, 15000);
   }, [brand, revision]);
   const most = Math.max(1, ...(data?.intents.map(x => x.count) ?? []));

@@ -37,7 +37,8 @@ UNIFORM = """() => {
             // 使用者 2026-10-14 指定：設定分頁大小一致（其他底線分頁仍依內容寬度）。
             check(spread <= 1, 'settings tabs equal widths');
         } else {
-            check(buttons.length > 1 ? spread > 8 : buttons[0].offsetWidth < tabs.clientWidth,
+            // 標籤字數相同（例如曲線指標「觀看」「觸及」）時寬度自然一樣，只要沒有被拉伸就算依內容寬度。
+            check(buttons.length > 1 ? spread > 8 || buttons.every(e => getComputedStyle(e).flexGrow === '0') : buttons[0].offsetWidth < tabs.clientWidth,
                   'tabs use content widths');
         }
         check(r.left >= 0 && r.right <= innerWidth + 1 && tabs.scrollWidth >= tabs.clientWidth, 'tabs own scroll container');
@@ -865,11 +866,11 @@ def content_operations(audit, origin, bid, pid, rid, sid):
     navigate(page, "儀表板")
     expect(page.locator(".ranked-post").first).to_be_visible()
     page.locator(".ranked-post").first.click()
-    expect(page.locator(".post-intro h2")).to_have_text("[隔離驗收] 完整功能操作貼文")
+    expect(page.locator(".post-intro .post-caption")).to_have_text("[隔離驗收] 完整功能操作貼文")
     # 標題可先於網址 effect 呈現；等選取狀態寫入網址再驗證重整保留。
     page.wait_for_function("id => new URLSearchParams(location.search).get('post_id') === String(id)", arg=pid)
     page.reload()
-    expect(page.locator(".post-intro h2")).to_be_visible()
+    expect(page.locator(".post-intro .post-caption")).to_be_visible()
     dates = page.get_by_role("group", name="留言日期", exact=True)
     for days in (7, 90, 30):
         dates.get_by_role("radio", name=f"近 {days} 天", exact=True).click()

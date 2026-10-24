@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { t, tx } from '../i18n.ts';
+import { toPlatformText } from '../markdownText';
 import { foldCaption, hashtags, isShort, platformLabels, previewRatio } from '../publishComposer';
 import type { Format, Platform, PlatformOptions, ComposerMedia } from '../publishComposer';
 
@@ -12,7 +13,7 @@ function Highlighted({ text }: { text: string }) {
 function Caption({ text, platform, author }: { text: string; platform: Platform; author?: string }) {
   const [expanded, setExpanded] = useState(false);
   const folded = foldCaption(text, platform, expanded);
-  if (!text) return null;
+  if (!folded.text) return null;
   return <p className="publish-preview-caption">{author && <strong className="publish-preview-author">{author} </strong>}<Highlighted text={folded.text} />{folded.folded && <> <button className="publish-preview-more" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? t('收合') : t('更多')}</button></>}</p>;
 }
 const ICONS: Record<string, string> = {
@@ -37,7 +38,8 @@ export function PublishPreview({ platform, enabled, shared, onPlatform, name, br
   const [storyIndex, setStoryIndex] = useState(0);
   const position = Math.min(storyIndex, Math.max(0, media.length - 1));
   const shownMedia = format === 'story' ? media.slice(position, position + 1) : media;
-  const segments = platform === 'threads' ? options.threads.segments.length ? options.threads.segments : [''] : [caption];
+  // 預覽顯示實際送出的文字：Markdown 已轉成平台顯示得出來的格式。
+  const segments = (platform === 'threads' ? options.threads.segments.length ? options.threads.segments : [''] : [caption]).map(toPlatformText);
   return <aside className={'publish-preview' + (format === 'story' ? ' publish-story-preview' : '')} aria-label={format === 'story' ? t('限時動態預覽') : t('貼文預覽')}>
     {shared && enabled.length > 0 && <div className="publish-preview-tabs" role="group" aria-label={t('預覽平台')}>{enabled.map(p => <button key={p} className="secondary small" aria-pressed={platform === p} onClick={() => onPlatform(p)}>{platformLabels[p]}</button>)}</div>}
     {platform ? <div className={'publish-preview-thread is-' + platform + (platform === 'threads' && segments.length > 1 ? ' is-thread' : '')}>{segments.map((text, i) => {
