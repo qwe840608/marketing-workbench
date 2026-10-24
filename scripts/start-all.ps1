@@ -67,6 +67,13 @@ try {
     $uv = (Get-Command uv.exe -ErrorAction Stop).Source
     Invoke-Step $node @('scripts/webhooks.mjs', 'resolve-ngrok') $projectRoot '確認 ngrok 執行檔（PATH、NGROK_PATH、LOCALAPPDATA）與 NGROK_AUTHTOKEN'
     Invoke-Step $node @('scripts/webhooks.mjs', 'prepare') $projectRoot '初始化 Webhook 簽章設定'
+    Push-Location $projectRoot
+    try {
+        $port = & $node --input-type=module -e "import {readSettings,backendPort} from './scripts/webhooks.mjs'; console.log(backendPort(readSettings()))"
+        if ($LASTEXITCODE -ne 0) { throw '後端連接埠設定不合法（BACKEND_INTERNAL_URL／APP_ORIGIN）。' }
+    } finally { Pop-Location }
+    $port = [int]$port
+    $localUrl = "http://127.0.0.1:$port"
     $python = Join-Path $projectRoot 'backend/.venv/Scripts/python.exe'
     $backend = Get-MwbProcess -Name backend -Root $projectRoot
     $gateway = Get-MwbProcess -Name gateway -Root $projectRoot
@@ -93,7 +100,22 @@ try {
         Stop-MwbProcess -Name backend -Root $projectRoot
         $backend = $null; $gateway = $null
     }
-    if (-not $backend) { Assert-MwbPortFree -Port 8000 }
+    if (-not $backend -and -not (Test-Path -LiteralPath $fingerprintPath) -and -not [Console]::IsInputRedirected -and -not (Test-MwbPortFree -Port $port)) {
+        # 第一次啟動才問：預設 8000 常被其他開發工具佔用。之後啟動（含開機自動啟動）沿用 .env，不再互動。
+        $answer = Read-Host "連接埠 $port 已被其他程式佔用。要改用哪個連接埠（例如 8010）？直接按 Enter 取消"
+        if (-not $answer) { throw "已取消。連接埠 $port 被佔用；可用 Get-NetTCPConnection -LocalPort $port 查是哪個程序。" }
+        $newPort = 0
+        if (-not [int]::TryParse($answer.Trim(), [ref]$newPort) -or -not (Test-MwbPortFree -Port $newPort)) { throw "連接埠 $answer 不能使用或也被佔用，未變更設定。" }
+        Push-Location $projectRoot
+        try {
+            & $node --input-type=module -e "import {readSettings,saveSettings,portSettings} from './scripts/webhooks.mjs'; saveSettings(portSettings(readSettings(), Number(process.argv[1])))" $newPort
+            if ($LASTEXITCODE -ne 0) { throw '無法把新的連接埠寫入 .env。' }
+        } finally { Pop-Location }
+        $port = $newPort
+        $localUrl = "http://127.0.0.1:$port"
+        Write-Host "已改用 $localUrl（.env 的 BACKEND_INTERNAL_URL 與 APP_ORIGIN 已更新）。"
+    }
+    if (-not $backend) { Assert-MwbPortFree -Port $port }
     if (-not $gateway) { Assert-MwbPortFree -Port 4040 }
     if (-not $backend) {
         Invoke-Step $uv @('sync', '--frozen') (Join-Path $projectRoot 'backend') '同步後端套件'
@@ -121,12 +143,12 @@ try {
         $previousAlertOverride = $env:RECEIVE_HEALTH_ALERTS_ENABLED
         if ($SuppressSystemAlerts) { $env:RECEIVE_HEALTH_ALERTS_ENABLED = 'false' }
         try {
-        $servicePid = Start-MwbDetached -FilePath $python -ArgumentList @('-m', 'uvicorn', 'app.main:app', '--app-dir', (Join-Path $projectRoot 'backend'), '--host', '127.0.0.1', '--port', '8000', '--workers', '1', '--proxy-headers', '--forwarded-allow-ips', '127.0.0.1') -WorkingDirectory (Join-Path $projectRoot 'backend') -StdoutPath (Join-Path $runtime 'backend.stdout.log') -StderrPath (Join-Path $runtime 'backend.stderr.log')
+        $servicePid = Start-MwbDetached -FilePath $python -ArgumentList @('-m', 'uvicorn', 'app.main:app', '--app-dir', (Join-Path $projectRoot 'backend'), '--host', '127.0.0.1', '--port', ([string]$port), '--workers', '1', '--proxy-headers', '--forwarded-allow-ips', '127.0.0.1') -WorkingDirectory (Join-Path $projectRoot 'backend') -StdoutPath (Join-Path $runtime 'backend.stdout.log') -StderrPath (Join-Path $runtime 'backend.stderr.log')
         } finally { $env:RECEIVE_HEALTH_ALERTS_ENABLED = $previousAlertOverride }
         Set-Content -LiteralPath (Join-Path $runtime 'backend.pid') -Value $servicePid -Encoding ASCII
         $started.Add('backend')
     }
-    Wait-MwbHealth -Url 'http://127.0.0.1:8000/api/health' -Name backend -Root $projectRoot
+    Wait-MwbHealth -Url "$localUrl/api/health" -Name backend -Root $projectRoot
     Push-Location $projectRoot
     try {
         $gatewaySeconds = & $node --input-type=module -e "import {readSettings,gatewayStartupSeconds} from './scripts/webhooks.mjs'; console.log(gatewayStartupSeconds(readSettings()))"
@@ -164,7 +186,7 @@ try {
     if ($tailscaleEnabled -eq 'true') {
         # Tailscale 只影響內部 HTTPS 入口；暫時失敗不停止服務，本機網址仍可使用。
         if (-not (Invoke-StepWithRetry $node @('scripts/tailscale.mjs', 'check') $projectRoot '驗證 Tailscale HTTPS')) {
-            Write-Warning 'Tailscale HTTPS 驗證約 2 分鐘內仍未通過；服務維持執行，本機 http://127.0.0.1:8000 可用。網路就緒後執行 node scripts/tailscale.mjs check 確認。'
+            Write-Warning "Tailscale HTTPS 驗證約 2 分鐘內仍未通過；服務維持執行，本機 $localUrl 可用。網路就緒後執行 node scripts/tailscale.mjs check 確認。"
         }
     }
     else { Write-Host 'Tailscale 尚未設定；登入後執行 node scripts/tailscale.mjs configure。' }
@@ -173,7 +195,7 @@ try {
     Add-Content -LiteralPath (Join-Path $runtime 'gateway-startup-times.jsonl') -Value ($timing | ConvertTo-Json -Compress) -Encoding UTF8
     $timingLabel = if ($gatewayReused) { '既有服務就緒檢查' } else { 'ngrok 就緒（含固定網址驗收）' }
     Write-Host "$timingLabel 耗時 $($timing.seconds) 秒；趨勢紀錄：.runtime/gateway-startup-times.jsonl"
-    Write-Host '啟動完成：http://127.0.0.1:8000 （關閉此視窗不會停止服務）'
+    Write-Host "啟動完成：$localUrl （關閉此視窗不會停止服務）"
 } catch {
     foreach ($name in $started) { try { Stop-MwbProcess -Name $name -Root $projectRoot } catch { } }
     Write-Error $_.Exception.Message

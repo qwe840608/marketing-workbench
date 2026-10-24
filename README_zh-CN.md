@@ -57,12 +57,11 @@
 # 1. 创建配置文件并填入 NGROK_AUTHTOKEN；数据路径可留空（见下方“环境变量”）
 copy .env.example .env
 
-# 2. 后端：安装依赖、生成加密主密钥、创建数据库、创建第一个管理员与品牌（密码在终端中输入）
+# 2. 后端：安装依赖、生成加密主密钥、创建数据库
 cd backend
 uv sync
 uv run python ../scripts/initialize_ai_encryption.py
 uv run alembic upgrade head
-uv run python ../scripts/set_password.py <管理员账号> --create-admin --brand "<品牌名称>"
 
 # 3. 前端：构建
 cd ../frontend
@@ -78,7 +77,9 @@ cd ..
 
 ## 使用示例
 
-启动后打开 http://127.0.0.1:8000 登录，在“设置”的平台连接卡片中填入各平台应用的密钥并点击“连接”。每张卡片的设置教程会列出需要填到平台后台的回调地址。
+首次启动时若 8000 已被其他程序占用，`start-all.ps1` 会询问改用哪个端口并写入 `.env`。
+
+启动后在运行工作台的电脑上打开 http://127.0.0.1:8000（或你改用的端口），首次会看到初始设置页，填入管理员账号、密码与品牌名称后自动登录。之后在“设置”的平台连接卡片中填入各平台应用的密钥并点击“连接”。每张卡片的设置教程会列出需要填到平台后台的回调地址。
 
 让 Claude Code 连接工作台（地址从“设置 → 我的账号 → 安装 Agent”复制）：
 

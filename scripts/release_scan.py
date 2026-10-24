@@ -1,7 +1,7 @@
 """Scan a git repository that is about to be published for secrets and private data.
 
 Run from the private repository root, pointing at the public copy:
-    uv run --project backend python scripts/release_scan.py ../marketing-workbench-public
+    uv run --project backend python scripts/release_scan.py ../marketing-workbench
 
 Every blob reachable from any ref is scanned (the whole history, not only the working tree),
 plus commit and tag metadata (author/committer names and e-mails, messages).

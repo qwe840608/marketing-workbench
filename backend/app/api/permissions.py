@@ -78,6 +78,9 @@ ROUTE_POLICY = {
     ("POST", "/api/auth/logout"): "all",
     ("GET", "/api/auth/me"): "all",
     ("POST", "/api/auth/recover"): "public",
+    # 只在沒有任何帳號時、且請求來自主機本身才可建立（service 重驗）。
+    ("GET", "/api/auth/setup"): "public",
+    ("POST", "/api/auth/setup"): "public",
     ("GET", "/api/auth/recovery-code"): "admin",
     ("POST", "/api/auth/recovery-code"): "admin",
     ("GET", "/api/brands"): "all",

@@ -198,4 +198,8 @@ export default {
   "找不到角色": "Role not found",
   "權限清單包含不存在的項目": "The permission list contains an unknown item",
   "角色不存在": "This role doesn’t exist",
+  "首次設定只能在執行工作檯的電腦上開啟本機網址完成": "First-time setup only works from the local address on the computer that runs the workbench",
+  "工作檯已經建立過管理員，請直接登入": "An admin already exists. Sign in instead.",
+  "帳號名稱須為 1–80 個字元": "Usernames must be 1–80 characters",
+  "品牌名稱須為 1–200 個字元": "Brand names must be 1–200 characters",
 } satisfies Record<string, string>;

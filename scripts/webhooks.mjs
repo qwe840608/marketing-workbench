@@ -67,6 +67,23 @@ export function backendAddress(settings = {}) {
   if (!/^http:\/\/(127\.0\.0\.1|localhost):\d{1,5}$/.test(base)) throw new Error('BACKEND_INTERNAL_URL 必須為 loopback。');
   return base;
 }
+// 後端埠號以 BACKEND_INTERNAL_URL 為準，同一台電腦可並存另一份工作檯（例如測試安裝）。
+export function backendPort(settings = {}) {
+  const base = backendAddress(settings), port = Number(new URL(base).port || 80);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('BACKEND_INTERNAL_URL 的連接埠不合法。');
+  // APP_ORIGIN 的本機網址埠號不同時，瀏覽器送出的 Origin 會被後端拒絕，登入後所有寫入都失敗。
+  const local = (settings.APP_ORIGIN || '').split(',').map(v => v.trim()).filter(v => /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(v));
+  if (local.length && !local.some(v => Number(new URL(v).port || 80) === port)) throw new Error(`APP_ORIGIN 的本機網址必須使用 BACKEND_INTERNAL_URL 的連接埠 ${port}。`);
+  return port;
+}
+// 改用其他埠號時，後端位址與 APP_ORIGIN 的本機網址一起換；HTTPS 來源（Tailscale）不動。
+export function portSettings(settings, port) {
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('連接埠須為 1024～65535 的整數。');
+  const origins = (settings.APP_ORIGIN || 'http://127.0.0.1:8000').split(',').map(v => v.trim()).filter(Boolean)
+    .map(v => /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(v) ? `http://${new URL(v).hostname}:${port}` : v);
+  if (!origins.some(v => v.startsWith('http://127.0.0.1:') || v.startsWith('http://localhost:'))) origins.unshift(`http://127.0.0.1:${port}`);
+  return { BACKEND_INTERNAL_URL: `http://127.0.0.1:${port}`, APP_ORIGIN: [...new Set(origins)].join(',') };
+}
 export function gatewayStartupSeconds(settings = {}) {
   const seconds = Number(settings.GATEWAY_STARTUP_TIMEOUT_SECONDS || 120);
   if (!Number.isInteger(seconds) || seconds < 1 || seconds > 3600) throw new Error('GATEWAY_STARTUP_TIMEOUT_SECONDS 必須為 1～3600 整數秒。');

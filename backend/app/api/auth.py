@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, Response
 from app.api.dependencies import Access, Database
 from app.schemas.auth import (
     CSRFView,
+    InitialSetup,
     LanguageUpdate,
     LoginInput,
     LoginView,
@@ -11,6 +12,7 @@ from app.schemas.auth import (
     RecoveryCodeCreate,
     RecoveryCodeView,
     RecoveryStatus,
+    SetupStatus,
     StaffView,
 )
 from app.services import auth, members
@@ -58,6 +60,34 @@ def login(body: LoginInput, request: Request, response: Response, session: Datab
         request.headers.get("x-csrf-token"),
         body.username,
         body.password,
+    )
+    set_session_cookie(response, request, credentials)
+    return {"user": members.staff_view(session, staff), "csrf_token": credentials.csrf_token}
+
+
+def is_local(request: Request) -> bool:
+    return auth.local_request(
+        request.client.host if request.client else None, request.headers.get("host")
+    )
+
+
+@router.get("/setup", response_model=SetupStatus)
+def setup_status(request: Request, session: Database):
+    return {"needed": auth.setup_needed(session), "local": is_local(request)}
+
+
+@router.post("/setup", response_model=LoginView)
+def initial_setup(body: InitialSetup, request: Request, response: Response, session: Database):
+    check_origin(request)
+    staff, credentials = auth.initial_setup(
+        session,
+        request.app.state.settings,
+        request.cookies.get(auth.COOKIE_NAME),
+        request.headers.get("x-csrf-token"),
+        is_local(request),
+        body.username,
+        body.password,
+        body.brand_name,
     )
     set_session_cookie(response, request, credentials)
     return {"user": members.staff_view(session, staff), "csrf_token": credentials.csrf_token}

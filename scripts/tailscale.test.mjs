@@ -22,3 +22,8 @@ test('只有自己的內部 HTTPS 代理可重用', () => {
   assert.equal(checkServe({}, dns), false);
   assert.equal(checkServe({ TCP: { '443': { HTTPS: true } }, Web: { [`${dns}:443`]: { Handlers: { '/': { Proxy: 'http://127.0.0.1:8000' } } } } }, dns), true);
 });
+test('改用其他後端埠號時只認該埠號的代理', () => {
+  const serve = (proxy) => ({ TCP: { '443': { HTTPS: true } }, Web: { [`${dns}:443`]: { Handlers: { '/': { Proxy: proxy } } } } });
+  assert.equal(checkServe(serve('http://127.0.0.1:8010'), dns, 'http://127.0.0.1:8010'), true);
+  assert.throws(() => checkServe(serve('http://127.0.0.1:8000'), dns, 'http://127.0.0.1:8010'));
+});

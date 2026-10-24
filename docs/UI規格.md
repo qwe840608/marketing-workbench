@@ -90,6 +90,7 @@
 - 新增與編輯沿用既有 modal 外框，`.member-dialog` 具 dialog／aria-modal、標題關聯、Esc、Tab 焦點循環與關閉後焦點還原。角色使用 `.member-role-options` 單選清單；非管理員顯示品牌 checkbox，單一品牌預設勾選。管理員隱藏品牌 checkbox，顯示「管理員可存取全部品牌」。
 - 提交用 primary，取消／複製／重設密碼／啟用用 secondary，停用用 primary danger 並經 ConfirmDialog 二次確認。保護規則錯誤用 `.notice.danger`，不使用 window.confirm。每個提交區塊只放一顆主要提交按鈕。
 - 我的帳號密碼表單後，管理員多一段 `.recovery-code`：h3「密碼復原碼」與狀態膠囊（已設定 `.ready`／尚未設定 `.neutral`）同列，說明、「確認目前密碼」欄位與 secondary「產生復原碼／重新產生復原碼」。成功後沿用 `.member-dialog` 與 `.temporary-password` 顯示一次復原碼，secondary 複製與「我已保存」。
+- 首次設定頁：資料庫沒有任何帳號時，未登入畫面改顯示首次設定，沿用登入頁版面與欄位樣式。左側 eyebrow「首次設定」＋「歡迎使用行銷工作檯。」；右側 h2「建立管理員」、管理員帳號、密碼、再次輸入密碼、品牌名稱與 primary「建立並登入」。兩次密碼不同時以 role=alert 顯示「兩次輸入的密碼不一致」，不送出。非本機網址開啟時只顯示「請在主機上完成首次設定」與說明，沒有表單。建立成功直接進入工作檯；之後只顯示登入頁。
 - 登入頁在「限已授權的團隊成員使用」下方放收合的 `.login-forgot`「忘記密碼？」：成員說明、展開後才渲染的管理員復原碼表單（管理員帳號、復原碼、設定新密碼兩次、primary「重設密碼」；標籤不和登入表單重名）、無復原碼時的主機指令 `.login-command` 與鎖定提醒。成功後以 `.notice.success` 取代表單，不自動登入。
 - 臨時密碼對話框使用 `.temporary-password`、ui-font-mono，提供 secondary 複製，顯示「只會顯示這一次，請轉交給對方；對方第一次登入時需改密碼」。關閉清除記憶體中的值，不保存在網址或瀏覽器儲存。
 - 我的帳號以同一列顯示帳號、名稱、角色、可存取品牌，下方先是 `.language-picker.account-language`「介面語言」下拉（選項以各語言自己的寫法顯示，選了立即存到帳號並重新整理），再是三個密碼欄位與一顆主要「變更密碼」。登入頁在 `.login-panel` 右上角放 `.login-language` 同款下拉（手機改在表單上方靠右），登入前只記在 localStorage，登入後若帳號沒有語言偏好就把它存到帳號。須改密碼時顯示 `.password-required` 全頁「請設定新密碼」，只有表單與登出，無側欄／底部導覽；成功後才進入工作檯。

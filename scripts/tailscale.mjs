@@ -2,12 +2,12 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { readSettings, saveSettings } from './webhooks.mjs';
+import { backendAddress, readSettings, saveSettings } from './webhooks.mjs';
 
-export function checkServe(config, dns) {
+export function checkServe(config, dns, backend = 'http://127.0.0.1:8000') {
   if (Object.values(config.AllowFunnel || {}).some(Boolean)) throw new Error('此裝置啟用了公開 Funnel；請先關閉，後台只允許 Tailscale 內部存取。');
   const handler = config.Web?.[`${dns}:443`]?.Handlers?.['/'];
-  if (handler && handler.Proxy !== 'http://127.0.0.1:8000') throw new Error('Tailscale 的 443 根路徑已提供其他服務，不會覆寫。');
+  if (handler && handler.Proxy !== backend) throw new Error('Tailscale 的 443 根路徑已提供其他服務，不會覆寫。');
   if (config.TCP?.['443'] && !config.TCP['443'].HTTPS) throw new Error('Tailscale 443 已用於其他協定，不會覆寫。');
   return Boolean(handler);
 }
@@ -44,10 +44,11 @@ async function main() {
   }
   const dns = status.Self?.DNSName?.replace(/\.$/, '');
   const settings = readSettings(), updated = mergedOrigins(settings, dns);
-  const exists = checkServe(JSON.parse(run(['serve', 'status', '--json'])), dns);
+  const backend = backendAddress(settings);
+  const exists = checkServe(JSON.parse(run(['serve', 'status', '--json'])), dns, backend);
   if (mode === 'configure') {
-    run(['serve', '--bg', '--https=443', '--yes', 'http://127.0.0.1:8000']);
-    if (!checkServe(JSON.parse(run(['serve', 'status', '--json'])), dns)) throw new Error('Tailscale 代理未就緒。');
+    run(['serve', '--bg', '--https=443', '--yes', backend]);
+    if (!checkServe(JSON.parse(run(['serve', 'status', '--json'])), dns, backend)) throw new Error('Tailscale 代理未就緒。');
     saveSettings(updated);
     console.log(`Tailscale 內部 HTTPS 已設定：https://${dns}；請重啟後端載入多來源設定。`);
   } else if (mode === 'check') {

@@ -6,7 +6,7 @@ import http from 'node:http';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import vm from 'node:vm';
-import { fixedUrl, request, checkBackend, checkEndpoint, gatewayEnvironment } from './webhooks.mjs';
+import { fixedUrl, request, checkBackend, checkEndpoint, gatewayEnvironment, backendPort, portSettings } from './webhooks.mjs';
 import { readPlatformSettings } from './platform-credentials.mjs';
 
 const secret = randomBytes(32).toString('hex');
@@ -110,4 +110,22 @@ test('驗收不接受公開管理 API 或 HTTP 200 提示頁冒充成功', async
 test('ngrok 子程序僅接收 tunnel 憑證與必要系統變數', () => {
   const env = gatewayEnvironment({ NGROK_AUTHTOKEN:'isolated-token' }, { PATH:'fixture-path', JEV_API_KEY:'private', META_PAGE_ACCESS_TOKEN:'private', ADMIN_INITIAL_PASSWORD:'private' });
   assert.deepEqual(env, { PATH:'fixture-path', NGROK_AUTHTOKEN:'isolated-token' });
+});
+
+test('後端埠號取自 BACKEND_INTERNAL_URL，且 APP_ORIGIN 本機網址要同埠', () => {
+  assert.equal(backendPort({}), 8000);
+  assert.equal(backendPort({ BACKEND_INTERNAL_URL: 'http://127.0.0.1:8010', APP_ORIGIN: 'http://127.0.0.1:8010,https://mwb.example.ts.net' }), 8010);
+  assert.equal(backendPort({ BACKEND_INTERNAL_URL: 'http://127.0.0.1:8010', APP_ORIGIN: 'https://mwb.example.ts.net' }), 8010);
+  assert.throws(() => backendPort({ BACKEND_INTERNAL_URL: 'http://127.0.0.1:8010', APP_ORIGIN: 'http://127.0.0.1:8000' }), /8010/);
+  assert.throws(() => backendPort({ BACKEND_INTERNAL_URL: 'http://example.com:8010' }));
+});
+
+test('改用其他埠號時只換本機網址，保留 Tailscale 來源', () => {
+  assert.deepEqual(portSettings({ APP_ORIGIN: 'http://127.0.0.1:8000,https://mwb.example.ts.net' }, 8010),
+    { BACKEND_INTERNAL_URL: 'http://127.0.0.1:8010', APP_ORIGIN: 'http://127.0.0.1:8010,https://mwb.example.ts.net' });
+  assert.equal(portSettings({}, 8010).APP_ORIGIN, 'http://127.0.0.1:8010');
+  assert.equal(portSettings({ APP_ORIGIN: 'https://mwb.example.ts.net' }, 8010).APP_ORIGIN, 'http://127.0.0.1:8010,https://mwb.example.ts.net');
+  assert.equal(backendPort(portSettings({ APP_ORIGIN: 'http://localhost:8000' }, 8010)), 8010);
+  assert.throws(() => portSettings({}, 80));
+  assert.throws(() => portSettings({}, Number('abc')));
 });

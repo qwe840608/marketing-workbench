@@ -30,6 +30,7 @@ function WorkspaceApp() {
   const [ready, setReady] = useState(false);
   const [startupError, setStartupError] = useState('');
   const [temporary, setTemporary] = useState<string | null>(null);
+  const [setup, setSetup] = useState<SetupStatus | null>(null);
   useEffect(() => {
     const expired = () => setUser(null), required = () => setUser(u => u ? { ...u, must_change_password: true } : u);
     window.addEventListener('auth-expired', expired); window.addEventListener('password-required', required);
@@ -37,8 +38,12 @@ function WorkspaceApp() {
   }, []);
   useEffect(() => {
     let alive = true;
-    api<User>('/auth/me').then(value => { if (alive) setUser(value); }).catch(error => {
-      if (alive && !(error instanceof ApiError && error.status === 401)) setStartupError(readable(error));
+    api<User>('/auth/me').then(value => { if (alive) setUser(value); }).catch(async error => {
+      if (!alive) return;
+      if (!(error instanceof ApiError && error.status === 401)) { setStartupError(readable(error)); return; }
+      // 全新安裝還沒有任何帳號：改顯示首次設定，不顯示登入表單。
+      const status = await api<SetupStatus>('/auth/setup').catch(() => null);
+      if (alive && status?.needed) setSetup(status);
     }).finally(() => { if (alive) setReady(true); });
     return () => { alive = false; };
   }, []);
@@ -50,6 +55,7 @@ function WorkspaceApp() {
   }, [user?.id, user?.language, user?.must_change_password]);
   if (!ready) return <div className="loading">{t('正在開啟工作檯…')}</div>;
   if (user && !user.must_change_password && new URLSearchParams(location.search).has('agent_authorize')) return <AgentApproval requestId={new URLSearchParams(location.search).get('agent_authorize') || ''} />;
+  if (!user && setup) return <InitialSetup local={setup.local} onDone={value => { setSetup(null); setUser(value); }} />;
   return <>{user ? user.must_change_password ? <RequiredPassword onChanged={setUser} onLogout={() => setUser(null)} /> : <Workspace user={user} onChanged={setUser} onLogout={() => setUser(null)} onSelfReset={password => { setTemporary(password); setCsrf(''); setUser(null); }} /> : <Login onLogin={setUser} initialError={startupError} />}{temporary !== null && <TemporaryPasswordDialog password={temporary} onClose={() => setTemporary(null)} />}</>;
 }
 
@@ -81,6 +87,44 @@ function Login({ onLogin, initialError }: { onLogin: (u: User) => void; initialE
     <button className="primary" disabled={busy}>{busy ? t('正在登入…') : t('登入工作檯')}<span aria-hidden="true">↗</span></button>
     <p className="login-note">{t('限已授權的團隊成員使用')}</p>
   </form><ForgotPassword /></div></section></main>;
+}
+
+type SetupStatus = { needed: boolean; local: boolean };
+
+// 第一個打開網頁的人會成為管理員，所以後端只接受主機本身的本機網址；Tailscale 等其他裝置只看到說明。
+function InitialSetup({ local, onDone }: { local: boolean; onDone: (u: User) => void }) {
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget, values = new FormData(form);
+    setError('');
+    if (values.get('password') !== values.get('confirm_password')) { setError(t('兩次輸入的密碼不一致')); return; }
+    setBusy(true);
+    try {
+      await refreshCsrf();
+      const result = await api<{ user: User; csrf_token: string }>('/auth/setup', {
+        method: 'POST', body: JSON.stringify({ username: values.get('username'), password: values.get('password'), brand_name: values.get('brand_name') }),
+      });
+      form.reset(); setCsrf(result.csrf_token); onDone(result.user);
+    } catch (err) { setError(readable(err)); }
+    finally { setBusy(false); }
+  }
+  return <main className="login-page"><section className="login-story"><Wordmark />
+    <div><span className="eyebrow">{t('首次設定')}</span><h1>{t('歡迎使用')}<br />{t('行銷工作檯。')}</h1><p>{t('先建立管理員帳號與品牌，')}<br />{t('之後就能連結各平台。')}</p></div>
+    <span className="story-footer">{t('個人與團隊的行銷工作空間')}</span>
+  </section><section className="login-panel"><LanguagePicker className="login-language" /><div className="login-box">{local ? <form onSubmit={submit}>
+    <span className="eyebrow">{t('首次設定')}</span><h2>{t('建立管理員')}</h2><p className="muted">{t('這個帳號可以管理所有設定與成員；品牌名稱之後可以在設定裡修改。')}</p>
+    <label>{t('管理員帳號')}<input name="username" autoComplete="username" required maxLength={80} autoFocus disabled={busy} /></label>
+    <label>{t('密碼')}<input name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} disabled={busy} placeholder={t('至少 12 字元')} /></label>
+    <label>{t('再次輸入密碼')}<input name="confirm_password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} disabled={busy} /></label>
+    <label>{t('品牌名稱')}<input name="brand_name" required maxLength={200} disabled={busy} placeholder={t('例如自己的頻道或品牌名稱')} /></label>
+    {error && <p className="error" role="alert">{error}</p>}
+    <button className="primary" disabled={busy}>{busy ? t('建立中…') : t('建立並登入')}<span aria-hidden="true">↗</span></button>
+  </form> : <div>
+    <span className="eyebrow">{t('首次設定')}</span><h2>{t('請在主機上完成首次設定')}</h2>
+    <p className="muted">{t('工作檯還沒有任何帳號。為了避免其他裝置搶先建立管理員，首次設定只能在執行工作檯的電腦上，用瀏覽器開啟本機網址（例如 http://127.0.0.1:8000）完成。')}</p>
+  </div>}</div></section></main>;
 }
 
 // 沒有寄信或簡訊管道可以確認身分，所以只接受管理員事先保存的一次性復原碼。

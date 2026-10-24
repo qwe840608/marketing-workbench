@@ -40,6 +40,19 @@ class LoginView(CSRFView):
     user: StaffView
 
 
+class SetupStatus(BaseModel):
+    # needed：還沒有任何帳號；local：這次請求來自執行工作檯的電腦本身，才可以建立。
+    needed: bool
+    local: bool
+
+
+class InitialSetup(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    username: str = Field(min_length=1, max_length=80)
+    password: SecretStr = Field(min_length=12, max_length=128)
+    brand_name: str = Field(min_length=1, max_length=200)
+
+
 class RecoveryCodeCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     current_password: SecretStr = Field(min_length=1, max_length=128)

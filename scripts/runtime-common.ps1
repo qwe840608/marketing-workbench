@@ -138,6 +138,12 @@ function Start-MwbDetached {
     return $process.Id
 }
 
+function Test-MwbPortFree {
+    param([int]$Port)
+    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
+    try { $listener.Start(); return $true } catch { return $false } finally { $listener.Stop() }
+}
+
 function Assert-MwbPortFree {
     param([int]$Port, [int]$Seconds = 5)
     # 剛停止的服務可能還在釋放連接埠；短暫重試，避免重啟時誤判為被其他程式佔用。

@@ -57,12 +57,11 @@ If you are not comfortable with the command line, give [`docs/agent安裝引導.
 # 1. Create the config file and fill in NGROK_AUTHTOKEN; data paths can stay blank (see "Environment variables")
 copy .env.example .env
 
-# 2. Backend: install dependencies, generate the encryption master key, create the database the first administrator and the brand (password typed in the terminal)
+# 2. Backend: install dependencies, generate the encryption master key, create the database
 cd backend
 uv sync
 uv run python ../scripts/initialize_ai_encryption.py
 uv run alembic upgrade head
-uv run python ../scripts/set_password.py <admin-username> --create-admin --brand "<brand-name>"
 
 # 3. Frontend: build
 cd ../frontend
@@ -78,7 +77,9 @@ cd ..
 
 ## Usage
 
-After starting, open http://127.0.0.1:8000, sign in, and in Settings enter each platform's app keys on its connection card and click Connect. Each card's setup guide lists the callback URL to enter in the platform's developer settings.
+On first start, if port 8000 is already taken, `start-all.ps1` asks which port to use instead and saves it to `.env`.
+
+After starting, open http://127.0.0.1:8000 (or the port you chose) on the computer running the workbench. The first visit shows the first-run setup: enter the administrator username, password and brand name, and you are signed in. Then, in Settings, enter each platform's app keys on its connection card and click Connect. Each card's setup guide lists the callback URL to enter in the platform's developer settings.
 
 Connect Claude Code to the workbench (copy the address from Settings → My account → Install agent):
 

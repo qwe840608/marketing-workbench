@@ -172,7 +172,7 @@ Threads 部署後第一次實機請確認：六項 insights 能一次請求（�
 
 1. 確認部署版本及正式 `.env` 指向正確資料庫，依備份流程建立備份。
 2. 在 `backend` 執行 `uv run python ../scripts/set_password.py <管理員帳號>`，在隱藏輸入提示輸入兩次新密碼（12–128 字元）；不要把密碼放命令參數或管線。既有管理員復原不加 `--create-admin`。
-3. 工具撤銷該帳號所有 session，清除須改密碼與登入鎖定；重新登入後確認角色與品牌。工具不會啟用已停用帳號或改動角色。`--create-admin` 只供首次初始化，資料庫還沒有品牌時會一併建立唯一品牌（`--brand` 或互動詢問）。
+3. 工具撤銷該帳號所有 session，清除須改密碼與登入鎖定；重新登入後確認角色與品牌。工具不會啟用已停用帳號或改動角色。`--create-admin` 是首次初始化的備用做法（平常用網頁的首次設定），資料庫還沒有品牌時會一併建立唯一品牌（`--brand` 或互動詢問）。
 
 ## 資料轉換工具
 
@@ -242,6 +242,10 @@ Gemini 免費方案的內容會被 Google 用於改善產品並可能由真人�
 工作區設定的「開機自動啟動」預設關閉，僅管理員可檢視與切換；狀態直接查詢 Windows 工作排程器。開啟建立根目錄工作 `MWB-AutoStart`：目前 Windows 使用者登入時（AtLogOn）延遲 45 秒，Interactive、Limited、不要求提升權限，允許電池執行，MultipleInstances IgnoreNew，上限 30 分鐘。動作為 `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`，參數 `-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "<專案>\scripts\start-all.ps1"`，工作目錄為專案根目錄。需要先登入 Windows，網路與 Google Drive 也必須就緒；不補回離線期間通知。登入當下網路常常還沒好：`tailscale.mjs check` 會每 10 秒重試、最多約 2 分鐘，仍失敗只顯示警告，服務照常執行（本機網址可用）；Webhook 公開邊界檢查 `webhooks.mjs check` 同樣重試，仍失敗就停止此次啟動的服務。重開機後殘留的 `.runtime/*.pid` 若指向比紀錄更晚建立的程序，視為過期紀錄自動移除。
 
 以「工作排程器程式庫」找到 MWB-AutoStart 核對上述設定。關閉開關會移除此工作，不停止已啟動的服務。同名工作任一設定不同時，開啟與關閉均回 `autostart_conflict`，請先人工確認歸屬。專案搬移後需人工確認舊工作再重新建立。參考 [New-ScheduledTaskSettingsSet](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtasksettingsset)、[New-ScheduledTaskPrincipal](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtaskprincipal)。
+
+### 改用其他連接埠
+
+後端預設 `127.0.0.1:8000`。第一次啟動（還沒有 `.runtime/start-fingerprint.txt`）且在互動視窗執行時，`start-all.ps1` 遇到埠號被佔用會詢問要改用哪個埠，並把下面兩個值一起寫進 `.env`；之後的啟動或非互動執行只會報錯停下。同一台電腦要並存兩份工作檯（例如另裝一份測試第一次安裝）時，其中一份在 `.env` 同時改 `BACKEND_INTERNAL_URL`（例如 `http://127.0.0.1:8010`）與 `APP_ORIGIN` 的本機網址，兩者埠號不同時 `start-all.ps1` 會拒絕啟動。已設定 Tailscale 的要重新執行 `tailscale serve --bg --https=443 --yes <新網址>`（`tailscale.mjs configure` 不覆寫指向舊埠號的代理），ngrok 的 4040 管理埠仍固定，兩份不能同時啟動 Webhook 閘道。
 
 ## 資料位置
 

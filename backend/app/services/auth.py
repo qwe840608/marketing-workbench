@@ -111,6 +111,68 @@ def require_csrf(session: Session, token: str | None, supplied: str | None) -> A
     return current
 
 
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def local_request(client_host: str | None, host: str | None) -> bool:
+    """請求來自主機本身：連線端是 loopback，網址也是本機網址。
+
+    Tailscale 與 ngrok 代理經 proxy headers 還原成遠端 IP，網址也是各自的網域，兩者都不算本機。
+    """
+    source = client_host or ""
+    hostname = urlsplit(f"//{host or ''}").hostname or ""
+    return (source in LOCAL_HOSTS or source == "testclient") and (
+        hostname in LOCAL_HOSTS or hostname == "testserver"
+    )
+
+
+def setup_needed(session: Session) -> bool:
+    return session.scalar(select(Staff.id).limit(1)) is None
+
+
+def initial_setup(
+    session: Session,
+    settings: Settings,
+    token: str | None,
+    csrf: str | None,
+    local: bool,
+    username: str,
+    password: SecretStr,
+    brand_name: str,
+) -> tuple[Staff, SessionCredentials]:
+    """全新安裝在網頁建立第一個管理員與唯一品牌，完成後直接登入。
+
+    只在沒有任何帳號時、而且從主機本身開啟才允許：第一個打開網頁的人就會成為管理員，
+    不能讓 Tailscale 上的其他裝置搶先。之後新增帳號一律走成員管理。
+    """
+    from app.services.passwords import create_admin, create_first_brand
+
+    lock_session_write(session)
+    current = require_csrf(session, token, csrf)
+    if not local:
+        raise HTTPException(403, "首次設定只能在執行工作檯的電腦上開啟本機網址完成")
+    if not setup_needed(session):
+        raise HTTPException(409, "工作檯已經建立過管理員，請直接登入")
+    try:
+        staff = create_admin(session, username, password)
+        create_first_brand(session, brand_name)
+    except ValueError as error:
+        session.rollback()
+        raise HTTPException(422, str(error)) from None
+    session.delete(current)
+    credentials = issue_session(session, settings, staff.id)
+    session.add(
+        AuditLog(
+            actor=f"staff:{staff.id}",
+            action="auth.initial_setup",
+            target_type="staff",
+            target_id=staff.id,
+        )
+    )
+    session.commit()
+    return staff, credentials
+
+
 def current_staff(session: Session, token: str | None) -> Staff:
     current = find_session(session, token)
     staff = session.get(Staff, current.staff_id) if current and current.staff_id else None
