@@ -24,10 +24,10 @@
 :root body .metric-chart :is(.card-title,.metric-note) { padding-inline:0; }
 
 /* A table row is the bordered surface; its cells retain their compact column spacing. */
-:root body :is(.usage-table,.snapshot-table) :is(td,th) { border-bottom:0; }
-:root body :is(.usage-table,.snapshot-table) tr { border-bottom:1px solid var(--line); }
-:root body :is(.usage-table,.snapshot-table) :is(td,th):first-child { padding-left:var(--ui-panel-padding); }
-:root body :is(.usage-table,.snapshot-table) :is(td,th):last-child { padding-right:var(--ui-panel-padding); }
+:root body .usage-table :is(td,th) { border-bottom:0; }
+:root body .usage-table tr { border-bottom:1px solid var(--line); }
+:root body .usage-table :is(td,th):first-child { padding-left:var(--ui-panel-padding); }
+:root body .usage-table :is(td,th):last-child { padding-right:var(--ui-panel-padding); }
 
 @media (max-width:599px) {
   :root body .usage-table tbody tr { padding-inline:var(--ui-panel-padding); }
@@ -41,8 +41,5 @@
 }
 :root body .metric-grid > div { padding:var(--ui-small-padding); }
 :root body :is(.metric-grid strong,.kpi > strong,.stage-bars strong,.intent-bars strong,
-  .rank-reach,.rank-number,.workspace-nav span,.page-count,.post-comments h3 span,
-  .snapshot-table td:not(:first-child)) { white-space:nowrap; overflow-wrap:normal; }
+  .rank-reach,.rank-number,.workspace-nav span,.page-count,.post-comments h3 span) { white-space:nowrap; overflow-wrap:normal; }
 
-:root body .snapshot-table table { table-layout:auto; }
-:root body .snapshot-table th:first-child { width:auto; }

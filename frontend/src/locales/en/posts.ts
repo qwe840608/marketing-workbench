@@ -91,8 +91,6 @@ export default {
   '最近抓取：{time}': 'Last fetched: {time}',
   '尚未取得數據快照': 'No data snapshots yet',
   '「—」表示平台尚未提供或此貼文不支援；0 表示平台回傳零。': '“—” means the platform hasn\'t provided it or this post doesn\'t support it; 0 means the platform returned zero.',
-  '數據快照': 'Data snapshots',
-  '抓取時間': 'Fetched at',
   '顯示最近 100 筆快照。': 'Showing the latest 100 snapshots.',
   '選取一篇貼文，查看留言、回覆與數據。': 'Select a post to see its comments, replies, and metrics.',
   '廣告／垃圾': 'Ad / spam',

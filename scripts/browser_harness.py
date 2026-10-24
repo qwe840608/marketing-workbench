@@ -25,9 +25,49 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "backend"))
 
 
-def serve():
+def run_uvicorn(app, port):
+    """Serve ``app`` inside a ``--serve`` child the way every browser check does."""
     import uvicorn
 
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=int(port),
+        log_level="warning",
+        timeout_keep_alive=KEEP_ALIVE_SECONDS,
+    )
+
+
+def launch_server(folder, origin, *, script=__file__, args=()):
+    """Start ``<script> --serve *args`` from backend/ and wait for ``/api/health``.
+
+    The child runs that script's own ``serve()``, which is where each check
+    installs its HTTP mocks and monkeypatches; the environment is inherited
+    as-is. The process and its ``server.log`` are registered with ``cleanup``.
+    """
+    log = (folder / "server.log").open("w", encoding="utf-8")
+    cleanup(log.close)
+    server = subprocess.Popen(
+        [sys.executable, str(Path(script).resolve()), "--serve", *map(str, args)],
+        cwd=REPO / "backend",
+        env=dict(os.environ),
+        stdout=log,
+        stderr=log,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
+    cleanup(stop_process, server)
+    for _ in range(150):
+        try:
+            urllib.request.urlopen(origin + "/api/health", timeout=1).close()
+            return server
+        except OSError:
+            if server.poll() is not None:
+                raise RuntimeError("Isolated server failed") from None
+            time.sleep(0.1)
+    raise RuntimeError("Isolated server not ready")
+
+
+def serve():
     from app.config import Settings
     from app.main import create_app
     from app.services import jev, autostart
@@ -91,13 +131,7 @@ def serve():
         settings.app_origin += ",https://office.example.test"
         settings.meta_app_id = settings.threads_app_id = "12345"
         settings.meta_app_secret = settings.threads_app_secret = SecretStr("isolated-app-secret")
-    uvicorn.run(
-        create_app(settings),
-        host="127.0.0.1",
-        port=int(os.environ["BATCH4_PORT"]),
-        log_level="warning",
-        timeout_keep_alive=KEEP_ALIVE_SECONDS,
-    )
+    run_uvicorn(create_app(settings), os.environ["BATCH4_PORT"])
 
 
 @runtime_check
@@ -220,30 +254,12 @@ def main(polish=False, exercise=None):
                     confidence=0.99,
                 )
             )
-    log = (folder / "server.log").open("w", encoding="utf-8")
-    cleanup(log.close)
-    server = subprocess.Popen(
-        [sys.executable, str(Path(__file__).resolve()), "--serve"],
-        cwd=REPO / "backend",
-        env=dict(os.environ),
-        stdout=log,
-        stderr=log,
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-    )
-    cleanup(stop_process, server)
+    server = launch_server(folder, origin)
     shots = []
     errors = []
     external = []
     checks = []
     try:
-        for _ in range(150):
-            try:
-                urllib.request.urlopen(origin + "/api/health", timeout=1).close()
-                break
-            except OSError:
-                if server.poll() is not None:
-                    raise RuntimeError("Isolated server failed") from None
-                time.sleep(0.1)
         with sync_playwright() as pw:
             browser = launch_chromium(pw)
             for width, height in [(1440, 900), (390, 844)]:
@@ -311,7 +327,6 @@ def main(polish=False, exercise=None):
         )
     finally:
         stop_process(server)
-        log.close()
         engine.dispose()
 
 

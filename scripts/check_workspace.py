@@ -14,23 +14,14 @@ from ui_navigation import navigate, one_brand, two_brands
 import json
 import os
 import secrets
-import subprocess
 import sys
-import time
-import urllib.error
-import urllib.request
 from datetime import timedelta
-from pathlib import Path
 
-from ports import KEEP_ALIVE_SECONDS, browser_port
-
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "backend"))
+from browser_harness import REPO, launch_server, run_uvicorn, seed_records
+from ports import browser_port
 
 
 def serve():
-    import uvicorn
-
     from app.config import Settings
     from app.main import create_app
     from app.services import autostart, jev
@@ -76,12 +67,7 @@ def serve():
         100,
         30,
     )
-    uvicorn.run(
-        create_app(Settings(_env_file=sys.argv[2])),
-        host="127.0.0.1",
-        port=int(sys.argv[3]),
-        timeout_keep_alive=KEEP_ALIVE_SECONDS,
-    )
+    run_uvicorn(create_app(Settings(_env_file=sys.argv[2])), sys.argv[3])
 
 
 def open_info(page):
@@ -445,26 +431,8 @@ def main(extra_checks=None):
                         )
                     )
     engine.dispose()
-    server = subprocess.Popen(
-        [sys.executable, str(Path(__file__).resolve()), "--serve", str(env_path), str(port)],
-        cwd=REPO / "backend",
-        env=os.environ.copy(),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-    )
-    cleanup(stop_process, server)
+    server = launch_server(folder, origin, script=__file__, args=[env_path, port])
     try:
-        for _ in range(100):
-            try:
-                with urllib.request.urlopen(origin + "/api/health", timeout=1):
-                    break
-            except (OSError, urllib.error.URLError):
-                if server.poll() is not None:
-                    raise RuntimeError("隔離後台啟動失敗") from None
-                time.sleep(0.1)
-        else:
-            raise RuntimeError("隔離後台啟動逾時")
         with sync_playwright() as pw:
             browser = launch_chromium(pw)
             page = browser.new_page(viewport={"width": 1440, "height": 980})
@@ -642,24 +610,6 @@ def main(extra_checks=None):
             )
     finally:
         stop_process(server)
-
-
-def seed_records(session, settings, *, include_content=False):
-    import sys
-    from pathlib import Path
-
-    sys.path.insert(
-        0,
-        str(Path(__file__).resolve().parents[2] / "scripts")
-        if "tests" in Path(__file__).parts
-        else str(Path(__file__).resolve().parent),
-    )
-    from test_prices import seed_prices
-    from test_records import seed_records as seed_base_records
-
-    counts = seed_base_records(session, settings, include_content=include_content)
-    seed_prices(session)
-    return counts
 
 
 if __name__ == "__main__":

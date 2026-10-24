@@ -13,7 +13,7 @@ import { MetricSyncButton } from './MetricSyncButton';
 import { backfillWaitText } from '../backfillWait';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SegmentedControl } from './SegmentedControl';
-import { defaultMetric, delayedYoutubeFields, formatMetric, isVideoPost, metricFields, metricValue, snapshotColumns, syncLabel, videoFields } from '../metricFields';
+import { defaultMetric, delayedYoutubeFields, formatMetric, isVideoPost, metricFields, metricValue, syncLabel, videoFields } from '../metricFields';
 import type { MetricDefinition } from '../metricFields';
 import { PostDialog } from './PostDialog';
 import { RetentionChart } from './RetentionChart';
@@ -196,7 +196,11 @@ export function Posts({ brand, initialPostId, onLogout, canSync }: { brand: stri
     const params = new URLSearchParams(location.search); params.delete('comment_id');
     history.replaceState(null, '', location.pathname + '?' + params + location.hash);
   }
-  function choosePlatform(value: string) { clearFocus(); setPlatform(value); setSelected(null); setPosts([]); setOffset(0); setNotice(''); }
+  function choosePlatform(value: string) {
+    clearFocus(); setSelected(null); setOffset(0); setNotice('');
+    // 再點目前的平台不會觸發重新讀取，清空清單會空白到下次輪詢。
+    if (value !== platform) { setPlatform(value); setPosts([]); }
+  }
   async function syncComments(fullRescan = false) {
     setSyncing(true); setNotice('');
     try {
@@ -252,8 +256,6 @@ export function Posts({ brand, initialPostId, onLogout, canSync }: { brand: stri
         <MetricChart key={'engagement:' + platform} metrics={metrics} fields={metricFields(platform)} title={t('數據變化')} initial={defaultMetric(platform)} />
         {watchFields.length > 0 && <MetricChart key={'watch:' + platform} metrics={metrics} fields={watchFields} title={t('觀看變化')} initial="avg_watch_time" className="metric-chart watch-chart" />}
         {retentionCurve && <RetentionChart points={retentionCurve} />}
-        <h3 className="snapshot-heading">{t('數據快照')} <span>{metrics.length}</span></h3><div className="snapshot-table list-box"><table><thead><tr><th>{t('抓取時間')}</th>{snapshotColumns(platform).map(([key, label]) => <th key={key}>{label}</th>)}</tr></thead>
-          <tbody>{[...metrics].reverse().map(metric => <tr key={metric.id}><td className="snapshot-time">{time(metric.captured_at)}</td>{snapshotColumns(platform).map(([key]) => <td key={key}>{number(metricValue(metric, key))}</td>)}</tr>)}</tbody></table></div>
         {metrics.length === 100 && <p className="metric-note">{t('顯示最近 100 筆快照。')}</p>}
       </aside>
       <div className="post-conversation"><div className="post-intro section-card"><ReportReturn /><button className="mobile-back secondary" onClick={() => setSelected(null)}>{t('← 返回貼文')}</button>

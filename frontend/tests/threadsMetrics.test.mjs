@@ -1,13 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultMetric, formatMetric, isVideoPost, metricFields, metricValue, snapshotColumns, syncLabel, videoFields } from '../src/metricFields.ts';
+import { defaultMetric, formatMetric, isVideoPost, metricFields, metricValue, syncLabel, videoFields } from '../src/metricFields.ts';
 import { backfillWaitText } from '../src/backfillWait.ts';
 
 const labels = list => list.map(([, label]) => label);
 
 test('Threads 成效使用自己的指標名稱，沒有的觸及與收藏不顯示', () => {
   assert.deepEqual(labels(metricFields('threads')), ['觀看', '按讚', '回覆', '轉發', '引用', '分享']);
-  assert.deepEqual(labels(snapshotColumns('threads')), ['觀看', '按讚', '回覆']);
   assert.equal(defaultMetric('threads'), 'views');
   assert.equal(syncLabel('threads'), 'Threads 回覆');
 });
@@ -15,7 +14,6 @@ test('Threads 成效使用自己的指標名稱，沒有的觸及與收藏不顯
 test('FB／IG 的指標、快照欄位與預設曲線維持不變', () => {
   for (const platform of ['facebook', 'instagram', null, undefined]) {
     assert.deepEqual(labels(metricFields(platform)), ['觀看', '觸及', '按讚', '留言', '分享', '收藏']);
-    assert.deepEqual(labels(snapshotColumns(platform)), ['觀看', '觸及', '留言']);
     assert.equal(defaultMetric(platform), 'reach');
   }
   assert.equal(syncLabel('facebook'), 'Facebook 留言');
@@ -46,7 +44,6 @@ test('Threads 回覆抓取等待時顯示 Threads，不沿用 Meta 用量字樣'
 test('YouTube 五項互動指標加三項觀看表現、秒數序列化、Analytics extra 與未知值', () => {
   assert.deepEqual(labels(metricFields('youtube')), ['觀看', '按讚', '留言', '分享', '新增訂閱']);
   assert.deepEqual(labels(videoFields('youtube')), ['平均觀看時長（秒）', '平均觀看百分比（%）', '觀看總時數（小時）']);
-  assert.deepEqual(labels(snapshotColumns('youtube')), ['觀看', '按讚', '留言']);
   assert.equal(defaultMetric('youtube'), 'views');
   assert.equal(syncLabel('youtube'), 'YouTube 留言');
   const metric = { avg_watch_time: '30.0000', extra_json: { watch_hours: 2.5, subscribers_gained: 0 } };
@@ -60,7 +57,6 @@ test('YouTube 五項互動指標加三項觀看表現、秒數序列化、Analyt
 
 test('TikTok 只有觀看、按讚、留言、分享，預設曲線為觀看', () => {
   assert.deepEqual(labels(metricFields('tiktok')), ['觀看', '按讚', '留言', '分享']);
-  assert.deepEqual(labels(snapshotColumns('tiktok')), ['觀看', '按讚', '留言']);
   assert.equal(defaultMetric('tiktok'), 'views');
 });
 

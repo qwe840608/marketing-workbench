@@ -1,10 +1,11 @@
 """OAuth credentials never leave the encrypted store; transport has fixed origins."""
 
-import hashlib
 import json
 import re
 import secrets
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from urllib.parse import urlencode, urlsplit
 
 import httpx
@@ -12,19 +13,23 @@ from fastapi import HTTPException
 from sqlalchemy import delete, select
 
 from app.db import ensure_write
-from app.models import (
-    Account,
-    AuditLog,
-    Brand,
-    OAuthConnection,
-    OAuthState,
-    PlatformCredential,
-    Setting,
-)
+from app.models import OAuthConnection, OAuthState, Setting
 from app.models.base import utc_now
-from app.services import auth, credentials, settings_store
+from app.services import auth, credentials, settings_store, tiktok_oauth, youtube_oauth
 from app.services.ai_keys import cipher
 from app.services.graph_api import DIALOG, FB
+from app.services.oauth_core import (  # noqa: F401  其他模組仍由 oauth 取用這些名稱
+    PLATFORMS,
+    ProviderFailure,
+    audit,
+    connection,
+    digest_credentials,
+    origin_info,
+    put_secret,
+    register_account,
+    token_result,
+    value,
+)
 
 # published_posts, media, comments/replies, followers_count and post insights;
 # pages_manage_metadata retains the existing public-comment webhook subscription.
@@ -52,13 +57,12 @@ THREADS_SCOPES = THREADS_PUBLISH_SCOPES + THREADS_DATA_SCOPES
 DATA_BLOCK_KEY = "oauth.threads.data_blocked"
 DATA_BLOCK_RETRY = timedelta(hours=24)
 TH = "https://graph.threads.net"
-# YouTube 的範圍以 youtube_oauth.SCOPES 為準（測試比對兩者一致）；此處只供授權網址組合。
-SCOPES = {"meta": META_SCOPES + META_OPTIONAL_SCOPES, "threads": THREADS_SCOPES, "youtube": (
-    "https://www.googleapis.com/auth/youtube.readonly",
-    "https://www.googleapis.com/auth/yt-analytics.readonly",
-    "https://www.googleapis.com/auth/youtube.upload",
-), "tiktok": ("user.info.basic", "user.info.stats", "video.list", "video.upload")}
-# TikTok 的範圍以 tiktok_oauth.SCOPES 為準（測試比對兩者一致）。
+SCOPES = {
+    "meta": META_SCOPES + META_OPTIONAL_SCOPES,
+    "threads": THREADS_SCOPES,
+    "youtube": youtube_oauth.SCOPES,
+    "tiktok": tiktok_oauth.SCOPES,
+}
 RETURN_PATH = "/?view=settings&settings_tab=connections"
 FACEBOOK_COVER_HINT = "自訂封面需要 pages_manage_engagement 權限，請重新連結 Meta"
 RESULTS = {
@@ -70,12 +74,45 @@ RESULTS = {
 }
 
 
-class ProviderFailure(Exception):
-    """info 只放可安全記錄的診斷欄位：步驟、HTTP 狀態、平台錯誤代碼；不含權杖、code 或錯誤訊息。"""
+@dataclass(frozen=True)
+class Platform:
+    """連結流程裡因平台而異的部分；流程本身（state、回呼、兩段式完成、稽核）共用。"""
 
-    def __init__(self, info=None):
-        super().__init__()
-        self.info = info or {}
+    authorize_url: str
+    # 應用程式編號與密鑰的憑證名稱前綴；TikTok 叫 client_key，其餘是 _ID。
+    app_prefix: str
+    id_suffix: str = "_ID"
+    id_param: str = "client_id"
+    scope_separator: str = ","
+    authorize_extra: dict[str, str] = field(default_factory=dict)
+    # YouTube／TikTok：權杖由各自模組換發與保存；Meta／Threads 在本模組處理。
+    module: Any = None
+    identity_name: str = ""
+
+
+PLATFORM = {
+    "meta": Platform(authorize_url=DIALOG, app_prefix="META_APP"),
+    "threads": Platform(
+        authorize_url="https://threads.net/oauth/authorize", app_prefix="THREADS_APP"
+    ),
+    "youtube": Platform(
+        authorize_url=youtube_oauth.AUTHORIZE_URL,
+        app_prefix="YOUTUBE_CLIENT",
+        scope_separator=" ",
+        # refresh token 只在 offline＋consent 時發給；少了它就無法自動換發。
+        authorize_extra={"access_type": "offline", "prompt": "consent"},
+        module=youtube_oauth,
+        identity_name="YOUTUBE_CHANNEL_ID",
+    ),
+    "tiktok": Platform(
+        authorize_url=tiktok_oauth.AUTHORIZE_URL,
+        app_prefix="TIKTOK_CLIENT",
+        id_suffix="_KEY",
+        id_param="client_key",
+        module=tiktok_oauth,
+        identity_name="TIKTOK_OPEN_ID",
+    ),
+}
 
 
 def safe_error(url, status, body):
@@ -130,38 +167,12 @@ def request_json(url, *, method="GET", params=None, data=None, token=None):
         raise ProviderFailure({"stage": stage, "exception": type(error).__name__}) from None
 
 
-def value(session, settings, name):
-    return credentials.raw(credentials.resolve(name, settings, session))
-
-
-def audit(session, platform, result, actor="system:oauth", diagnostics=None):
-    session.add(
-        AuditLog(
-            actor=actor,
-            action="oauth." + result,
-            target_type="oauth",
-            detail_json={
-                "platform": platform if platform in SCOPES else "unknown",
-                **({"diagnostics": diagnostics} if diagnostics else {}),
-            },
-        )
-    )
-
-
 def current(access, cookie):
     credentials.require_admin(access)
     row = auth.find_session(access.session, cookie)
     if not row or row.staff_id != access.staff.id:
         raise HTTPException(401, "請先登入")
     return row.token_hash, access.staff.id
-
-
-def origin_info(settings):
-    origin = settings.backoffice_origin
-    return {
-        "backoffice_origin": origin,
-        "callbacks": {p: origin + f"/api/oauth/{p}/callback" for p in SCOPES},
-    }
 
 
 def start(access, settings, cookie, platform, origin):
@@ -173,13 +184,9 @@ def start(access, settings, cookie, platform, origin):
         raise HTTPException(400, "請用內部 https 網址開啟工作檯後再連結")
     session_hash, staff_id = current(access, cookie)
     session = access.session
-    prefix = (
-        "YOUTUBE_CLIENT" if platform == "youtube"
-        else "TIKTOK_CLIENT" if platform == "tiktok"
-        else platform.upper() + "_APP"
-    )
-    app_id = value(session, settings, prefix + ("_KEY" if platform == "tiktok" else "_ID"))
-    app_secret = value(session, settings, prefix + "_SECRET")
+    spec = PLATFORM[platform]
+    app_id = value(session, settings, spec.app_prefix + spec.id_suffix)
+    app_secret = value(session, settings, spec.app_prefix + "_SECRET")
     if not app_id or not app_secret:
         raise HTTPException(422, "請先設定應用程式編號與密鑰")
     cipher(settings)
@@ -197,56 +204,15 @@ def start(access, settings, cookie, platform, origin):
     )
     audit(session, platform, "start", f"staff:{staff_id}")
     session.commit()
-    if platform == "tiktok":
-        from app.services import tiktok_oauth
-
-        # TikTok 用 client_key 而不是 client_id，範圍以逗號分隔。
-        params = tiktok_oauth.authorize_params(session, settings, nonce)
-        return {"url": tiktok_oauth.AUTHORIZE_URL + "?" + urlencode(params)}
-    endpoint = (
-        DIALOG
-        if platform == "meta"
-        else "https://accounts.google.com/o/oauth2/v2/auth"
-        if platform == "youtube"
-        else "https://threads.net/oauth/authorize"
-    )
-    return {
-        "url": endpoint
-        + "?"
-        + urlencode(
-            {
-                "client_id": app_id,
-                "redirect_uri": origin_info(settings)["callbacks"][platform],
-                "scope": (" " if platform == "youtube" else ",").join(SCOPES[platform]),
-                **(
-                    {"access_type": "offline", "prompt": "consent"}
-                    if platform == "youtube" else {}
-                ),
-                "state": nonce,
-                "response_type": "code",
-            }
-        )
+    params = {
+        spec.id_param: app_id,
+        "redirect_uri": origin_info(settings)["callbacks"][platform],
+        "scope": spec.scope_separator.join(SCOPES[platform]),
+        **spec.authorize_extra,
+        "state": nonce,
+        "response_type": "code",
     }
-
-
-def token_result(body):
-    token = body.get("access_token")
-    seconds = body.get("expires_in")
-    if (
-        not isinstance(token, str)
-        or not token
-        or len(token) > 4096
-        or type(seconds) is not int
-        or not 0 < seconds <= 366 * 86400
-    ):
-        raise ProviderFailure(
-            {
-                "stage": "token_result",
-                "has_token": isinstance(token, str) and bool(token),
-                "expires_in": type(seconds).__name__,
-            }
-        )
-    return token, utc_now() + timedelta(seconds=seconds)
+    return {"url": spec.authorize_url + "?" + urlencode(params)}
 
 
 def identifier(body):
@@ -458,26 +424,6 @@ def threads_exchange(session, settings, code):
     }
 
 
-def put_secret(session, settings, name, text):
-    row = credentials.row_for(session, name)
-    encrypted = cipher(settings).encrypt(text.encode()).decode()
-    if row:
-        row.encrypted_key = encrypted
-    else:
-        session.add(PlatformCredential(provider=name, encrypted_key=encrypted))
-
-
-def connection(session, platform):
-    return session.scalar(select(OAuthConnection).where(OAuthConnection.platform == platform))
-
-
-def digest_credentials(session, settings, platform):
-    names = credentials.GROUPS[platform]
-    return hashlib.sha256(
-        json.dumps([value(session, settings, n) for n in names]).encode()
-    ).hexdigest()
-
-
 def threads_data_blocked(session, settings, now=None):
     """平台曾對成效或回覆呼叫回權限錯誤，且憑證沒換、距離上次不到一天。"""
     row = settings_store.get(session, DATA_BLOCK_KEY)
@@ -527,14 +473,8 @@ def persist(session, settings, platform, payload, staff_id, page=None):
     row.refreshed_at, row.notified_at = utc_now(), None
     row.granted_scopes = payload["scopes"]
     row.checked_at, row.cache_json = None, {}
-    if platform == "youtube":
-        from app.services import youtube_oauth
-
-        youtube_oauth.persist(session, settings, payload, row)
-    elif platform == "tiktok":
-        from app.services import tiktok_oauth
-
-        tiktok_oauth.persist(session, settings, payload, row)
+    if PLATFORM[platform].module:
+        PLATFORM[platform].module.persist(session, settings, payload, row)
     elif platform == "meta":
         put_secret(session, settings, "META_USER_ACCESS_TOKEN", payload["token"])
         for name, key in [
@@ -562,35 +502,6 @@ def persist(session, settings, platform, payload, staff_id, page=None):
         row.cache_json = {"granted": list(payload["scopes"]), "verified": True}
         row.checked_at = utc_now()
     audit(session, platform, "linked", f"staff:{staff_id}")
-
-
-def register_account(session, platform, external_id, name):
-    """授權成功後把帳號登記到品牌，發佈功能才找得到對應帳號。
-
-    只在工作檯恰有一個品牌時自動登記；多品牌時無法判斷歸屬，維持由發佈頁提示。
-    既有帳號只更新名稱與狀態，不動 send_enabled。
-    """
-    brands = list(session.scalars(select(Brand.id).limit(2)))
-    if len(brands) != 1 or not external_id:
-        return
-    account = session.scalar(
-        select(Account).where(
-            Account.brand_id == brands[0],
-            Account.platform == platform,
-            Account.external_id == external_id,
-        )
-    )
-    if account is None:
-        account = Account(
-            brand_id=brands[0],
-            platform=platform,
-            external_id=external_id,
-            name=(name or platform)[:200],
-        )
-        session.add(account)
-    elif name:
-        account.name = name[:200]
-    account.status = "connected"
 
 
 def receive(session, settings, platform, state, code, denied=False):
@@ -664,13 +575,10 @@ def finish(access, settings, platform, identity, code, denied):
         elif not code or len(code) > 4096:
             result = "failed"
         else:
-            from app.services import tiktok_oauth, youtube_oauth
-
+            module = PLATFORM[platform].module
             payload = (
-                youtube_oauth.exchange(session, settings, code)
-                if platform == "youtube"
-                else tiktok_oauth.exchange(session, settings, code)
-                if platform == "tiktok"
+                module.exchange(session, settings, code)
+                if module
                 else meta_exchange(session, settings, code)
                 if platform == "meta"
                 else threads_exchange(session, settings, code)
@@ -800,44 +708,22 @@ def status_item(session, settings, platform, row, scopes, verified=True):
 def statuses(session, settings, force=False):
     result = {}
     for platform in SCOPES:
-        if platform == "youtube":
-            from app.services import youtube_oauth
-
-            item = youtube_oauth.status(session, settings)
+        spec = PLATFORM[platform]
+        if spec.module:
+            # 權杖由平台模組自動換發；強制檢查時實際換發一次並確認仍是同一個帳號。
+            item = spec.module.status(session, settings)
             if force and item["linked"] and item["verified"]:
                 from app.db import session_factory
 
                 factory = session_factory(session.get_bind())
                 session.commit()
                 try:
-                    token = youtube_oauth.access_token(factory, settings)
-                    identity, _ = youtube_oauth.channel(token)
-                    if identity != value(session, settings, "YOUTUBE_CHANNEL_ID"):
+                    identity = spec.module.verify_identity(factory, settings)
+                    if identity != value(session, settings, spec.identity_name):
                         raise ProviderFailure()
                 except ProviderFailure:
                     session.expire_all()
-                    item = youtube_oauth.status(session, settings)
-                    item.update(verified=False, state="failed")
-            result[platform] = item
-            continue
-        if platform == "tiktok":
-            from app.services import tiktok_oauth
-
-            item = tiktok_oauth.status(session, settings)
-            if force and item["linked"] and item["verified"]:
-                from app.db import session_factory
-
-                factory = session_factory(session.get_bind())
-                session.commit()
-                try:
-                    identity, _ = tiktok_oauth.profile(
-                        tiktok_oauth.access_token(factory, settings)
-                    )
-                    if identity != value(session, settings, "TIKTOK_OPEN_ID"):
-                        raise ProviderFailure()
-                except ProviderFailure:
-                    session.expire_all()
-                    item = tiktok_oauth.status(session, settings)
+                    item = spec.module.status(session, settings)
                     item.update(verified=False, state="failed")
             result[platform] = item
             continue
@@ -945,13 +831,10 @@ def publish_readiness(session, settings, *, cached=False):
     else:
         states = statuses(session, settings)
     if cached:
-        # YouTube 狀態只讀本機資料（不打 Google），快取模式也可直接取得。
-        from app.services import youtube_oauth
-
-        states["youtube"] = youtube_oauth.status(session, settings)
-        from app.services import tiktok_oauth
-
-        states["tiktok"] = tiktok_oauth.status(session, settings)
+        # YouTube／TikTok 的狀態只讀本機資料（不打平台），快取模式也可直接取得。
+        for platform, spec in PLATFORM.items():
+            if spec.module:
+                states[platform] = spec.module.status(session, settings)
     requirements = {
         "facebook": ("meta", {"pages_manage_posts", "pages_read_engagement"}),
         "instagram": (
@@ -1037,8 +920,6 @@ def maintain(factory, settings, now=None):
         if tiktok_due:
             row.maintenance_at = now
     if tiktok_due:
-        from app.services import tiktok_oauth
-
         tiktok_oauth.maintain(factory, settings, now)
     for platform in ("meta", "threads"):
         with factory.begin() as session:

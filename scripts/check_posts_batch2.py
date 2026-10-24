@@ -12,17 +12,18 @@ from runtime_tmp import (
 import json
 import os
 import secrets
-import subprocess
 import sys
-import time
-import urllib.request
 from datetime import timedelta
-from pathlib import Path
 
-from ports import KEEP_ALIVE_SECONDS, browser_port
+from browser_harness import REPO, launch_server, run_uvicorn, seed_records
+from ports import browser_port
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "backend"))
+
+def serve():
+    # 與原本 `python -m uvicorn app.main:app` 相同：使用模組層級的 app（讀 backend/.env，再由環境變數覆寫）。
+    from app.main import app
+
+    run_uvicorn(app, sys.argv[2])
 
 
 @runtime_check
@@ -174,38 +175,9 @@ def main():
                     )
                 )
         session.flush()
-    server_log = (folder / "server.log").open("w", encoding="utf-8")
-    cleanup(server_log.close)
-    server = subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "app.main:app",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            str(port),
-            "--timeout-keep-alive",
-            str(KEEP_ALIVE_SECONDS),
-        ],
-        cwd=REPO / "backend",
-        env={**os.environ, **env},
-        stdout=server_log,
-        stderr=server_log,
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-    )
-    cleanup(stop_process, server)
+    server = launch_server(folder, origin, script=__file__, args=[port])
     checks, measures, errors, external = [], [], [], []
     try:
-        for _ in range(100):
-            try:
-                with urllib.request.urlopen(origin + "/api/health", timeout=1):
-                    break
-            except OSError:
-                if server.poll() is not None:
-                    raise RuntimeError("隔離後台啟動失敗") from None
-                time.sleep(0.1)
         with sync_playwright() as pw:
             browser = launch_chromium(pw)
             context = browser.new_context(viewport={"width": 1440, "height": 900})
@@ -339,10 +311,6 @@ def main():
             for name in ("數據變化", "觀看變化", "觀眾留存"):
                 assert page.get_by_role("region", name=name).evaluate("e => getComputedStyle(e).borderTopStyle") == "solid", name
             expect(page.locator(".post-metrics .metric-chart select")).to_have_count(0)
-            # 數據快照標題與上方卡片留出間距。
-            assert page.locator(".snapshot-heading").evaluate(
-                "e => e.getBoundingClientRect().top - e.previousElementSibling.getBoundingClientRect().bottom >= 28"
-            )
             page.locator(".post-metrics").evaluate("e => e.scrollTop = e.querySelector('.watch-chart').offsetTop - 120")
             capture("ig-watch-charts-1440x900")
             checks.append("ig-reels-watch-time-skip-rate-retention")
@@ -404,6 +372,7 @@ def main():
             capture("threads-metrics-390x844")
             checks.append("threads-mobile-no-horizontal-overflow")
             assert all(m["text"] in (None, "16px") for m in measures)
+            check_comment_date_ranges(page, origin, factory, now, capture, checks)
             assert not errors and not external, (errors, external)
             browser.close()
         summary = {
@@ -430,8 +399,154 @@ def main():
         )
     finally:
         stop_process(server)
-        server_log.close()
         engine.dispose()
+
+
+def check_comment_date_ranges(page, origin, factory, now, capture, checks):
+    """批次 2 修正（原 check_posts_fix）：留言日期 7／30／90／全部與分頁、網址保留、成效欄位置。
+
+    把 FB 貼文第 100 則以後的留言改成 40 天前，讓「近 30 天」只剩 100 則、「全部」仍是 205 則；
+    前面的批次 2 斷言都已在這之前完成，不受此處資料改動影響。
+    """
+    from zoneinfo import ZoneInfo
+
+    from playwright.sync_api import expect
+    from sqlalchemy import select
+
+    from app.models import Message
+
+    with factory.begin() as session:
+        aged = [f"facebook-c{index}" for index in range(100, 205)]
+        for message in session.scalars(select(Message).where(Message.external_id.in_(aged))):
+            message.sent_at -= timedelta(days=40)
+    comment_requests = []
+    page.on(
+        "request",
+        lambda request: (
+            comment_requests.append(request.url)
+            if "/comment-threads?" in request.url
+            else None
+        ),
+    )
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(origin)
+    page.get_by_role("button", name="貼文數據", exact=True).click()
+    page.get_by_role("tablist", name="貼文平台").get_by_role("tab", name="FB", exact=True).click()
+    expect(page.locator(".post-card")).to_have_count(1)
+    post_dates = page.get_by_role("group", name="發文日期", exact=True)
+    comment_dates = page.get_by_role("group", name="留言日期", exact=True)
+    capture("fix-list-1440x900")
+    page.locator(".post-card").click()
+    expect(page.locator(".comment-range-total")).to_have_text("此範圍 100 則")
+    assert "period=30" in comment_requests[-1]
+    initial = page.request.get(comment_requests[-1]).json()
+    assert initial['total'] == 205 and initial['range_total'] == 100
+    assert len({row['id'] for row in initial['items']}) == len(initial['items'])
+    comment_requests.clear()
+    comment_dates.get_by_role("radio", name="近 90 天", exact=True).click()
+    expect(page.locator('.post-comment[data-depth="0"]')).to_have_count(50)
+    expect(page.locator(".post-comment")).to_have_count(50)
+    expect(page.locator(".comment-range-total")).to_have_text("此範圍 205 則")
+    # 成效在中間且是最寬的欄；貼文摘要與留言在右側。
+    assert page.locator(".post-metrics").evaluate("""e => {
+        const m = e.getBoundingClientRect(),
+            c = document.querySelector('.post-conversation').getBoundingClientRect();
+        return m.right <= c.left && m.width > c.width;
+    }""")
+    capture("fix-comments-1440x900")
+    assert len(comment_requests) == 1 and "limit=50" in comment_requests[0]
+    page.wait_for_timeout(3200)
+    assert len(comment_requests) == 1
+    checks.append("50-latest-roots-with-server-pagination")
+    more = page.get_by_role("button", name="顯示更多", exact=True)
+    more.click()
+    expect(page.locator('.post-comment[data-depth="0"]')).to_have_count(100)
+    expect(page.locator(".post-comment")).to_have_count(102)
+    for root_count in (150, 200, 203):
+        more.click()
+        expect(page.locator('.post-comment[data-depth="0"]')).to_have_count(root_count)
+    expect(more).to_have_count(0)
+    expect(page.locator(".post-comment")).to_have_count(205)
+    assert page.locator('.post-comment[data-depth="2"]').count() == 1
+    ids_on_page = page.locator(".post-comment").evaluate_all(
+        "es => es.map(e => e.dataset.messageId)"
+    )
+    assert len(ids_on_page) == len(set(ids_on_page)) == 205
+    checks.append("load-more-preserves-replies-no-duplicates-complete")
+    comment_dates.get_by_role("radio", name="近 7 天", exact=True).click()
+    expect(page.locator(".comment-range-total")).to_have_text("此範圍 100 則")
+    expect(page.locator('.post-comment[data-depth="0"]')).to_have_count(50)
+    more.click()
+    expect(page.locator(".post-comment")).to_have_count(100)
+    expect(more).to_have_count(0)
+    assert "comment_range=7" in page.url
+    checks.append("filter-resets-page-and-more-stays-in-range")
+    post_dates.get_by_role("radio", name="近 30 天", exact=True).click()
+    assert "post_range=30" in page.url
+    page.reload()
+    expect(
+        comment_dates.get_by_role("radio", name="近 7 天", exact=True)
+    ).to_have_attribute("aria-checked", "true")
+    expect(post_dates.get_by_role("radio", name="近 30 天", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+    expect(page.locator(".comment-range-total")).to_have_text("此範圍 100 則")
+    expect(page.locator('.post-comment[data-depth="0"]')).to_have_count(50)
+    checks.append("independent-filter-urls-survive-reload")
+    today = now.astimezone(ZoneInfo("Asia/Taipei")).date()
+    tomorrow = (today + timedelta(days=1)).isoformat()
+    post_dates.get_by_label("發文日期起日").fill(tomorrow)
+    expect(page.locator(".post-card")).to_have_count(0)
+    expect(page.locator(".comment-range-total")).to_have_text("此範圍 100 則")
+    post_dates.get_by_role("radio", name="全部", exact=True).click()
+    expect(page.locator(".post-card")).to_have_count(1)
+    expect(comment_dates.get_by_role("radio")).to_have_text(['近 7 天', '近 30 天', '近 90 天', '全部'])
+    expect(comment_dates.get_by_label("留言日期起日")).to_have_count(0)
+    comment_dates.get_by_role("radio", name="全部", exact=True).click()
+    expect(page.locator(".comment-range-total")).to_have_text("此範圍 205 則")
+    expect(comment_dates.get_by_role("radio", name="全部", exact=True)).to_have_attribute('aria-checked', 'true')
+    assert 'period=all' in comment_requests[-1]
+    page.reload()
+    expect(comment_dates.get_by_role("radio", name="全部", exact=True)).to_have_attribute('aria-checked', 'true')
+    expect(page.locator(".comment-range-total")).to_have_text("此範圍 205 則")
+    for days in (30, 90):
+        comment_dates.get_by_role("radio", name=f"近 {days} 天", exact=True).click()
+        expect(page.locator(".comment-range-total")).to_have_text(
+            "此範圍 100 則" if days == 30 else "此範圍 205 則"
+        )
+        expect(page.locator('.post-comment[data-depth="0"]')).to_have_count(50)
+        assert f"comment_range={days}" in page.url
+    page.reload()
+    expect(comment_dates.get_by_role("radio", name="近 90 天", exact=True)).to_have_attribute("aria-checked", "true")
+    expect(page.locator('.post-comment[data-depth="0"]')).to_have_count(50)
+    checks.append("comment-7-30-90-filter-and-pagination")
+    for width in (599, 600):
+        page.set_viewport_size({"width": width, "height": 844})
+        metrics_first = page.locator(".post-metrics").evaluate("""e =>
+            e.getBoundingClientRect().bottom
+            <= document.querySelector('.post-comments').getBoundingClientRect().top""")
+        assert metrics_first
+    page.set_viewport_size({"width": 390, "height": 844})
+    assert page.locator(".post-metrics").evaluate("""e =>
+            e.getBoundingClientRect().bottom
+        <= document.querySelector('.post-comments').getBoundingClientRect().top""")
+    capture("fix-mobile-top-390x844")
+    page.locator(".post-detail").evaluate("""e => {
+        e.scrollTop += e.querySelector('.post-metrics').getBoundingClientRect().top
+            - e.getBoundingClientRect().top;
+    }""")
+    capture("fix-mobile-metrics-390x844")
+    page.locator(".post-detail").evaluate("""e => {
+        e.scrollTop += e.querySelector('.post-comments').getBoundingClientRect().top
+            - e.getBoundingClientRect().top;
+    }""")
+    capture("fix-mobile-comments-390x844")
+    page.get_by_role("button", name="← 返回貼文", exact=True).click()
+    capture("fix-list-390x844")
+    expect(post_dates.get_by_role("radio", name="全部", exact=True)).to_have_attribute(
+        "aria-checked", "true"
+    )
+    checks.append("mobile-tablet-metrics-before-comments-desktop-metrics-center")
 
 
 def check_threads_detail(page, expect):
@@ -446,16 +561,8 @@ def check_threads_detail(page, expect):
     tabs = page.get_by_role("region", name="數據變化").get_by_role("tab")
     expect(tabs).to_have_text(names)
     expect(tabs.first).to_have_attribute("aria-selected", "true")
-    assert page.locator(".snapshot-table th").all_inner_texts() == ["抓取時間", "觀看", "按讚", "回覆"]
-    # 成效面板 380px：抓取時間「日期 時間」與指標欄名都排在同一行，不拆開、不直排。
-    lines = page.locator(".snapshot-table").evaluate(
-        """table => [...table.querySelectorAll('th,td')].map(cell => {
-            const range = document.createRange(); range.selectNodeContents(cell);
-            return [cell.textContent, new Set([...range.getClientRects()].map(r => Math.round(r.top))).size,
-                cell.offsetWidth, table.clientWidth];
-        })"""
-    )
-    assert lines and all(row[1] == 1 for row in lines), lines
+    # 快照數字已在「數據變化」曲線，不再另列數據快照表。
+    expect(page.locator(".snapshot-table, .snapshot-heading")).to_have_count(0)
     expect(page.locator(".comment-sync strong")).to_have_text("Threads 回覆")
     expect(page.locator(".post-comments .comment-sync")).to_have_count(1)  # uiorder: 各平台同步區都在留言與回覆卡片內
     expect(page.locator(".post-metrics .comment-sync")).to_have_count(0)
@@ -467,16 +574,5 @@ def check_threads_detail(page, expect):
     assert page.locator(".batch2-posts textarea").count() == 0
 
 
-def seed_records(session, settings, *, include_content=False):
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts") if "tests" in Path(__file__).parts else str(Path(__file__).resolve().parent))
-    from test_prices import seed_prices
-    from test_records import seed_records as seed_base_records
-    counts = seed_base_records(session, settings, include_content=include_content)
-    seed_prices(session)
-    return counts
-
-
 if __name__ == "__main__":
-    main()
+    serve() if "--serve" in sys.argv else main()

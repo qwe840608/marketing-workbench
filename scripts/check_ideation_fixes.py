@@ -9,21 +9,16 @@ from runtime_tmp import (
     temporary_dir,
 )
 
+from browser_harness import REPO, launch_server, seed_records
 from ports import browser_port
 import json
 from playwright.sync_api import expect
 import os
 import secrets
-import subprocess
-import sys
 import time
-import urllib.request
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
-
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "backend"))
 
 
 # 長內文：驗證清單截斷與「[全文]」展開。
@@ -957,6 +952,80 @@ def check_idea_edit(page, origin, report_id, checks):
     checks.append('pubfix-edit-cancel-required-save-badge-and-evidence')
 
 
+# 超出視窗的元素必須被某個「可捲動或裁切」且本身在視窗內的祖先容器包住；
+# 頁面與主要捲動容器本身也不得比可視寬度寬。
+FOUR_TABS_MEASURE = """() => {
+  const page = document.querySelector('.ideation-page');
+  const loose = [...page.querySelectorAll('*')].filter(e => {
+    const r = e.getBoundingClientRect();
+    if (r.width === 0 || r.right <= innerWidth + 1) return false;
+    for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) {
+      const o = getComputedStyle(a).overflowX;
+      if (o !== 'visible' && a.getBoundingClientRect().right <= innerWidth + 1) return false;
+      if (a === page) break;
+    }
+    return true;
+  }).map(e => e.tagName + '.' + (e.className || '').toString().slice(0, 40));
+  return {
+    loose,
+    page: [page.scrollWidth, page.clientWidth],
+    root: [document.documentElement.scrollWidth, innerWidth],
+    tabs: [...document.querySelectorAll('.ideation-platform-tabs button')].map(b => b.textContent),
+  };
+}"""
+
+
+def check_four_platform_tabs(page, origin, factory, width, capture, checks):
+    """主題發想在四個平台分頁（FB／IG／Threads／YouTube）時，手機與桌面都不得撐寬頁面。
+
+    2026-10-14 使用者回報（原 check_ideation_mobile）：手機上平台分頁一排放不下，最後一個分頁把
+    .ideation-page 撐到 469px（螢幕 390px），iPhone Safari 整頁可左右滑、左側文字被切掉。
+    隔離資料原本沒有 Threads／YouTube 貼文所以沒抓到；這裡補帳號與貼文重現該情境。
+    """
+    from sqlalchemy import select
+
+    from app.models import Account, Brand, Post
+    from app.models.base import utc_now
+
+    with factory.begin() as s:
+        if not s.scalar(select(Account).where(Account.platform == "threads")):
+            brand = s.scalar(select(Brand).where(Brand.slug == "TEST"))
+            for platform in ("instagram", "threads", "youtube"):
+                account = Account(
+                    brand_id=brand.id,
+                    platform=platform,
+                    external_id=f"mobile-{platform}",
+                    name=f"[隔離驗收] {platform}",
+                    send_enabled=False,
+                    token_ref="META_PAGE_ACCESS_TOKEN",
+                )
+                s.add(account)
+                s.flush()
+                for n in range(3):
+                    s.add(Post(
+                        account_id=account.id,
+                        external_id=f"mobile-{platform}-{n}",
+                        caption="[隔離驗收] 很長的貼文標題用來測試手機版面不被撐寬 " * 3,
+                        media_type="POST",
+                        published_at=utc_now() - timedelta(hours=n + 1),
+                    ))
+    page.goto(origin + "/?view=ideation")
+    tabs = page.locator(".ideation-platform-tabs button")
+    expect(tabs).to_have_count(4)
+    page.wait_for_load_state("networkidle")
+    result = page.evaluate(FOUR_TABS_MEASURE)
+    assert result["loose"] == [], (width, result)
+    assert result["page"][0] <= result["page"][1] + 1, (width, result)
+    assert result["root"][0] <= result["root"][1] + 1, (width, result)
+    # 最後一個分頁仍可捲到並點選。
+    tabs.last.scroll_into_view_if_needed()
+    tabs.last.click()
+    expect(tabs.last).to_have_attribute("aria-selected", "true")
+    assert page.evaluate(FOUR_TABS_MEASURE)["page"][0] <= result["page"][1] + 1
+    capture("ideation-four-tabs")
+    checks.append(f"ideation-four-tabs-no-overflow-{width}")
+
+
 @runtime_check
 def main():
     from alembic import command
@@ -1085,33 +1154,12 @@ def main():
     with factory.begin() as session:
         # Exercise discovery of historical --ID exports that predate export_json.
         session.get(IdeationReport, first).export_json = {}
-    log = (folder / "server.log").open("w", encoding="utf-8")
-    cleanup(log.close)
-    server = subprocess.Popen(
-        [
-            sys.executable,
-            str(REPO / "scripts/check_ui_scale.py"),
-            "--serve",
-            str(env_path),
-            str(port),
-        ],
-        cwd=REPO / "backend",
-        env={**os.environ, **env},
-        stdout=log,
-        stderr=log,
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    # 伺服器沿用 check_ui_scale 的 serve()（讀 env 檔、不繼承工作機的供應商金鑰）。
+    server = launch_server(
+        folder, origin, script=REPO / "scripts/check_ui_scale.py", args=[env_path, port]
     )
-    cleanup(stop_process, server)
     errors, external, checks = [], [], []
     try:
-        for _ in range(100):
-            try:
-                with urllib.request.urlopen(origin + "/api/health", timeout=1):
-                    break
-            except OSError:
-                if server.poll() is not None:
-                    raise RuntimeError("隔離服務啟動失敗")
-                time.sleep(0.1)
         with sync_playwright() as pw:
             browser = launch_chromium(pw)
             for width, height in [(1440, 900), (390, 844)]:
@@ -1349,6 +1397,7 @@ def main():
                     page.unroute("**/api/ideation/reports?*")
                     page.unroute(f"**/api/ideation/reports/{first}")
                     check_report_delete(page, origin, bid, first, width, checks)
+                    check_four_platform_tabs(page, origin, factory, width, capture, checks)
                 context.close()
             browser.close()
         assert not errors and not external, (errors, external)
@@ -1374,19 +1423,7 @@ def main():
         )
     finally:
         stop_process(server)
-        log.close()
         engine.dispose()
-
-
-def seed_records(session, settings, *, include_content=False):
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts") if "tests" in Path(__file__).parts else str(Path(__file__).resolve().parent))
-    from test_prices import seed_prices
-    from test_records import seed_records as seed_base_records
-    counts = seed_base_records(session, settings, include_content=include_content)
-    seed_prices(session)
-    return counts
 
 
 if __name__ == "__main__":

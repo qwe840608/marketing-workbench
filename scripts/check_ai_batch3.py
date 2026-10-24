@@ -11,23 +11,16 @@ from runtime_tmp import (
 
 from ui_navigation import navigate
 
-from ports import KEEP_ALIVE_SECONDS, browser_port
+from browser_harness import REPO, launch_server, run_uvicorn, seed_records
+from ports import browser_port
 import json
 import os
 import secrets
-import subprocess
 import sys
-import time
-import urllib.request
 from datetime import timedelta
-from pathlib import Path
-
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "backend"))
 
 
 def serve():
-    import uvicorn
     from fastapi import HTTPException
 
     from app.config import Settings
@@ -45,13 +38,7 @@ def serve():
     ai_keys.probe = probe
     jev.post_json = no_network
     providers.call_api = no_network
-    uvicorn.run(
-        create_app(Settings(_env_file=None)),
-        host="127.0.0.1",
-        port=int(os.environ["BATCH3_PORT"]),
-        log_level="warning",
-        timeout_keep_alive=KEEP_ALIVE_SECONDS,
-    )
+    run_uvicorn(create_app(Settings(_env_file=None)), os.environ["BATCH3_PORT"])
 
 
 @runtime_check
@@ -110,28 +97,10 @@ def main():
             post.caption = "[隔離驗收] 服務注意事項"
             post.published_at = utc_now()
     engine.dispose()
-    server_log = (folder / "server.log").open("w", encoding="utf-8")
-    cleanup(server_log.close)
-    server = subprocess.Popen(
-        [sys.executable, str(Path(__file__).resolve()), "--serve"],
-        cwd=REPO / "backend",
-        env=dict(os.environ),
-        stdout=server_log,
-        stderr=server_log,
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-    )
-    cleanup(stop_process, server)
+    server = launch_server(folder, origin, script=__file__)
     checks, measures, errors, external = [], [], [], []
     canary = "sk-proj-" + secrets.token_urlsafe(32)
     try:
-        for _ in range(150):
-            try:
-                urllib.request.urlopen(origin + "/api/health", timeout=1).close()
-                break
-            except OSError:
-                if server.poll() is not None:
-                    raise RuntimeError("隔離後台啟動失敗") from None
-                time.sleep(0.1)
         with sync_playwright() as pw:
             browser = launch_chromium(pw)
             context = browser.new_context(viewport={"width": 1440, "height": 900})
@@ -282,18 +251,6 @@ def main():
         )
     finally:
         stop_process(server)
-        server_log.close()
-
-
-def seed_records(session, settings, *, include_content=False):
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts") if "tests" in Path(__file__).parts else str(Path(__file__).resolve().parent))
-    from test_prices import seed_prices
-    from test_records import seed_records as seed_base_records
-    counts = seed_base_records(session, settings, include_content=include_content)
-    seed_prices(session)
-    return counts
 
 
 if __name__ == "__main__":
