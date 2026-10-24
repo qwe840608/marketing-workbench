@@ -94,11 +94,11 @@ uv run pytest -q --basetemp ../.runtime/pytest -o tmp_path_retention_policy=none
 /plugin install mwb@marketing-workbench
 ```
 
-到 `/plugin → Marketplaces` 選 marketing-workbench，開啟 Enable auto-update（須成員自行操作）；首次使用 MCP 時以自己的工作檯帳號登入並核准。手動更新用 `/plugin marketplace update marketing-workbench`，更新後重新開始對話。使用者本人也可在 repo 根目錄以 `claude --plugin-dir plugin/mwb` 載入開發檔，本機 URL 為 http://127.0.0.1:8000/mcp。
+到 `/plugin → Marketplaces` 選 marketing-workbench，開啟 Enable auto-update（須成員自行操作）；首次使用 MCP 時以自己的工作檯帳號登入並核准。手動更新用 `/plugin marketplace update marketing-workbench`，更新後重新開始對話。使用者本人也可在 repo 根目錄以 `claude --plugin-dir plugin/mwb` 載入開發檔，本機 URL 為 <http://127.0.0.1:8000/mcp>。
 
 **Codex**（skills＋config）：在安裝區切到 Codex，下載並解壓縮，將 skills 下五個資料夾放到 `~/.agents/skills/`（已有同名內容先備份），把 ZIP 的 config.toml 合併到 `~/.codex/config.toml`，再執行 `codex mcp login mwb` 以自己的帳號核准。唯讀工具 approval_mode=approve，所有寫入及 confirm_publish 為 prompt；用戶端核准設定不取代後端權限與發佈確認。更新時重新下載並合併。採此方式的原因：Codex plugin 的 installed server policy 需使用者在 config 設定，且 `codex plugin marketplace add` 不接受託管 JSON URL。
 
-**Claude 桌面版**：切到 Claude 桌面版下載 `.mcpb`，在桌面版「設定 → 擴充功能 → 安裝擴充功能」選該檔。工作檯網址從安裝區複製（本機可填 http://127.0.0.1:8000），到「Agent 連線」建立連線權杖貼到擴充設定。更新需下載新版重新安裝；移除擴充不代替工作檯撤銷。官方格式查證及人工 mcpb 驗證命令見 `plugin/README.md`。
+**Claude 桌面版**：切到 Claude 桌面版下載 `.mcpb`，在桌面版「設定 → 擴充功能 → 安裝擴充功能」選該檔。工作檯網址從安裝區複製（本機可填 <http://127.0.0.1:8000>），到「Agent 連線」建立連線權杖貼到擴充設定。更新需下載新版重新安裝；移除擴充不代替工作檯撤銷。官方格式查證及人工 mcpb 驗證命令見 `plugin/README.md`。
 
 **Hermes**：見 [MCP規範](MCP規範.md) 的「Hermes 連線」。
 

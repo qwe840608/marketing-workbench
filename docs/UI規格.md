@@ -7,7 +7,7 @@
 - Codex 使用 `.secondary.agent-install-download` 下載 skills／config 套件，列解壓指令、一句 skills 放置及 config 合併說明與 OAuth 登入指令；不在介面列出所有工具設定。版本由既有 workspace/identity API 提供。
 - http://127.0.0.1 顯示 `.notice.agent-install-origin` 指示其他成員使用內部 HTTPS，連結由同一 API 的 backoffice_origin 提供，不寫死主機。
 - 指令 text-main／bg-subtle／ui-font-mono／help，說明 text-subtle／bg-surface；圓角使用 control Token，其餘沿用 P1-1 與共用元件，零外部資源。1440／768／390px 不水平溢出，check_agent_auth 等資料、字型與版面穩定才量測，check_ui_contrast 涵蓋所有新增配對。
-- Claude 桌面版只有 `.secondary`「下載桌面擴充」與三步清單：安裝檔案、填工作檯網址、貼連線權杖；網址與複製按鈕同列，顯示 location.origin，HTTPS 可直接複製。127.0.0.1 HTTP 沿用來源提示，第二步同列建議成員使用內部 HTTPS、本機使用 http://127.0.0.1:8000；不增小標題，沿用上述文字與底色 Token。
+- Claude 桌面版只有 `.secondary`「下載桌面擴充」與三步清單：安裝檔案、填工作檯網址、貼連線權杖；網址與複製按鈕同列，顯示 location.origin，HTTPS 可直接複製。127.0.0.1 HTTP 沿用來源提示，第二步同列建議成員使用內部 HTTPS、本機使用 <http://127.0.0.1:8000>；不增小標題，沿用上述文字與底色 Token。
 
 ## Agent 主題與腳本（agentquery）
 
