@@ -22,7 +22,7 @@
 
 ## 功能特色
 
-- 同步 Facebook、Instagram、Threads、YouTube、TikTok 的貼文成效；儀表板顯示趨勢、成長比較與轉換漏斗。
+- 同步 Facebook、Instagram、Threads、YouTube、TikTok 的貼文成效；儀表板顯示趨勢、成長比較、轉換漏斗與受眾分析。
 - 每小時抓取自家貼文留言；送給雲端模型前先遮蔽個資。
 - 從選定貼文的留言整理證據，產生 15 個內容主題，附觀眾原話。
 - 依主題撰寫腳本，檢查品牌禁語，可匯出。
@@ -79,7 +79,7 @@ cd ..
 
 第一次啟動時若 8000 已被其他程式佔用，`start-all.ps1` 會詢問要改用哪個連接埠並寫入 `.env`。
 
-啟動後在執行工作檯的電腦開啟 http://127.0.0.1:8000（或你改用的連接埠），第一次會看到「建立管理員」，填入管理員帳號、密碼與品牌名稱後自動登入。之後到「設定」的平台連線卡片填入各平台應用程式的金鑰並按「連結」。每張卡片的「設定教學」會列出要填到平台後台的回呼網址。
+啟動後在執行工作檯的電腦開啟 http://127.0.0.1:8000（或你改用的連接埠），第一次會看到「首次設定」頁面，填入管理員帳號、密碼與品牌名稱後自動登入。之後到「設定」的平台連線卡片填入各平台應用程式的金鑰並按「連結〇〇帳號」。每張卡片的「設定教學」會列出要填到平台後台的回呼網址。
 
 讓 Claude Code 連上工作檯（網址從「設定 → 我的帳號 → 安裝 Agent」複製）：
 
@@ -124,6 +124,7 @@ npm run dev
 | `EXPORT_ROOT` | `data/export` | 匯出檔目錄 |
 | `LOG_PATH` | `data/logs/backend.jsonl` | 日誌檔 |
 | `APP_ORIGIN` | `http://127.0.0.1:8000` | 允許的來源，可用逗號分隔多個。加入 HTTPS 網址（例如 Tailscale）時，`SESSION_COOKIE_SECURE` 必須設為 `true`，否則無法啟動 |
+| `BACKEND_INTERNAL_URL` | `http://127.0.0.1:8000` | 後端監聽位址。改連接埠時 `APP_ORIGIN` 的本機網址要一起改，兩者埠號不同時 `start-all.ps1` 會拒絕啟動；它詢問連接埠時會兩個一起寫入 |
 | `ALLOWED_HOSTS` | `["127.0.0.1","localhost"]` | 允許的主機名稱，必須逐一列出，不能用萬用字元 |
 | `TAILSCALE_ENABLED` | `false` | 使用 Tailscale 時設 `true`，再執行 `node scripts/tailscale.mjs configure` 自動填好來源與主機 |
 | `COMMENT_RETENTION_DAYS` | `365` | 他人留言保留天數（30–3650），每日排程刪除到期留言 |

@@ -79,9 +79,9 @@ cd ..
 
 On first start, if port 8000 is already taken, `start-all.ps1` asks which port to use instead and saves it to `.env`.
 
-After starting, open http://127.0.0.1:8000 (or the port you chose) on the computer running the workbench. The first visit shows the first-run setup: enter the administrator username, password and brand name, and you are signed in. Then, in Settings, enter each platform's app keys on its connection card and click Connect. Each card's setup guide lists the callback URL to enter in the platform's developer settings.
+After starting, open http://127.0.0.1:8000 (or the port you chose) on the computer running the workbench. The first visit shows the First-time setup page: enter the administrator username, password and brand name, and you are signed in. Then, in Settings, enter each platform's app keys on its connection card and click "Connect … account". Each card's setup guide lists the callback URL to enter in the platform's developer settings.
 
-Connect Claude Code to the workbench (copy the address from Settings → My account → Install agent):
+Connect Claude Code to the workbench (copy the address from Settings → My account → Install Agent):
 
 ```text
 /plugin marketplace add <internal-url>/plugin/marketplace.json
@@ -122,6 +122,7 @@ Copy `.env.example` to `.env`. Every backend setting has a default, and paths le
 | `EXPORT_ROOT` | `data/export` | Export folder |
 | `LOG_PATH` | `data/logs/backend.jsonl` | Log file |
 | `APP_ORIGIN` | `http://127.0.0.1:8000` | Allowed origins, comma separated. When you add an HTTPS address (for example Tailscale), `SESSION_COOKIE_SECURE` must be `true` or the app will not start |
+| `BACKEND_INTERNAL_URL` | `http://127.0.0.1:8000` | Address the backend listens on. When you change the port, change the local address in `APP_ORIGIN` too, or `start-all.ps1` refuses to start; when it asks for a port it writes both |
 | `ALLOWED_HOSTS` | `["127.0.0.1","localhost"]` | Allowed host names, listed one by one; wildcards are not accepted |
 | `TAILSCALE_ENABLED` | `false` | Set to `true` when using Tailscale, then run `node scripts/tailscale.mjs configure` to fill in the origin and host |
 | `COMMENT_RETENTION_DAYS` | `365` | Days to keep other people's comments (30–3650); a daily job deletes expired comments |

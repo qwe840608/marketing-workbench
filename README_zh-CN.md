@@ -79,7 +79,7 @@ cd ..
 
 首次启动时若 8000 已被其他程序占用，`start-all.ps1` 会询问改用哪个端口并写入 `.env`。
 
-启动后在运行工作台的电脑上打开 http://127.0.0.1:8000（或你改用的端口），首次会看到初始设置页，填入管理员账号、密码与品牌名称后自动登录。之后在“设置”的平台连接卡片中填入各平台应用的密钥并点击“连接”。每张卡片的设置教程会列出需要填到平台后台的回调地址。
+启动后在运行工作台的电脑上打开 http://127.0.0.1:8000（或你改用的端口），首次会看到“首次设置”页面，填入管理员账号、密码与品牌名称后自动登录。之后在“设置”的平台连接卡片中填入各平台应用的密钥并点击“连接〇〇账号”。每张卡片的设置教程会列出需要填到平台后台的回调地址。
 
 让 Claude Code 连接工作台（地址从“设置 → 我的账号 → 安装 Agent”复制）：
 
@@ -122,6 +122,7 @@ npm run dev
 | `EXPORT_ROOT` | `data/export` | 导出文件目录 |
 | `LOG_PATH` | `data/logs/backend.jsonl` | 日志文件 |
 | `APP_ORIGIN` | `http://127.0.0.1:8000` | 允许的来源，可用逗号分隔多个。加入 HTTPS 地址（例如 Tailscale）时，`SESSION_COOKIE_SECURE` 必须设为 `true`，否则无法启动 |
+| `BACKEND_INTERNAL_URL` | `http://127.0.0.1:8000` | 后端监听地址。改端口时 `APP_ORIGIN` 的本机地址要一起改，两者端口不同时 `start-all.ps1` 会拒绝启动；它询问端口时会两个一起写入 |
 | `ALLOWED_HOSTS` | `["127.0.0.1","localhost"]` | 允许的主机名，必须逐一列出，不能使用通配符 |
 | `TAILSCALE_ENABLED` | `false` | 使用 Tailscale 时设为 `true`，再执行 `node scripts/tailscale.mjs configure` 自动填好来源与主机 |
 | `COMMENT_RETENTION_DAYS` | `365` | 他人评论保留天数（30–3650），每日定时删除到期评论 |
