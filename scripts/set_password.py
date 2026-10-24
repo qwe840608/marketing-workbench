@@ -11,7 +11,7 @@ from pydantic import SecretStr
 
 from app.config import Settings
 from app.db import build_engine, session_factory
-from app.services.passwords import create_admin, set_password
+from app.services.passwords import create_admin, create_first_brand, set_password
 
 
 def main() -> int:
@@ -21,10 +21,14 @@ def main() -> int:
     parser.add_argument(
         "--create-admin", action="store_true", help="僅新安裝空白使用者表可建立首次管理員"
     )
+    parser.add_argument("--brand", help="首次管理員一併建立的品牌名稱；省略時會詢問")
     args = parser.parse_args()
     if not sys.stdin.isatty():
         print("請在互動式終端機執行。")
         return 1
+    brand_name = args.brand
+    if args.create_admin and brand_name is None:
+        brand_name = input("品牌名稱（例如自己的頻道或品牌名稱）：")
     first = SecretStr(getpass.getpass("新密碼（12–128 字元，不顯示輸入）："))
     second = SecretStr(getpass.getpass("再輸入一次："))
     if first != second:
@@ -35,7 +39,10 @@ def main() -> int:
         with session_factory(engine).begin() as session:
             if args.create_admin:
                 staff = create_admin(session, args.username, first)
+                brand = create_first_brand(session, brand_name)
                 message = f"已建立管理員帳號「{staff.username}」，可用此帳號登入。"
+                if brand is not None:
+                    message += f"已建立品牌「{brand.name}」。"
             else:
                 set_password(session, args.username, first)
                 message = "密碼已更新，該帳號的既有登入已失效。"

@@ -57,12 +57,12 @@
 # 1. 建立設定檔並填入 NGROK_AUTHTOKEN；資料路徑可留白（見下方「環境變數設定」）
 copy .env.example .env
 
-# 2. 後端：安裝依賴、產生加密主金鑰、建立資料庫、建立第一個管理員（密碼在終端機輸入）
+# 2. 後端：安裝依賴、產生加密主金鑰、建立資料庫、建立第一個管理員與品牌（密碼在終端機輸入）
 cd backend
 uv sync
 uv run python ../scripts/initialize_ai_encryption.py
 uv run alembic upgrade head
-uv run python ../scripts/set_password.py <管理員帳號> --create-admin
+uv run python ../scripts/set_password.py <管理員帳號> --create-admin --brand "<品牌名稱>"
 
 # 3. 前端：建置
 cd ../frontend

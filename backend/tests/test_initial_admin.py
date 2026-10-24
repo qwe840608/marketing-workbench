@@ -3,7 +3,12 @@ from pydantic import SecretStr
 from sqlalchemy import func, select
 
 from app.models import Account, Brand, Message, PriceItem, Staff
-from app.services.passwords import create_admin, set_password, verify_password
+from app.services.passwords import (
+    create_admin,
+    create_first_brand,
+    set_password,
+    verify_password,
+)
 
 
 def test_initial_admin_creates_no_business_records(client):
@@ -51,3 +56,16 @@ def test_initial_admin_rejects_blank_username(client):
     with pytest.raises(ValueError, match="1–80"):
         with factory.begin() as session:
             create_admin(session, "   ", SecretStr("isolated-admin-password"))
+
+
+def test_first_brand_is_created_once(client):
+    factory = client.app.state.session_factory
+    with pytest.raises(ValueError, match="品牌名稱"):
+        with factory.begin() as session:
+            create_first_brand(session, "   ")
+    with factory.begin() as session:
+        assert create_first_brand(session, " 測試品牌 ").name == "測試品牌"
+    with factory.begin() as session:
+        assert create_first_brand(session, "另一個品牌") is None
+    with factory() as session:
+        assert session.scalars(select(Brand.name)).all() == ["測試品牌"]

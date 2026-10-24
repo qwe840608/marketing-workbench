@@ -57,12 +57,12 @@
 # 1. 创建配置文件并填入 NGROK_AUTHTOKEN；数据路径可留空（见下方“环境变量”）
 copy .env.example .env
 
-# 2. 后端：安装依赖、生成加密主密钥、创建数据库、创建第一个管理员（密码在终端中输入）
+# 2. 后端：安装依赖、生成加密主密钥、创建数据库、创建第一个管理员与品牌（密码在终端中输入）
 cd backend
 uv sync
 uv run python ../scripts/initialize_ai_encryption.py
 uv run alembic upgrade head
-uv run python ../scripts/set_password.py <管理员账号> --create-admin
+uv run python ../scripts/set_password.py <管理员账号> --create-admin --brand "<品牌名称>"
 
 # 3. 前端：构建
 cd ../frontend

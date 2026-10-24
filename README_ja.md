@@ -57,12 +57,12 @@
 # 1. 設定ファイルを作成し NGROK_AUTHTOKEN を入力（データのパスは空欄でも可。下の「環境変数」を参照）
 copy .env.example .env
 
-# 2. バックエンド：依存関係のインストール、暗号化マスターキーの生成、データベースと最初の管理者の作成（パスワードはターミナルで入力）
+# 2. バックエンド：依存関係のインストール、暗号化マスターキーの生成、データベースと最初の管理者とブランドの作成（パスワードはターミナルで入力）
 cd backend
 uv sync
 uv run python ../scripts/initialize_ai_encryption.py
 uv run alembic upgrade head
-uv run python ../scripts/set_password.py <管理者のユーザー名> --create-admin
+uv run python ../scripts/set_password.py <管理者のユーザー名> --create-admin --brand "<ブランド名>"
 
 # 3. フロントエンド：ビルド
 cd ../frontend

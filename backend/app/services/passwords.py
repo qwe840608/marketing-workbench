@@ -7,7 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db import ensure_write
-from app.models import AuditLog, AuthSession, Staff
+from app.models import AuditLog, AuthSession, Brand, Staff
 from app.schemas.members import MemberCreate
 
 hasher = PasswordHasher()
@@ -105,3 +105,17 @@ def create_admin(session: Session, username: str, password: SecretStr) -> Staff:
     session.flush()
     initialize_password(session, staff, password)
     return staff
+
+
+def create_first_brand(session: Session, name: str) -> Brand | None:
+    """新安裝沒有任何品牌時建立唯一品牌；授權連結只會把帳號登記到唯一品牌。"""
+    ensure_write(session)
+    if session.scalar(select(Brand.id).limit(1)) is not None:
+        return None
+    name = name.strip()
+    if not 1 <= len(name) <= 200:
+        raise ValueError("品牌名稱須為 1–200 個字元")
+    brand = Brand(slug="main", name=name)
+    session.add(brand)
+    session.flush()
+    return brand

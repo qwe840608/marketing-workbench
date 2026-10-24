@@ -57,12 +57,12 @@ If you are not comfortable with the command line, give [`docs/agent安裝引導.
 # 1. Create the config file and fill in NGROK_AUTHTOKEN; data paths can stay blank (see "Environment variables")
 copy .env.example .env
 
-# 2. Backend: install dependencies, generate the encryption master key, create the database and the first administrator (password typed in the terminal)
+# 2. Backend: install dependencies, generate the encryption master key, create the database the first administrator and the brand (password typed in the terminal)
 cd backend
 uv sync
 uv run python ../scripts/initialize_ai_encryption.py
 uv run alembic upgrade head
-uv run python ../scripts/set_password.py <admin-username> --create-admin
+uv run python ../scripts/set_password.py <admin-username> --create-admin --brand "<brand-name>"
 
 # 3. Frontend: build
 cd ../frontend
