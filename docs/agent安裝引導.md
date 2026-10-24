@@ -152,6 +152,7 @@ Windows 預設可能禁止執行 `.ps1` 腳本（錯誤訊息提到「執行原�
 
 ## 卡住時
 
-- 啟動失敗：錯誤訊息會指出 `.runtime/` 的日誌檔，讀最後幾行再判斷；常見原因是連接埠被佔用、ngrok authtoken 沒填、套件沒裝。
+- 啟動失敗：錯誤訊息會指出 `.runtime/` 的日誌檔，讀最後幾行再判斷；常見原因是連接埠被佔用、ngrok authtoken 沒填、套件沒裝。`NGROK_AUTHTOKEN` 沒填時腳本第一步就會停下。連接埠 8000 或 4040 被佔用時，先用 `Get-NetTCPConnection -LocalPort 8000` 查是哪個程序；如果是另一份工作檯，到那份資料夾執行 `./scripts/stop-all.ps1`，不要直接結束不認得的程序。
+- 前端建置出現 `Type 'number' is not assignable to type 'Timeout'` 這類型別錯誤：通常是上層資料夾（例如使用者家目錄）有別的專案留下的 `node_modules/@types/node`。目前版本已避開這個情況；仍遇到時把錯誤訊息回報給維護者，不要刪使用者的檔案。
 - 平台連結失敗：先看卡片上的錯誤說明，再對照 `operations.md` 與 `平台政策.md`；權限名稱或回呼網址不符最常見。
 - 忘記管理員密碼：有復原碼就在登入頁「忘記密碼？」重設；沒有就照 `operations.md` 的「成員管理與帳號復原」在主機執行指令。

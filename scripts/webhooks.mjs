@@ -269,7 +269,12 @@ async function main() {
   const started = performance.now(), command = process.argv[2] || 'check';
   if (command === 'prepare') return prepare();
   const settings = readSettings();
-  if (command === 'resolve-ngrok') { resolveNgrok(settings); console.log('ngrok 執行檔已找到。'); return; }
+  if (command === 'resolve-ngrok') {
+    resolveNgrok(settings);
+    // 在建置與啟動後端前就擋下：沒有 authtoken 時閘道一定起不來，晚一步失敗還會把剛啟動的後端停掉。
+    if (!settings.NGROK_AUTHTOKEN) throw new Error('請先在 .env 設定 NGROK_AUTHTOKEN（ngrok 後台 Your Authtoken 頁面複製）。');
+    console.log('ngrok 執行檔與 authtoken 已就緒。'); return;
+  }
   if (command === 'check') {
     await checkBackend(settings);
     await checkEndpoint(fixedUrl(settings.WEBHOOK_PUBLIC_URL), settings.WEBHOOK_PROBE_SECRET);

@@ -145,7 +145,7 @@ function Assert-MwbPortFree {
     while ($true) {
         $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
         try { $listener.Start(); return }
-        catch { if ([DateTime]::UtcNow -ge $deadline) { throw "連接埠 $Port 已被佔用或無法綁定；未停止或接管。" } }
+        catch { if ([DateTime]::UtcNow -ge $deadline) { throw "連接埠 $Port 已被佔用或無法綁定；未停止或接管。可能是另一個資料夾的工作檯或其他程式正在使用，用 Get-NetTCPConnection -LocalPort $Port 查是哪個程序。" } }
         finally { $listener.Stop() }
         Start-Sleep -Milliseconds 250
     }

@@ -65,7 +65,7 @@ try {
     $node = (Get-Command node.exe -ErrorAction Stop).Source
     $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
     $uv = (Get-Command uv.exe -ErrorAction Stop).Source
-    Invoke-Step $node @('scripts/webhooks.mjs', 'resolve-ngrok') $projectRoot '確認 ngrok 執行檔（PATH、NGROK_PATH、LOCALAPPDATA）'
+    Invoke-Step $node @('scripts/webhooks.mjs', 'resolve-ngrok') $projectRoot '確認 ngrok 執行檔（PATH、NGROK_PATH、LOCALAPPDATA）與 NGROK_AUTHTOKEN'
     Invoke-Step $node @('scripts/webhooks.mjs', 'prepare') $projectRoot '初始化 Webhook 簽章設定'
     $python = Join-Path $projectRoot 'backend/.venv/Scripts/python.exe'
     $backend = Get-MwbProcess -Name backend -Root $projectRoot

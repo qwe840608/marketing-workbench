@@ -1,7 +1,8 @@
 /** 每次重新可見都建立新請求生命週期，隱藏時舊回應不能覆寫畫面。 */
 export function pollWhileVisible(refresh: (signal: AbortSignal) => Promise<void>, milliseconds: number) {
   let controller: AbortController | null = null;
-  let timer: ReturnType<typeof window.setInterval> | undefined;
+  // 用 DOM 的 number：上層目錄有 @types/node 時，ReturnType 會被解析成 NodeJS.Timeout 而建置失敗。
+  let timer: number | undefined;
   function stop() {
     controller?.abort(); controller = null;
     window.clearInterval(timer); timer = undefined;
