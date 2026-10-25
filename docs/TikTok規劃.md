@@ -1,6 +1,6 @@
 # TikTok 規劃（第一版）
 
-> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](TikTok規劃_zh-CN.md) | [English](TikTok規劃_en.md) | [日本語](TikTok規劃_ja.md)
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](TikTok规划.md) | [English](tiktok-plan.md) | [日本語](TikTok計画.md)
 
 2026-10-16 規劃問答定案。官方限制以 2026-10-16 查核的官方文件為準，未確認處列在「實測待確認」。
 

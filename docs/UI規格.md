@@ -1,6 +1,6 @@
 # UI 規格
 
-> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](UI規格_zh-CN.md) | [English](UI規格_en.md) | [日本語](UI規格_ja.md)
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](UI规格.md) | [English](ui-spec.md) | [日本語](UI仕様.md)
 
 ## Agent 安裝（agentpack）
 

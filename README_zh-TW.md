@@ -72,7 +72,7 @@ cd ..
 ./scripts/start-all.ps1
 ```
 
-`start-all.ps1` 只會替全新資料庫建立結構，不會升級既有資料庫；升級步驟見 [`docs/operations.md`](docs/operations.md)。
+`start-all.ps1` 只會替全新資料庫建立結構，不會升級既有資料庫；升級步驟見 [`docs/部署與維運.md`](docs/部署與維運.md)。
 
 ## 使用範例
 
@@ -87,7 +87,7 @@ cd ..
 /plugin install mwb@marketing-workbench
 ```
 
-Codex 與 Claude 桌面版的安裝方式見 [`docs/operations.md`](docs/operations.md#agent-連線)。
+Codex 與 Claude 桌面版的安裝方式見 [`docs/部署與維運.md`](docs/部署與維運.md#agent-連線)。
 
 ### 用 agent 操作工作檯（MCP）
 
@@ -120,7 +120,7 @@ Codex 與 Claude 桌面版的安裝方式見 [`docs/operations.md`](docs/operati
 
 <!-- TODO: 請補充一段從發想到發佈的完整操作示範（截圖或短片） -->
 
-部署、更新、備份與排錯見 [`docs/operations.md`](docs/operations.md)；架構見 [`docs/architecture.md`](docs/architecture.md)。
+部署、更新、備份與排錯見 [`docs/部署與維運.md`](docs/部署與維運.md)；架構見 [`docs/架構.md`](docs/架構.md)。
 
 開發時可以分開啟動：
 
@@ -176,7 +176,7 @@ npm run dev
 - 資料表變更一律透過 Alembic migration。
 - 新增介面文字用 `t('繁中原文')` 包起來，並補 `frontend/src/locales/` 的英文、簡中、日文翻譯，用詞依 [`docs/i18n術語表.md`](docs/i18n術語表.md)。
 - 平台串接只用官方 API，不接受爬蟲、非官方 API 或瀏覽器自動化。
-- 架構與規則見 [`docs/architecture.md`](docs/architecture.md)、[`docs/MCP規範.md`](docs/MCP規範.md)、[`docs/UI規格.md`](docs/UI規格.md)。
+- 架構與規則見 [`docs/架構.md`](docs/架構.md)、[`docs/MCP規範.md`](docs/MCP規範.md)、[`docs/UI規格.md`](docs/UI規格.md)。
 
 歡迎送 PR。較大的改動（新平台、資料表變更、權限規則）請先開 issue 討論方向。回覆時間不固定，請多包涵。
 

@@ -44,13 +44,13 @@
 - **TikTok 只能发送为收件箱草稿**，文案需要在 TikTok App 内粘贴。
 - **Google 同意屏幕要设为正式版**，否则 YouTube 授权每 7 天失效。
 
-详情见 [`docs/合規須知.md`](docs/合規須知_zh-CN.md)（合规须知），每条规定的官方出处见 [`docs/平台政策.md`](docs/平台政策_zh-CN.md)（平台政策）。
+详情见 [`docs/合规须知.md`](docs/合规须知.md)（合规须知），每条规定的官方出处见 [`docs/平台政策与API限制.md`](docs/平台政策与API限制.md)（平台政策）。
 
 ## 安装步骤
 
 要求：Windows（启动与备份脚本是 PowerShell，暂不支持 macOS／Linux）、Python 3.13、[uv](https://docs.astral.sh/uv/)、Node.js、7-Zip、ngrok；建议另装 Tailscale。
 
-不熟悉命令行的话，可以把 [`docs/agent安裝引導_zh-CN.md`](docs/agent安裝引導_zh-CN.md)（agent 安装引导）交给自己的 AI agent，由它一步步带你安装。引导有简体中文、繁體中文、English、日本語四个版本，agent 会按你使用的语言自动选用。
+不熟悉命令行的话，可以把 [`docs/agent安装引导.md`](docs/agent安装引导.md)（agent 安装引导）交给自己的 AI agent，由它一步步带你安装。引导有简体中文、繁體中文、English、日本語四个版本，agent 会按你使用的语言自动选用。
 
 ```powershell
 # 1. 创建配置文件并填入 NGROK_AUTHTOKEN；数据路径可留空（见下方“环境变量”）
@@ -72,7 +72,7 @@ cd ..
 ./scripts/start-all.ps1
 ```
 
-`start-all.ps1` 只会为全新数据库创建结构，不会升级已有数据库；升级步骤见 [`docs/operations.md`](docs/operations_zh-CN.md)。
+`start-all.ps1` 只会为全新数据库创建结构，不会升级已有数据库；升级步骤见 [`docs/部署与运维.md`](docs/部署与运维.md)。
 
 ## 使用示例
 
@@ -87,7 +87,7 @@ cd ..
 /plugin install mwb@marketing-workbench
 ```
 
-Codex 与 Claude 桌面版的安装方式见 [`docs/operations.md`](docs/operations_zh-CN.md#agent-连接)。
+Codex 与 Claude 桌面版的安装方式见 [`docs/部署与运维.md`](docs/部署与运维.md#agent-连接)。
 
 ### 用 agent 操作工作台（MCP）
 
@@ -118,7 +118,7 @@ Codex 与 Claude 桌面版的安装方式见 [`docs/operations.md`](docs/operati
 
 发布一律分两步：agent 先把平台、账号、完整文案、素材与发布时间列给你看，你明确同意后才会发出。选题与脚本也要你定稿并说“保存”才会保存。斜杠命令是 Claude Code plugin 的快捷方式，其他 agent 直接用大白话说即可；实际可用的工具以 agent 读到的工具列表为准。
 
-部署、更新、备份与排错见 [`docs/operations.md`](docs/operations_zh-CN.md)；架构见 [`docs/architecture.md`](docs/architecture_zh-CN.md)。
+部署、更新、备份与排错见 [`docs/部署与运维.md`](docs/部署与运维.md)；架构见 [`docs/架构.md`](docs/架构.md)。
 
 开发时可以分开启动：
 
@@ -172,9 +172,9 @@ npm run dev
 - 提交 PR 前请在 `backend/` 运行 `uv run pytest`，并在根目录运行 `npm --prefix frontend test`、`npm --prefix frontend run build`、`node --test scripts/*.test.mjs`。完整验收是 `python scripts/verify_all.py`（需要 Chromium）。
 - 测试一律使用隔离数据与 HTTP 替身，不可调用真实平台 API。
 - 数据表变更一律通过 Alembic migration。
-- 新增界面文字用 `t('繁中原文')` 包起来，并补充 `frontend/src/locales/` 的英文、简中、日文翻译，用词依照 [`docs/i18n術語表.md`](docs/i18n術語表_zh-CN.md)。
+- 新增界面文字用 `t('繁中原文')` 包起来，并补充 `frontend/src/locales/` 的英文、简中、日文翻译，用词依照 [`docs/i18n术语表.md`](docs/i18n术语表.md)。
 - 平台对接只使用官方 API，不接受爬虫、非官方 API 或浏览器自动化。
-- 架构与规则见 [`docs/architecture.md`](docs/architecture_zh-CN.md)、[`docs/MCP規範.md`](docs/MCP規範_zh-CN.md)、[`docs/UI規格.md`](docs/UI規格_zh-CN.md)。
+- 架构与规则见 [`docs/架构.md`](docs/架构.md)、[`docs/MCP规范.md`](docs/MCP规范.md)、[`docs/UI规格.md`](docs/UI规格.md)。
 
 欢迎提交 PR。较大的改动（新平台、数据表变更、权限规则）请先开 issue 讨论方向。回复时间不固定，敬请谅解。
 
@@ -182,7 +182,7 @@ npm run dev
 
 ## 许可
 
-MIT License，见 [`LICENSE`](LICENSE)。使用本项目仍须遵守各平台条款，见 [`docs/合規須知.md`](docs/合規須知_zh-CN.md)。
+MIT License，见 [`LICENSE`](LICENSE)。使用本项目仍须遵守各平台条款，见 [`docs/合规须知.md`](docs/合规须知.md)。
 
 ## 致谢
 

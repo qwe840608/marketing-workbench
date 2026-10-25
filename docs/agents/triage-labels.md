@@ -1,6 +1,6 @@
 # Triage Labels
 
-> **Language / 語言 / 语言 / 言語**: [繁體中文](triage-labels_zh-TW.md) | [简体中文](triage-labels_zh-CN.md) | English | [日本語](triage-labels_ja.md)
+> **Language / 語言 / 语言 / 言語**: [繁體中文](分類標籤.md) | [简体中文](分类标签.md) | English | [日本語](トリアージラベル.md)
 
 The skills speak in terms of five canonical triage roles. This file maps those roles to the actual label strings used in this repo's issue tracker.
 

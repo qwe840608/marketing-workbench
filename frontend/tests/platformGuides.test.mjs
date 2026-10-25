@@ -26,7 +26,7 @@ test('IG／FB、Threads、YouTube、LINE、jev、Webhook、TikTok 都有教學�
   }
 });
 
-test('Meta 教學分 Facebook、Instagram、連結帳號三節並列出 operations.md 的完整權限', () => {
+test('Meta 教學分 Facebook、Instagram、連結帳號三節並列出 部署與維運.md 的完整權限', () => {
   const meta = platformGuides.meta;
   assert.equal(meta.sections.length, 3);
   assert.ok(meta.sections[0].heading.startsWith('Facebook'));

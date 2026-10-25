@@ -1,6 +1,6 @@
 # MCP 規範
 
-> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](MCP規範_zh-CN.md) | [English](MCP規範_en.md) | [日本語](MCP規範_ja.md)
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](MCP规范.md) | [English](mcp-spec.md) | [日本語](MCP仕様.md)
 
 適用內部 `/mcp` 的現有及後續工具；Hermes 也透過同一個 `/mcp`（檢視者帳號）連線。操作流程唯一來源為 `backend/app/agent_guides/*.md`，透過 `get_guide` 讀取；CLI 指令與 skills 只引用，不複製步驟。
 
@@ -34,7 +34,7 @@
 ## 定位與用戶端
 
 - `/mcp` 是 Agent 的主要操作入口：查詢、主題發想、腳本與文案、發佈草稿、發佈與排程都可在對話中完成；網頁全部保留，與 Agent 操作同一份資料。連結 Meta／Threads／YouTube、成員管理、AI 設定與工作區設定只留在網頁。
-- 用戶端：Claude Code（plugin `mwb`，指令 `/mwb:report`、`/mwb:ideas`、`/mwb:script`、`/mwb:post`、`/mwb:publish`）、Codex（MCP＋skills）、Claude 桌面版（`.mcpb` 本機橋接，因雲端連接器需要公開網址而不採用）、Hermes。指令與 skills 只是捷徑，任何 Agent 只讀 MCP 本身就能正確操作。安裝與更新步驟見 `docs/operations.md` 的「Agent 連線」。
+- 用戶端：Claude Code（plugin `mwb`，指令 `/mwb:report`、`/mwb:ideas`、`/mwb:script`、`/mwb:post`、`/mwb:publish`）、Codex（MCP＋skills）、Claude 桌面版（`.mcpb` 本機橋接，因雲端連接器需要公開網址而不採用）、Hermes。指令與 skills 只是捷徑，任何 Agent 只讀 MCP 本身就能正確操作。安裝與更新步驟見 `docs/部署與維運.md` 的「Agent 連線」。
 - 登入：Claude Code 與 Codex 用 MCP OAuth（在已登入的網頁按「核准」，密碼不經過對話）；桌面擴充與 Hermes 用「我的帳號」產生的連線權杖。權杖只屬於該成員，可在「我的帳號」查看與撤銷，30 天未使用失效。
 - `/mcp`、上傳連結與 plugin 目錄只限本機與 Tailscale，不開放到 ngrok 公開網址。工具在工作檯伺服器上執行，部署後所有用戶端立即使用新版。
 - 媒體上傳：Claude Code／Codex 取得 10 分鐘一次性上傳連結，由 Agent 以 `curl` PUT；桌面擴充以 upload_local_file 直接讀本機路徑上傳。大小與格式限制與網頁版相同（`publish_rules`）。
