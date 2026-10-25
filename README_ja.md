@@ -10,7 +10,7 @@
 
 [繁體中文](README_zh-TW.md) | [English](README.md) | [简体中文](README_zh-CN.md) | **日本語**
 
-> 画面は繁体字中国語・簡体字中国語・英語・日本語に対応しています（スクリーンショットは繁体字中国語の画面です）。`docs/` 以下の詳しいドキュメントは繁体字中国語です。
+> 画面は繁体字中国語・簡体字中国語・英語・日本語に対応しています（スクリーンショットは繁体字中国語の画面です）。`docs/` 以下のドキュメントも 4 言語で用意しています。
 
 ![ダッシュボード](docs/images/dashboard.png)
 
@@ -44,7 +44,7 @@
 - **TikTok は受信トレイへの下書き送信のみ**です。キャプションは TikTok App 内で貼り付けます。
 - **Google の同意画面は「本番環境」に設定してください。** そうしないと YouTube の認可が 7 日ごとに切れます。
 
-詳しくは [`docs/合規須知.md`](docs/合規須知.md)（コンプライアンスの注意事項）を、各ルールの公式出典は [`docs/平台政策.md`](docs/平台政策.md)（プラットフォームポリシー）をご覧ください。
+詳しくは [`docs/合規須知.md`](docs/合規須知_ja.md)（コンプライアンスの注意事項）を、各ルールの公式出典は [`docs/平台政策.md`](docs/平台政策_ja.md)（プラットフォームポリシー）をご覧ください。
 
 ## インストール
 
@@ -72,7 +72,7 @@ cd ..
 ./scripts/start-all.ps1
 ```
 
-`start-all.ps1` は新規のデータベースにだけスキーマを作成し、既存のデータベースはアップグレードしません。アップグレード手順は [`docs/operations.md`](docs/operations.md) をご覧ください。
+`start-all.ps1` は新規のデータベースにだけスキーマを作成し、既存のデータベースはアップグレードしません。アップグレード手順は [`docs/operations.md`](docs/operations_ja.md) をご覧ください。
 
 ## 使い方
 
@@ -87,7 +87,7 @@ Claude Code をワークベンチに接続する（アドレスは「設定 → 
 /plugin install mwb@marketing-workbench
 ```
 
-Codex と Claude デスクトップ版のインストール方法は [`docs/operations.md`](docs/operations.md#agent-連線) をご覧ください。
+Codex と Claude デスクトップ版のインストール方法は [`docs/operations.md`](docs/operations_ja.md#agent-接続) をご覧ください。
 
 ### エージェントでワークベンチを操作する（MCP）
 
@@ -118,7 +118,7 @@ Codex と Claude デスクトップ版のインストール方法は [`docs/oper
 
 投稿は必ず 2 段階です。エージェントがプラットフォーム、アカウント、キャプション全文、素材、投稿日時を提示し、あなたがはっきり同意してから送信します。テーマと台本も、あなたが確定して「保存して」と伝えたときだけ保存されます。スラッシュコマンドは Claude Code plugin のショートカットで、他のエージェントでは普段の言葉で頼めば十分です。実際に使えるツールは、エージェントが読み込んだツール一覧のとおりです。
 
-デプロイ、更新、バックアップ、トラブルシューティングは [`docs/operations.md`](docs/operations.md)、アーキテクチャは [`docs/architecture.md`](docs/architecture.md) にあります。
+デプロイ、更新、バックアップ、トラブルシューティングは [`docs/operations.md`](docs/operations_ja.md)、アーキテクチャは [`docs/architecture.md`](docs/architecture_ja.md) にあります。
 
 開発時はバックエンドとフロントエンドを別々に起動できます：
 
@@ -172,9 +172,9 @@ npm run dev
 - PR を送る前に、`backend/` で `uv run pytest` を、リポジトリのルートで `npm --prefix frontend test`、`npm --prefix frontend run build`、`node --test scripts/*.test.mjs` を実行してください。すべての受け入れテストは `python scripts/verify_all.py` です（Chromium が必要）。
 - テストでは常に隔離されたデータと HTTP の代替を使い、実際のプラットフォーム API を呼び出してはいけません。
 - データベースの変更は必ず Alembic のマイグレーションで行います。
-- 画面の文言を追加するときは `t('繁体字の原文')` で囲み、`frontend/src/locales/` に英語・簡体字中国語・日本語の訳を追加してください。用語は [`docs/i18n術語表.md`](docs/i18n術語表.md) に従います。
+- 画面の文言を追加するときは `t('繁体字の原文')` で囲み、`frontend/src/locales/` に英語・簡体字中国語・日本語の訳を追加してください。用語は [`docs/i18n術語表.md`](docs/i18n術語表_ja.md) に従います。
 - プラットフォーム連携は公式 API のみを使い、スクレイピング、非公式 API、ブラウザー自動化は受け付けません。
-- アーキテクチャとルール：[`docs/architecture.md`](docs/architecture.md)、[`docs/MCP規範.md`](docs/MCP規範.md)、[`docs/UI規格.md`](docs/UI規格.md)。
+- アーキテクチャとルール：[`docs/architecture.md`](docs/architecture_ja.md)、[`docs/MCP規範.md`](docs/MCP規範_ja.md)、[`docs/UI規格.md`](docs/UI規格_ja.md)。
 
 PR を歓迎します。大きな変更（新しいプラットフォーム、データベースの変更、権限ルール）は、先に issue で方向性を相談してください。返信までの時間はまちまちですので、ご了承ください。
 
@@ -182,7 +182,7 @@ PR を歓迎します。大きな変更（新しいプラットフォーム、�
 
 ## ライセンス
 
-MIT License です。[`LICENSE`](LICENSE) をご覧ください。本プロジェクトを利用する場合も各プラットフォームの規約を守る必要があります。[`docs/合規須知.md`](docs/合規須知.md) をご覧ください。
+MIT License です。[`LICENSE`](LICENSE) をご覧ください。本プロジェクトを利用する場合も各プラットフォームの規約を守る必要があります。[`docs/合規須知.md`](docs/合規須知_ja.md) をご覧ください。
 
 ## 謝辞
 

@@ -1,5 +1,7 @@
 # Architecture / 現行架構
 
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](architecture_zh-CN.md) | [English](architecture_en.md) | [日本語](architecture_ja.md)
+
 Marketing Workbench 提供多品牌的內部行銷工作空間。品牌、帳號、內容及 prompt 彼此隔離；後台使用者有 admin／marketing／viewer 權限。
 
 ## Agent 入口

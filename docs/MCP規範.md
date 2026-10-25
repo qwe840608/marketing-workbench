@@ -1,5 +1,7 @@
 # MCP 規範
 
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](MCP規範_zh-CN.md) | [English](MCP規範_en.md) | [日本語](MCP規範_ja.md)
+
 適用內部 `/mcp` 的現有及後續工具；Hermes 也透過同一個 `/mcp`（檢視者帳號）連線。操作流程唯一來源為 `backend/app/agent_guides/*.md`，透過 `get_guide` 讀取；CLI 指令與 skills 只引用，不複製步驟。
 
 - 命名採英文 snake_case。每個工具說明使用繁體中文，獨立寫完整用途、何時用、參數（必填、預設、限制）、回傳及錯誤時的「下一步」，不能假設 client 顯示 instructions 或其他工具說明。

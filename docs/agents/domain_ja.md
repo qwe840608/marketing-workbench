@@ -1,0 +1,53 @@
+# ドメインドキュメント
+
+> **言語 / Language / 語言 / 语言**：[繁體中文](domain_zh-TW.md) | [简体中文](domain_zh-CN.md) | [English](domain.md) | 日本語
+
+エンジニアリング系の skills がコードベースを調べるときに、このリポジトリのドメインドキュメントをどう使うかを説明します。
+
+## 調べる前に、これらを読む
+
+- リポジトリのルートにある **`CONTEXT.md`**、または
+- ルートに **`CONTEXT-MAP.md`** があればそれ：コンテキストごとに 1 つの `CONTEXT.md` を指しています。トピックに関係するものをそれぞれ読んでください。
+- **`docs/adr/`**：これから作業する領域に関わる ADR を読みます。マルチコンテキストのリポジトリでは、コンテキスト単位の決定について `src/<context>/docs/adr/` も確認してください。
+
+これらのファイルが存在しない場合は、**何も言わずに先へ進んでください**。存在しないことを指摘したり、最初から作成するよう提案したりしないでください。`/domain-modeling` skill（`/grill-with-docs` と `/improve-codebase-architecture` から呼ばれます）が、用語や決定が実際に確定したときに遅延的に作成します。
+
+## ファイル構成
+
+単一コンテキストのリポジトリ（ほとんどのリポジトリ）：
+
+```
+/
+├── CONTEXT.md
+├── docs/adr/
+│   ├── 0001-event-sourced-orders.md
+│   └── 0002-postgres-for-write-model.md
+└── src/
+```
+
+マルチコンテキストのリポジトリ（ルートに `CONTEXT-MAP.md` がある）：
+
+```
+/
+├── CONTEXT-MAP.md
+├── docs/adr/                          ← system-wide decisions
+└── src/
+    ├── ordering/
+    │   ├── CONTEXT.md
+    │   └── docs/adr/                  ← context-specific decisions
+    └── billing/
+        ├── CONTEXT.md
+        └── docs/adr/
+```
+
+## 用語集の語彙を使う
+
+出力の中でドメインの概念を指すとき（issue のタイトル、リファクタリングの提案、仮説、テスト名など）は、`CONTEXT.md` で定義された用語を使ってください。用語集が明示的に避けている同義語に流れないでください。
+
+必要な概念がまだ用語集にない場合、それはシグナルです。プロジェクトで使っていない言葉を作り出している（考え直す）か、本当に欠けている（`/domain-modeling` のためにメモしておく）かのどちらかです。
+
+## ADR との矛盾を示す
+
+出力が既存の ADR と矛盾する場合は、黙って上書きせず、明示的に示してください：
+
+> _ADR-0007（event-sourced orders）と矛盾しますが、次の理由で見直す価値があります…_

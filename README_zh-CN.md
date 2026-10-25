@@ -10,7 +10,7 @@
 
 [繁體中文](README_zh-TW.md) | [English](README.md) | **简体中文** | [日本語](README_ja.md)
 
-> 界面支持繁体中文、简体中文、English、日本語（截图为繁体中文界面）。`docs/` 下的详细文档为繁体中文。
+> 界面支持繁体中文、简体中文、English、日本語（截图为繁体中文界面）。`docs/` 下的文档同样提供四种语言版本。
 
 ![仪表盘](docs/images/dashboard.png)
 
@@ -44,7 +44,7 @@
 - **TikTok 只能发送为收件箱草稿**，文案需要在 TikTok App 内粘贴。
 - **Google 同意屏幕要设为正式版**，否则 YouTube 授权每 7 天失效。
 
-详情见 [`docs/合規須知.md`](docs/合規須知.md)（合规须知），每条规定的官方出处见 [`docs/平台政策.md`](docs/平台政策.md)（平台政策）。
+详情见 [`docs/合規須知.md`](docs/合規須知_zh-CN.md)（合规须知），每条规定的官方出处见 [`docs/平台政策.md`](docs/平台政策_zh-CN.md)（平台政策）。
 
 ## 安装步骤
 
@@ -72,7 +72,7 @@ cd ..
 ./scripts/start-all.ps1
 ```
 
-`start-all.ps1` 只会为全新数据库创建结构，不会升级已有数据库；升级步骤见 [`docs/operations.md`](docs/operations.md)。
+`start-all.ps1` 只会为全新数据库创建结构，不会升级已有数据库；升级步骤见 [`docs/operations.md`](docs/operations_zh-CN.md)。
 
 ## 使用示例
 
@@ -87,7 +87,7 @@ cd ..
 /plugin install mwb@marketing-workbench
 ```
 
-Codex 与 Claude 桌面版的安装方式见 [`docs/operations.md`](docs/operations.md#agent-連線)。
+Codex 与 Claude 桌面版的安装方式见 [`docs/operations.md`](docs/operations_zh-CN.md#agent-连接)。
 
 ### 用 agent 操作工作台（MCP）
 
@@ -118,7 +118,7 @@ Codex 与 Claude 桌面版的安装方式见 [`docs/operations.md`](docs/operati
 
 发布一律分两步：agent 先把平台、账号、完整文案、素材与发布时间列给你看，你明确同意后才会发出。选题与脚本也要你定稿并说“保存”才会保存。斜杠命令是 Claude Code plugin 的快捷方式，其他 agent 直接用大白话说即可；实际可用的工具以 agent 读到的工具列表为准。
 
-部署、更新、备份与排错见 [`docs/operations.md`](docs/operations.md)；架构见 [`docs/architecture.md`](docs/architecture.md)。
+部署、更新、备份与排错见 [`docs/operations.md`](docs/operations_zh-CN.md)；架构见 [`docs/architecture.md`](docs/architecture_zh-CN.md)。
 
 开发时可以分开启动：
 
@@ -172,9 +172,9 @@ npm run dev
 - 提交 PR 前请在 `backend/` 运行 `uv run pytest`，并在根目录运行 `npm --prefix frontend test`、`npm --prefix frontend run build`、`node --test scripts/*.test.mjs`。完整验收是 `python scripts/verify_all.py`（需要 Chromium）。
 - 测试一律使用隔离数据与 HTTP 替身，不可调用真实平台 API。
 - 数据表变更一律通过 Alembic migration。
-- 新增界面文字用 `t('繁中原文')` 包起来，并补充 `frontend/src/locales/` 的英文、简中、日文翻译，用词依照 [`docs/i18n術語表.md`](docs/i18n術語表.md)。
+- 新增界面文字用 `t('繁中原文')` 包起来，并补充 `frontend/src/locales/` 的英文、简中、日文翻译，用词依照 [`docs/i18n術語表.md`](docs/i18n術語表_zh-CN.md)。
 - 平台对接只使用官方 API，不接受爬虫、非官方 API 或浏览器自动化。
-- 架构与规则见 [`docs/architecture.md`](docs/architecture.md)、[`docs/MCP規範.md`](docs/MCP規範.md)、[`docs/UI規格.md`](docs/UI規格.md)。
+- 架构与规则见 [`docs/architecture.md`](docs/architecture_zh-CN.md)、[`docs/MCP規範.md`](docs/MCP規範_zh-CN.md)、[`docs/UI規格.md`](docs/UI規格_zh-CN.md)。
 
 欢迎提交 PR。较大的改动（新平台、数据表变更、权限规则）请先开 issue 讨论方向。回复时间不固定，敬请谅解。
 
@@ -182,7 +182,7 @@ npm run dev
 
 ## 许可
 
-MIT License，见 [`LICENSE`](LICENSE)。使用本项目仍须遵守各平台条款，见 [`docs/合規須知.md`](docs/合規須知.md)。
+MIT License，见 [`LICENSE`](LICENSE)。使用本项目仍须遵守各平台条款，见 [`docs/合規須知.md`](docs/合規須知_zh-CN.md)。
 
 ## 致谢
 

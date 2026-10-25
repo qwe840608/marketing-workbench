@@ -1,5 +1,7 @@
 # 隱私權政策範本 Privacy Policy template
 
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](privacy-policy_zh-CN.md) | [English](privacy-policy_en.md) | [日本語](privacy-policy_ja.md)
+
 使用方式：把 `{{…}}` 換成你的資料；刪掉你沒有連結的平台、沒有用到的處理者（`[選用]` 段落）；保存天數要與你的 `.env` 一致。放到你自己的網站，再把網址填進 Meta、Google、TikTok 後台。這是範本，不是法律意見。
 
 | 佔位符 | 填什麼 |

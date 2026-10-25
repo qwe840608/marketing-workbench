@@ -1,5 +1,7 @@
 # Domain Docs
 
+> **Language / 語言 / 语言 / 言語**: [繁體中文](domain_zh-TW.md) | [简体中文](domain_zh-CN.md) | English | [日本語](domain_ja.md)
+
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
 ## Before exploring, read these

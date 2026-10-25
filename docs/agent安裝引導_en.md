@@ -6,7 +6,7 @@
 
 This document is written for an **AI agent** (such as Claude Code or Codex, an agent that can read files and run commands on the user's computer). The user hands you this document and asks you to **set up the workbench with them step by step**. The user may not be an engineer: you run the commands, check the results and explain in plain words; for steps the user must do in person, tell them exactly where to click and what to paste back.
 
-Read [`合規須知.md`](合規須知.md) (compliance notes) before you start. This document covers only the workflow; platform rules and their official sources are in [`平台政策.md`](平台政策.md) (platform policies), and detailed operations are in [`operations.md`](operations.md). Those three documents are in Traditional Chinese; translate the parts you need for the user.
+Read [`合規須知.md`](合規須知_en.md) (compliance notes) before you start. This document covers only the workflow; platform rules and their official sources are in [`平台政策.md`](平台政策_en.md) (platform policies), and detailed operations are in [`operations.md`](operations_en.md).
 
 UI labels below are quoted from the English interface.
 
@@ -106,7 +106,7 @@ First confirm the user has the right account types; if not, have them prepare th
 | YouTube | A Google account with a channel |
 | TikTok | A personal account is fine; add it to the Sandbox Target Users |
 
-Every platform works the same way: **the user creates an app in the platform's developer console → enters its keys in the workbench → clicks "Connect … account" in the workbench and authorizes on the platform**. If you can operate a browser, you can fill in the developer console settings by following [`agent平台串接引導.md`](agent平台串接引導.md) (platform setup guide for agents, in Traditional Chinese), within its limits: sign-ins, secrets, authorization and app review are never done for the user. Each card in Settings → Platform connections has a "Setup guide" button showing the callback URL to copy. Detailed steps are in the matching sections of [`operations.md`](operations.md).
+Every platform works the same way: **the user creates an app in the platform's developer console → enters its keys in the workbench → clicks "Connect … account" in the workbench and authorizes on the platform**. If you can operate a browser, you can fill in the developer console settings by following [`agent平台串接引導.md`](agent平台串接引導_en.md) (platform setup guide for agents), within its limits: sign-ins, secrets, authorization and app review are never done for the user. Each card in Settings → Platform connections has a "Setup guide" button showing the callback URL to copy. Detailed steps are in the matching sections of [`operations.md`](operations_en.md).
 
 | Platform | What the user does in the console | Key points |
 |---|---|---|
@@ -137,7 +137,7 @@ Have the user paste keys and secrets into the workbench cards themselves (they a
 
 ## Stage 9: Connect an agent to the workbench (optional)
 
-The workbench provides an MCP interface so agents can help with ideas, scripts and publishing drafts. Have the user open the workbench at the **internal https address** (stage 4), go to Settings → My account → Install Agent, pick Claude Code, Codex or Claude Desktop and follow the screen; the Claude Code plugin marketplace only accepts https addresses. On first use they sign in with their own workbench account to approve. Other agents that support remote MCP can connect with a connection token; see "Working with an agent (MCP)" in the [README](../README.md). Details are in "Agent 連線" in [`operations.md`](operations.md). Publishing always takes two steps: the agent prepares the details for the user to review, and sends only after the user clearly approves.
+The workbench provides an MCP interface so agents can help with ideas, scripts and publishing drafts. Have the user open the workbench at the **internal https address** (stage 4), go to Settings → My account → Install Agent, pick Claude Code, Codex or Claude Desktop and follow the screen; the Claude Code plugin marketplace only accepts https addresses. On first use they sign in with their own workbench account to approve. Other agents that support remote MCP can connect with a connection token; see "Working with an agent (MCP)" in the [README](../README.md). Details are in "Agent connections" in [`operations.md`](operations_en.md). Publishing always takes two steps: the agent prepares the details for the user to review, and sends only after the user clearly approves.
 
 ## Completion checklist
 
@@ -158,4 +158,4 @@ The workbench provides an MCP interface so agents can help with ideas, scripts a
 - Startup fails: the error message names a log in `.runtime/`; read its last lines before deciding. Common causes are a taken port, a missing ngrok authtoken or missing packages. Without `NGROK_AUTHTOKEN` the script stops at the first step. If port 8000 or 4040 is taken, check which process holds it with `Get-NetTCPConnection -LocalPort 8000`; if it is another copy of the workbench, run `./scripts/stop-all.ps1` in that folder. Never kill a process you don't recognize.
 - The frontend build shows a type error such as `Type 'number' is not assignable to type 'Timeout'`: usually another project left `node_modules/@types/node` in a parent folder (for example the user's home folder). The current version avoids this; if it still happens, report the error to the maintainer and don't delete the user's files.
 - A platform connection fails: read the error on the card first, then compare with `operations.md` and `平台政策.md`; mismatched permission names or callback URLs are the most common cause.
-- Forgotten admin password: with a recovery code, reset it via "Forgot password?" on the sign-in page; without one, follow "成員管理與帳號復原" (member management and account recovery) in `operations.md` and run the command on the host.
+- Forgotten admin password: with a recovery code, reset it via "Forgot password?" on the sign-in page; without one, follow "Member management and account recovery" in [`operations.md`](operations_en.md) and run the command on the host.

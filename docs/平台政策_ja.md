@@ -1,0 +1,139 @@
+# プラットフォームポリシーと API の制限
+
+> **言語 / Language / 語言 / 语言**：[繁體中文](平台政策.md) | [简体中文](平台政策_zh-CN.md) | [English](平台政策_en.md) | 日本語
+
+ワークベンチが関わるプラットフォームの規約と API 仕様をまとめ、毎回調べ直さずに済むようにしたものです。各項目に出典と確認日を記しています。**「推論」**は条文をもとにした私たちの判断、**「未確認」**は公式文書でまだ根拠を見つけていない説です。規約は改訂されるため、公式と食い違う点を見つけたら公式を優先し、この文書と確認日を更新してください。
+
+確認日：2026-10-15～2026-10-17（アプリモード、Google OAuth、TikTok Sandbox は 2026-10-17 に追加確認。FB ページの Webhook と各プラットフォームのオーディエンスデータは 2026-10-19 に追加確認）。
+
+> この文書は規定とワークベンチ側の対応だけを記したもので、法的助言ではありません。オープンソース化後は、セルフホストする人それぞれが自分のアプリの開発者であり、義務はその人にあります（README は未作成、オープンソース化計画を参照）。
+
+## 共通の原則
+
+- 公式 API と公式のキーだけを使います。ウェブページのスクレイピングやログインの模倣はしません。
+- 外向けの文章（アプリ名、説明、公式サイト）は用途と機能を事実どおりに説明し、事実と異なる用途を装って審査に出しません。
+- プライバシーポリシーと利用規約：セルフホストする人が自分のウェブサイトに置き（テンプレートは `docs/templates/`、注意事項は `docs/合規須知.md`）、各プラットフォームの管理画面にその URL を入力します。データ削除手順はプライバシーポリシーの `#delete` セクションを指定できます。
+- 視聴者のコメントの保存期間：ワークベンチが**取得**してから 365 日（`COMMENT_RETENTION_DAYS`）で、コメントの投稿日からではありません。これはワークベンチ独自のルールで（Meta は日数を定めていません）、プライバシーポリシーにも同じ期間を書きます。実装は `docs/operations.md` のデータ保持のセクションを参照してください。
+
+## Meta（Facebook／Instagram／Threads）
+
+出典：[Meta プラットフォーム利用規約](https://developers.facebook.com/terms/)（2026-02-03 版）、[開発者ポリシー](https://developers.facebook.com/devpolicy/)。
+
+| 規定 | 内容 | ワークベンチの対応 |
+|---|---|---|
+| プライバシーポリシー（第 4 条） | 公開されたプライバシーポリシーが必要で、どのデータを扱うか、目的、削除の依頼方法を明記する。 | セルフホストする人自身のプライバシーポリシーページ。`#delete` を含む（テンプレート `docs/templates/privacy-policy.md`）。 |
+| データ削除（第 3.d 条） | 正当な用途がなくなったら削除し、削除の窓口を設ける。日数の定めはない。 | コメントは 365 日（取得から）。`scripts/data_retention.py --find-commenter／--delete-contact` で個別の削除依頼に対応。 |
+| サービスプロバイダー（第 5.a 条） | プロバイダーはあなたの指示にのみ従ってデータを処理し、自らの目的に使ってはならず、**書面**で同意する必要がある。 | Gemini の無料プランは内容を製品改善に使う → 既定で無効。`GEMINI_PAID_TIER=true` のときだけ許可。TypeSafe のプライバシーポリシーは入力を学習に使わないとしているが、厳密には DPA がまだない（依頼メールを送るかはユーザーが判断）。 |
+| IG ユーザーのコンテンツ | 同意なく Instagram ユーザーのコンテンツをインポートまたはバックアップしてはならない。 | 自分のアカウントの投稿のサムネイルだけをキャッシュ。**推論**では問題ないが、明確な根拠はない。 |
+| 権限の休眠 | 権限や API を 28 日を超えて使わないと、Meta が無効にすることがある。 | 1 時間ごとの同期で読み取り権限は使い続ける。投稿権限は定期的に投稿が必要。 |
+
+### Meta のアプリモードとアクセスレベル（2026-10-17 確認）
+
+出典：[アプリモード](https://developers.facebook.com/docs/development/build-and-test/app-modes)、[アクセスレベル](https://developers.facebook.com/docs/graph-api/overview/access-levels)、[Instagram Webhooks](https://developers.facebook.com/docs/instagram-platform/webhooks)、[Threads のスタートガイド](https://developers.facebook.com/docs/threads/get-started)。
+
+- **標準アクセス（Standard Access）**：すべてのビジネスアプリが自動的に得られ、App Review は不要です。リクエストできるのは「アプリで役割を持つ」ユーザー（管理者、開発者、テスター）に対してだけです。自分だけで使うツールならこれで十分です。
+- **高度なアクセス（Advanced Access）**：役割を持たないユーザーにサービスを提供する場合にだけ必要で、項目ごとに App Review を通過し、ビジネス認証を完了する必要があります。
+- **開発モード**：役割を持つユーザーにしか権限をリクエストできません。期限は文書に書かれていませんが、長期間このまま使ってよいとも明言されていません。
+- **Instagram のコメント Webhook**：アプリが **Live** モードで、`comments` に **Advanced Access** が必要で、アカウントは公開である必要があります。標準アクセスだけでは IG のコメント Webhook は届かず、定期的な API 取得に頼ることになります。FB ページのコメント Webhook：開発モードでは管理画面のテストイベントと、アプリの役割を持つ人自身が起こしたイベントしか送られず、他の人のコメントはアプリを公開しないと送られません。さらに、ページのアクセストークンで `POST /{page-id}/subscribed_apps?subscribed_fields=feed` を呼び出してページにアプリをインストールする必要があり（`pages_manage_metadata` が必要）、管理画面でフィールドをサブスクライブするだけでは足りません。ワークベンチは現在この呼び出しを行っていません（2026-10-19 確認：[Webhooks](https://developers.facebook.com/docs/graph-api/webhooks)、[Webhooks for Pages](https://developers.facebook.com/documentation/pages-api/webhooks-for-pages)）。
+- **Threads**：役割を持つテスターはいつでも認可でき、App Review は不要です。役割を持たないユーザーにサービスを提供する場合は、すべての権限で審査を受けてアプリを公開する必要があります。
+
+### Meta API 仕様（投稿関連）
+
+- **IG リールのカバー**（[IG User Media](https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media)）：`cover_url` はリール専用で、公開 URL、JPEG、8 MB 以内、sRGB。9:16 を推奨し、それ以外は中央を切り抜き、フィードにシェアすると 1:1 に切り抜かれます。`cover_url` と `thumb_offset` を両方指定した場合は `cover_url` が使われます。ストーリーズとカルーセルの子要素は `cover_url` に対応していません。ワークベンチは 0048 で実装済み（PNG を JPEG に変換して送信）。
+- **FB 通常動画のカバー**（[Page Videos](https://developers.facebook.com/docs/graph-api/reference/page/videos/)）：アップロード時の `thumb` パラメーター（画像の生データ）。形式とサイズの制限は文書に書かれていません。
+- **FB リールのカバー**（[Reels Publishing](https://developers.facebook.com/docs/video-api/guides/reels-publishing)）：リール投稿の 3 ステップ（start／upload／finish）のどれにもカバーのパラメーターはありません。文書の最後で、「リールにカスタムカバーを付ける」方法として [Video Thumbnails](https://developers.facebook.com/docs/graph-api/reference/video/thumbnails) を案内しています。
+- **Video Thumbnails**：`POST /{video-id}/thumbnails`、`source`（画像ファイル）＋ `is_preferred=true`。最大 10 MB、動画と同じ比率を推奨。ページに関連付けられた動画にのみ使えます。Page トークンと `pages_read_user_content`、`pages_manage_engagement`、`pages_show_list` が必要です。リールに適用できるとは文書に明記されておらず、リールの文書がここを案内しているだけ → 実際に試して確認。ワークベンチは 0049 で通常動画とリールの両方にこれを使い（`thumb` パラメーターは使わない）、投稿が成功してから適用します。`pages_manage_engagement` は任意の権限で、Meta の管理画面で有効にしたあと連携し直さないとトークンに含まれません（2026-10-17、本番のトークンに含まれていないことを確認）。
+- Graph API のバージョン：`v26.0`（`oauth.FB`）。
+
+## YouTube／Google
+
+出典：[YouTube API サービス デベロッパー ポリシー](https://developers.google.com/youtube/terms/developer-policies)、[Google API サービスのユーザーデータに関するポリシー](https://developers.google.com/terms/api-services-user-data-policy)、[YouTube 利用規約](https://www.youtube.com/t/terms)。
+
+| 規定 | 内容 | ワークベンチの対応 |
+|---|---|---|
+| 30 日ルール（III.E.4） | 統計値（再生回数、高評価）は長期保存できるが、30 日ごとに認可と動画がまだ存在することを確認する。その他のデータ（タイトル、サムネイル、コメント）は最長 30 日で、期限が来たら削除するか取得し直す。 | 1 時間ごとの同期で動画を更新。YouTube のコメントは 30 日取得し直さなければ削除。YouTube 上で削除された動画のデータは 30 日後に削除。 |
+| 認可の取り消し | 取り消しから 7 日以内に、その認可で取得したデータを削除する。保存済みデータを削除する方法を用意し、7 日以内に完了する。 | 「連携を解除」で認可を取り消し、YouTube の動画、スナップショット、サムネイル、コメント、レポートの引用を直ちに削除（YouTube 上の動画は削除しない）。 |
+| プライバシーポリシー | YouTube API サービスを使っていることを説明し、[Google プライバシーポリシー](https://policies.google.com/privacy) と認可の取り消しページ `https://security.google.com/settings/security/permissions` を載せる。 | プライバシーポリシーのテンプレートに含まれている。 |
+| 利用規約 | YouTube 利用規約へのリンクを載せ、ユーザーがそれに拘束されることに同意する旨を明記する。 | 利用規約のテンプレートに含まれている。 |
+| スコープの最小化 | 必要なスコープだけを申請する。 | `youtube.readonly`、`yt-analytics.readonly`、`youtube.upload`。`youtube`／`force-ssl` は求めない。 |
+
+OAuth の公開ステータス（2026-10-17 確認、[OAuth 2.0](https://developers.google.com/identity/protocols/oauth2)、[確認が不要な場合](https://support.google.com/cloud/answer/13464323)）：
+- 同意画面が「外部」で、公開ステータスが **Testing（テスト）** の場合、refresh token は **7 日後に失効**します（名前、メール、プロフィールだけを求める場合は例外）。つまり毎週連携し直すことになります。
+- **個人利用（100 人以下）は確認不要**：公開ステータスを「本番環境（In production）」に変えると、ユーザーはログイン時に「確認されていないアプリ」の警告画面を通過できます。100 人を超える場合だけ確認が必要です。未確認でも API ユーザーデータに関するポリシーは守る必要があります。
+- 未確認の API プロジェクトからアップロードした動画が非公開に制限されることは**ありません**（`videos.insert` の文書の原文、2026-10-17）。ワークベンチで実際に「限定公開」の動画を 1 本アップロードし、実際のステータスも限定公開でした。
+
+API 仕様：`videos.insert` は resumable upload を使用。サムネイルの `thumbnails.set` は JPEG／PNG、2 MB 以内。ショートのカスタムサムネイルは API の対応一覧にない（ワークベンチでは無効）。割り当て：`videos.insert` には別途 1 日のアップロード上限があり、その他の読み取りは `youtube.quota` を共有します（`docs/operations.md` 参照）。
+
+## TikTok
+
+出典：[開発者サービス利用規約](https://www.tiktok.com/legal/page/global/tik-tok-developer-terms-of-service/en)（2025-12-26 版）、[アプリ審査ガイドライン](https://developers.tiktok.com/doc/app-review-guidelines)、[コンテンツ共有ガイドライン](https://developers.tiktok.com/doc/content-sharing-guidelines)、[Content Posting API のスタートガイド](https://developers.tiktok.com/doc/content-posting-api-get-started)、[メディア転送ガイド](https://developers.tiktok.com/doc/content-posting-api-media-transfer-guide)、[動画のアップロード（受信トレイ）](https://developers.tiktok.com/doc/content-posting-api-reference-upload-video)、[投稿ステータスの取得](https://developers.tiktok.com/docs/en/content-posting-api-reference-get-video-status)、[トークン管理](https://developers.tiktok.com/doc/oauth-user-access-token-management)、[動画リスト](https://developers.tiktok.com/doc/tiktok-api-v2-video-list)。ワークベンチの全体計画は `docs/TikTok規劃.md` を参照してください。
+
+### 開発者規約
+
+| 規定 | 内容 | ワークベンチの対応 |
+|---|---|---|
+| 呼び出し量（III.3.g） | 過剰な呼び出しや濫用をしてはならない。投稿関連の API は 1 分あたり最大 6 回。 | 1 時間ごとの同期。送信は予約時刻のみ。 |
+| ウォーターマーク（III.3.t） | ユーザーの動画にブランド、ロゴ、ウォーターマークを重ねてはならない。 | 動画ファイルを変更しない。 |
+| 同意 | ユーザーが明確に同意する前にコンテンツをアップロードしてはならない。 | ユーザーが投稿または予約投稿を確定したときだけ送信。 |
+| プライバシーの開示（III.2.c） | プライバシーの取り扱いを完全かつ正確に開示する。 | セルフホストする人のプライバシーポリシーページ。 |
+| プロファイル（III.3.h） | 他人のデータを収集したり、プロファイルやデータベースを作成したりしてはならない。 | 自分のアカウントだけを読み、コメントは読まない。 |
+| 推奨（III.3.o） | TikTok と提携している、または推奨を受けていると誤解させてはならない。 | アプリ名に TikTok を含めない（作者が自分用に使っているのは「ruidefilm Workbench」）。 |
+| 公表（X） | 書面の同意なく、TikTok との関係や開発者サービスの取得について公に発表してはならない。 | **推論**：紹介するときは「公式 API で受信トレイに送る」といった機能の説明にとどめ、「TikTok と提携／公式認定」とは言わない。 |
+| 商業利用（III.3.c） | 書面の同意なく商業広告、勧誘、スパムに使ってはならない。 | 自分の作品の投稿は Content Posting API 本来の用途。タイアップ投稿は TikTok の規定に従って開示する。境界が曖昧で**未確認**。 |
+| 身元の真正性（III.3.q） | 偽の身元を使ってはならない。 | 会社名義で Business API を申請しない。 |
+| オープンソース（III.3.e） | TikTok 開発者サービスをオープンソースライセンスの義務に服させてはならない。 | API を呼ぶだけで、TikTok の SDK やサンプルコードを含まない。オープンソース化の際に再確認。 |
+| セキュリティインシデント（III.2.f） | 侵入された場合は直ちに接続を切断し、TikTok に報告する。 | 運用者の責任。 |
+| 終了（VI） | 開発者サービスが終了したら、API で取得したすべてのデータを削除する。 | 「連携を解除」で認可を取り消し、TikTok のデータを削除する。 |
+| アプリ名（審査ガイドライン） | ソーシャルメディア企業に言及してはならず、アプリ／ウェブサイト名と一致させ、機能の説明だけにしてはならない。 | 自分のウェブサイト名またはブランド名を使う。例：「〈ブランド〉 Workbench」。 |
+
+### 審査と投稿の制限
+
+- **Sandbox**（[文書](https://developers.tiktok.com/doc/add-a-sandbox)）：「審査なしで連携を試せる制限付きの環境」で、最大 5 個、それぞれ最大 10 個のターゲットアカウント。有効期限は文書に書かれていません。**長期間の本番用途に使えるかどうかは書かれておらず**、位置づけはテストです。Sandbox では公開動画の Content Posting API は使えません。ワークベンチは現在 Sandbox で動いており、グレーゾーンです（推論：最悪の場合に制限されるのはアプリであり、TikTok アカウントが停止されるわけではない。動画を投稿するのはアプリ内のあなた自身だから）。
+- **審査前（Sandbox）**：Direct Post は `SELF_ONLY` のみで、投稿するアカウントは非公開アカウントである必要があり、24 時間以内に投稿できるユーザーは最大 5 人。受信トレイへのアップロード（`video.upload`）は使え、ユーザーがアプリ内で投稿を完了します。
+- **アプリ審査ガイドラインの一般原則**（2026-10-17 確認）：「Apps must not be for private or personal use」、「Apps that are still in development or testing will not be approved」。必要な権限だけを申請し、すべての製品と権限をデモ動画で示す必要があります。デモ動画は Sandbox で一連の流れを録画し、ドメインは入力したウェブサイトと一致させます。ガイドライン自体には Content Posting API の用途一覧はありません（一覧はコンテンツ共有ガイドラインにあります）。**推論**：自分または自社クライアントのアカウントだけに使うワークベンチは「私的利用」にあたり、審査に出すと（Direct Post を申請するかどうかにかかわらず）却下される可能性が高いです。
+- **Direct Post の審査**：用途は「実在のクリエイターがオリジナルコンテンツを投稿するのを助ける」もので、幅広いユーザー向けである必要があります。**受け付けない**と明記されているのは、「自分またはチームが管理するアカウントにコンテンツをアップロードするツール」、テスト専用、他のプラットフォームからのコンテンツの転載です。審査フォームで利用量の見込みを入力し、それによって 24 時間あたりのクリエイター数の上限が決まります。**推論**：ワークベンチの現在の位置づけ（自分のアカウントを管理する）では通らず、本当に複数のクリエイターが使う製品になって初めて事実どおりに申請できます。
+- **Direct Post の画面要件**（審査を受ける場合のみ）：毎回 creator_info を読んでニックネームを表示、`max_video_post_duration_sec` で長さを確認、公開範囲のプルダウンに既定値を置かない、コメント／デュエット／リミックスは既定でチェックなし、音楽の使用に関する宣言、商業コンテンツの開示、プレビュー、処理に数分かかる旨の表示とステータスの追跡。デモ動画と 2–6 週間の審査期間はサードパーティの記事にしか見当たらず、**未確認**です。
+- **受信トレイへのアップロード**：init エンドポイントには本文のフィールドがなく（本文はアプリ内でしか貼れない）、カバーのフィールドもありません（カバーはアプリ内で選ぶ。`video_cover_timestamp_ms` は Direct Post 専用）。24 時間以内に保留中は最大 5 本（`spam_risk_too_many_pending_share`）、1 アカウントあたり 1 日約 15 件。
+- **受信トレイに本文を付けられるか**（2026-10-17 再確認）：動画の受信トレイ init の body には `source_info`（`source`、`video_size`、`chunk_size`、`total_chunk_count` または `video_url`）しかなく、`post_info`／`title`／`description` はありません。`video.upload` スコープの説明も「下書きとしてクリエイターのアカウントに送り、TikTok で編集して投稿する」です。テキストを付けられるのは次だけです：Direct Post（`post_info.title`、`video.publish`＋審査が必要）、写真投稿（`/v2/post/publish/content/init/` の `post_info.title`／`description`。ただし写真は確認済みドメインから取得される必要がある）、Share Kit（ネイティブの iOS／Android SDK。文書には partner hashtag しか書かれておらず本文のフィールドはなく、ウェブツールでは使えない）。実際の検証：2026-10-17、審査前の Sandbox アプリで動画を受信トレイに送ることに成功しました。
+- **動画の仕様**：API でのアップロードは最長 10 分。64 MB 以内なら 1 回で送れ、それを超える場合は分割します（ワークベンチは 10 MB）。アカウントごとの上限を調べる `creator_info` には `video.publish` が必要で、ワークベンチは申請していません。
+- **写真投稿**：確認済みドメインの公開 URL からしかダウンロードされない → ワークベンチは非対応で、「動画のみ投稿できます。画像の投稿はアプリから行ってください」と表示します。
+- **トークン**：access token は 24 時間。refresh token は 365 日で、更新のたびにローテーションされます。
+- **データ**：Display API の動画リストは公開動画だけを返します（再生回数などのカウントを含む）。フォロワー数は user/info から。非公開動画はリストに含まれないため、「削除された、または非公開に変更された」ものはまとめて扱います。
+- **カバー**（[Query Videos](https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query)、2026-10-19 確認）：`POST /v2/video/query/` には `video.list` が必要で、1 回に最大 20 個の動画 ID、認可したアカウント自身の動画だけを返します。文書には「カバー URL の有効期限を更新する」ために使えると書かれています（期間は書かれていない）。ワークベンチのサムネイルキャッシュはこれで `cover_image_url` を取得し、すぐに JPEG に縮小して保存します。CDN のドメインは文書に書かれておらず、ワークベンチはひとまず `tiktokcdn.com`／`tiktokcdn-us.com`／`tiktokcdn-eu.com` を許可しています。**実地未検証**です。
+- **コメント**：読めるのは TikTok API for Business だけで、申請者は法人であり会社ドメインのメールを使う必要があり、個人開発者は受け付けない → ワークベンチは TikTok のコメントを読みません。
+
+## オーディエンスデータ（各プラットフォーム、2026-10-19 確認）
+
+| プラットフォーム | 公式に提供されるもの | 条件 | ワークベンチの対応 |
+|---|---|---|---|
+| Instagram | `follower_demographics`（年齢、性別、国、都市。`timeframe` 必須）、`online_followers`（1 時間ごとのオンライン人数。保持は 30 日のみ） | `instagram_manage_insights`。フォロワー 100 人以上。`online_followers` は公式ページの制限事項の段落にしか出てこず、指標の表にはない。廃止されるかどうかは**未確認** | 1 日 1 回取得。`docs/architecture.md` のオーディエンス分析を参照 |
+| Facebook ページ | 地域のみ：`page_follows_country`／`page_follows_city` | `read_insights`。年齢と性別（`page_fans_gender_age`、`page_follows_gender_age`）は 2024-03-14 に廃止され、代替なし。`page_fans_city／country` は 2025-11-15 に廃止 | 地域のみ表示し、年齢・性別は廃止されたと説明 |
+| Threads | `follower_demographics`（国、都市、年齢、性別。一度に 1 種類） | `threads_manage_insights`。フォロワー 100 人以上。since／until に非対応。オンライン時間帯の指標はない | 1 日 1 回取得 |
+| YouTube | YouTube Analytics：`ageGroup`、`gender` 別の `viewerPercentage`、`country` 別の `views` | `yt-analytics.readonly`。年齢・性別はログインしている視聴者のみ。Studio の「視聴者がアクセスしている時間帯」は API で提供されていない（**推論**：公式のディメンション一覧に該当項目がない） | 直近 28 日 |
+| TikTok | Display API にオーディエンスデータはない。Business API（ビジネスアカウント）には年齢、性別、地域、アクティブな時間帯がある | Business API は別途申請・審査が必要で、ビジネスアカウントに限られる | 対応しない。画面で理由を説明 |
+| LINE | Messaging API に公式アカウントの友だちの属性統計がある（`/v2/bot/insight/demographic`） | ブランドの公式アカウントとの連携が必要。ワークベンチの LINE は通知専用（`AGENTS.md`） | 対応しない。画面で理由を説明 |
+
+出典：[IG アカウントのインサイト](https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights)、[廃止されたページのインサイト指標](https://developers.facebook.com/documentation/pages-api/platforminsights/page/deprecated-metrics)、[Threads のインサイト](https://developers.facebook.com/docs/threads/insights/)。
+
+## 動画の視聴指標（各プラットフォーム、2026-10-23 確認）
+
+| プラットフォーム | 公式に提供されるもの | ワークベンチの対応 |
+|---|---|---|
+| Instagram リール | メディアのインサイト：`ig_reels_avg_watch_time`、`ig_reels_video_view_total_time`（ミリ秒。公式には開発中と表記）、`reels_skip_rate`（最初の 3 秒でスワイプされた割合。推定値、開発中）。視聴維持率の曲線はない | 3 項目を 1 回の呼び出しにまとめる（もともと平均視聴時間の呼び出しが必要なので、Meta の割り当てを余分に消費しない）。まとめて拒否された場合は平均視聴時間だけの取得に戻り、呼び出しが 1 回増える |
+| Facebook 動画／リール | 投稿のインサイト：`post_video_avg_time_watched`、`post_video_view_time`（ミリ秒）、`post_video_retention_graph`（40 等分の視聴維持率）。2026-06-15 に廃止されたのは `post_video_views_unique` などのユニーク人数の指標で、この 3 項目は廃止リストに含まれない | 同上で、3 項目を 1 回で呼び出す。視聴維持率の曲線は「視聴パフォーマンス」に表示 |
+| YouTube | Analytics：`averageViewDuration`、`estimatedMinutesWatched`、`averageViewPercentage`。視聴維持率の曲線 `audienceWatchRatio` は動画ごとに別のレポート呼び出しが必要 | 平均視聴率は既存のレポートと同じ呼び出しで取得。視聴維持率の曲線は当面取得しない（動画ごとに呼び出しが 1 回増え、1 回あたり 420 回の上限を使い切ってしまう） |
+| Threads | 投稿のインサイトは views、likes、replies、reposts、quotes、shares のみ | 視聴時間や視聴維持率はなく、画面で説明 |
+| TikTok | Display API の `video/list` は view／like／comment／share の回数と動画の長さのみ。視聴時間、完全視聴率には Business API（ビジネスアカウント、別途審査）が必要 | 対応しない。画面で説明 |
+
+出典：[IG Media Insights](https://developers.facebook.com/documentation/instagram-platform/reference/instagram-media/insights)、[Page／Post Insights](https://developers.facebook.com/docs/graph-api/reference/insights)、[YouTube Analytics の指標](https://developers.google.com/youtube/analytics/metrics)。
+
+## AI とその他のサービスプロバイダー
+
+| サービス | 規定 | ワークベンチの対応 |
+|---|---|---|
+| Gemini API（[追加利用規約](https://ai.google.dev/gemini-api/terms)） | 無料プランは送信された内容を Google の製品改善に使い、人間がレビューすることもあるため、個人情報を送ってはならない。有料プランでは使われない。 | 既定で無効。`GEMINI_PAID_TIER=true` のときだけプラットフォームのデータを処理できる。2026-10-01～02 に無料プランでマスク済みの IG コメントを処理したことがあり、取り消せない。 |
+| Anthropic の個人向けプラン（[消費者向け規約の更新](https://www.anthropic.com/news/updates-to-our-consumer-terms)） | Free／Pro／Max（Claude Code を含む）は、ユーザーが許可した場合に会話を学習に使い、データを 5 年間保持する。 | エージェントが MCP 経由で読んだコメントは会話に入る → ユーザーは「Help improve Claude」をオフにする必要がある。 |
+| ChatGPT／Codex | 同様のデータ管理設定があるはず。 | メニューの場所と規約は**未確認**。 |
+| TypeSafe（[プライバシーポリシー](https://typesafe.ai/legal/privacy-policy)、2025-11-19 版） | 入力内容を学習やファインチューニングに使わない。提供先はサービスプロバイダーのみ。 | Meta の趣旨には合うが、書面の DPA がない。 |
+| LINE（[開発者契約](https://terms2.line.me/LINE_Developers_Agreement?lang=en)） | 必要な範囲でのみデータを処理する。 | マスク済みのコメントの先頭 180 文字だけを自分の通知グループに送る。Push は先に上限を確認。 |
+| すべてのクラウドモデル | — | 送信前に必ず `redact.py` で個人情報をマスクする。 |

@@ -10,7 +10,7 @@ A self-hosted marketing workbench for independent creators and their own brand: 
 
 [繁體中文](README_zh-TW.md) | **English** | [简体中文](README_zh-CN.md) | [日本語](README_ja.md)
 
-> The interface is available in Traditional Chinese, Simplified Chinese, English and Japanese (screenshots show Traditional Chinese). The detailed documentation under `docs/` is in Traditional Chinese.
+> The interface is available in Traditional Chinese, Simplified Chinese, English and Japanese (screenshots show Traditional Chinese). The documentation under `docs/` is also available in all four languages.
 
 ![Dashboard](docs/images/dashboard.png)
 
@@ -44,7 +44,7 @@ When you host this workbench, you are the developer of your own Meta, Google and
 - **TikTok uploads arrive as inbox drafts only**; paste the caption in the TikTok app.
 - **Set the Google consent screen to production**, or YouTube authorization expires every 7 days.
 
-Details are in [`docs/合規須知.md`](docs/合規須知.md) (compliance notes), with the official source for each rule in [`docs/平台政策.md`](docs/平台政策.md) (platform policies).
+Details are in [`docs/合規須知.md`](docs/合規須知_en.md) (compliance notes), with the official source for each rule in [`docs/平台政策.md`](docs/平台政策_en.md) (platform policies).
 
 ## Installation
 
@@ -72,7 +72,7 @@ cd ..
 ./scripts/start-all.ps1
 ```
 
-`start-all.ps1` creates the schema only for a brand-new database and never upgrades an existing one; see [`docs/operations.md`](docs/operations.md) for upgrades.
+`start-all.ps1` creates the schema only for a brand-new database and never upgrades an existing one; see [`docs/operations.md`](docs/operations_en.md) for upgrades.
 
 ## Usage
 
@@ -87,7 +87,7 @@ Connect Claude Code to the workbench (copy the address from Settings → My acco
 /plugin install mwb@marketing-workbench
 ```
 
-Installing for Codex and Claude Desktop is described in [`docs/operations.md`](docs/operations.md#agent-連線).
+Installing for Codex and Claude Desktop is described in [`docs/operations.md`](docs/operations_en.md#agent-connections).
 
 ### Working with an agent (MCP)
 
@@ -118,7 +118,7 @@ The token is shown only once; never paste it into a chat or commit it to git. On
 
 Publishing always takes two steps: the agent shows you the platforms, accounts, full captions, media and time, and sends only after you clearly approve. Ideas and scripts are saved only after you settle on them and say to save. Slash commands are shortcuts in the Claude Code plugin; with other agents, just ask in plain words. The tools actually available are whatever the agent's tool list shows.
 
-Deployment, updates, backups and troubleshooting are in [`docs/operations.md`](docs/operations.md); the architecture is in [`docs/architecture.md`](docs/architecture.md).
+Deployment, updates, backups and troubleshooting are in [`docs/operations.md`](docs/operations_en.md); the architecture is in [`docs/architecture.md`](docs/architecture_en.md).
 
 To run the backend and frontend separately during development:
 
@@ -172,9 +172,9 @@ Enter each platform's app keys (Meta, Threads, YouTube, TikTok) on the platform 
 - Before sending a PR, run `uv run pytest` in `backend/`, and `npm --prefix frontend test`, `npm --prefix frontend run build` and `node --test scripts/*.test.mjs` from the repo root. The full acceptance run is `python scripts/verify_all.py` (needs Chromium).
 - Tests always use isolated data and HTTP stand-ins and must never call a real platform API.
 - Database changes always go through an Alembic migration.
-- Wrap new interface text in `t('Traditional Chinese source text')` and add the English, Simplified Chinese and Japanese translations in `frontend/src/locales/`, following [`docs/i18n術語表.md`](docs/i18n術語表.md).
+- Wrap new interface text in `t('Traditional Chinese source text')` and add the English, Simplified Chinese and Japanese translations in `frontend/src/locales/`, following [`docs/i18n術語表.md`](docs/i18n術語表_en.md).
 - Platform integrations use official APIs only; scraping, unofficial APIs and browser automation are not accepted.
-- Architecture and rules: [`docs/architecture.md`](docs/architecture.md), [`docs/MCP規範.md`](docs/MCP規範.md), [`docs/UI規格.md`](docs/UI規格.md).
+- Architecture and rules: [`docs/architecture.md`](docs/architecture_en.md), [`docs/MCP規範.md`](docs/MCP規範_en.md), [`docs/UI規格.md`](docs/UI規格_en.md).
 
 Pull requests are welcome. For larger changes (a new platform, database changes, permission rules), please open an issue to discuss the direction first. Response times vary; thanks for your patience.
 
@@ -182,7 +182,7 @@ Questions or collaboration: support@ruidefilm.com. Please report security issues
 
 ## License
 
-MIT License, see [`LICENSE`](LICENSE). Using this project still requires following each platform's terms; see [`docs/合規須知.md`](docs/合規須知.md).
+MIT License, see [`LICENSE`](LICENSE). Using this project still requires following each platform's terms; see [`docs/合規須知.md`](docs/合規須知_en.md).
 
 ## Acknowledgements
 

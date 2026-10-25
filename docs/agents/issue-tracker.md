@@ -1,5 +1,7 @@
 # Issue tracker: GitHub
 
+> **Language / 語言 / 语言 / 言語**: [繁體中文](issue-tracker_zh-TW.md) | [简体中文](issue-tracker_zh-CN.md) | English | [日本語](issue-tracker_ja.md)
+
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
 ## Conventions

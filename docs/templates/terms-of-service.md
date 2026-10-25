@@ -1,5 +1,7 @@
 # 服務條款範本 Terms of Service template
 
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](terms-of-service_zh-CN.md) | [English](terms-of-service_en.md) | [日本語](terms-of-service_ja.md)
+
 使用方式與佔位符同 [`privacy-policy.md`](privacy-policy.md)。刪掉你沒有連結的平台。這是範本，不是法律意見。
 
 ---

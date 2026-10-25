@@ -1,5 +1,7 @@
 # 部署與維運
 
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](operations_zh-CN.md) | [English](operations_en.md) | [日本語](operations_ja.md)
+
 資料庫、匯出、日誌、備份及 MCP 稽核路徑透過設定提供；不依賴開發者的磁碟或主機名稱。`.env.example` 為設定欄位參考，憑證只在本機填入。各功能的設計規則見 [architecture](architecture.md)；這裡只記操作步驟。各次變更的驗收細節記錄在 git 歷史，不再寫入本頁。
 
 ## 部署順序
