@@ -135,7 +135,7 @@ Windows 預設可能禁止執行 `.ps1` 腳本（錯誤訊息提到「執行原�
 
 ## 階段 9：讓 agent 連上工作檯（選用）
 
-工作檯提供 MCP 介面，讓 agent 幫忙寫主題、腳本與發佈草稿。請使用者用**內部 https 網址**（階段 4）開啟工作檯，到「設定 → 我的帳號 → 安裝 Agent」選 Claude Code、Codex 或 Claude 桌面版，依畫面安裝；Claude Code 的 plugin marketplace 只接受 https 網址。第一次使用時以自己的工作檯帳號登入核准。其他支援遠端 MCP 的 agent 可以用連線權杖連線，見 [README](../README.md) 的「用 agent 操作工作檯（MCP）」。細節見 [`operations.md`](operations.md) 的「Agent 連線」。發佈一律兩段式確認：agent 準備好明細給使用者看，使用者明確同意後才送出。
+工作檯提供 MCP 介面，讓 agent 幫忙寫主題、腳本與發佈草稿。請使用者用**內部 https 網址**（階段 4）開啟工作檯，到「設定 → 我的帳號 → 安裝 Agent」選 Claude Code、Codex 或 Claude 桌面版，依畫面安裝；Claude Code 的 plugin marketplace 只接受 https 網址。第一次使用時以自己的工作檯帳號登入核准。其他支援遠端 MCP 的 agent 可以用連線權杖連線，見 [README](../README_zh-TW.md) 的「用 agent 操作工作檯（MCP）」。細節見 [`operations.md`](operations.md) 的「Agent 連線」。發佈一律兩段式確認：agent 準備好明細給使用者看，使用者明確同意後才送出。
 
 ## 完成檢查清單
 

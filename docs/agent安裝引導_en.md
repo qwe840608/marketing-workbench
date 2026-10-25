@@ -137,7 +137,7 @@ Have the user paste keys and secrets into the workbench cards themselves (they a
 
 ## Stage 9: Connect an agent to the workbench (optional)
 
-The workbench provides an MCP interface so agents can help with ideas, scripts and publishing drafts. Have the user open the workbench at the **internal https address** (stage 4), go to Settings → My account → Install Agent, pick Claude Code, Codex or Claude Desktop and follow the screen; the Claude Code plugin marketplace only accepts https addresses. On first use they sign in with their own workbench account to approve. Other agents that support remote MCP can connect with a connection token; see "Working with an agent (MCP)" in the [README](../README_en.md). Details are in "Agent 連線" in [`operations.md`](operations.md). Publishing always takes two steps: the agent prepares the details for the user to review, and sends only after the user clearly approves.
+The workbench provides an MCP interface so agents can help with ideas, scripts and publishing drafts. Have the user open the workbench at the **internal https address** (stage 4), go to Settings → My account → Install Agent, pick Claude Code, Codex or Claude Desktop and follow the screen; the Claude Code plugin marketplace only accepts https addresses. On first use they sign in with their own workbench account to approve. Other agents that support remote MCP can connect with a connection token; see "Working with an agent (MCP)" in the [README](../README.md). Details are in "Agent 連線" in [`operations.md`](operations.md). Publishing always takes two steps: the agent prepares the details for the user to review, and sends only after the user clearly approves.
 
 ## Completion checklist
 

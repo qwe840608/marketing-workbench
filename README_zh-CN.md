@@ -8,7 +8,7 @@
 ![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6.svg)
 
-[繁體中文](README.md) | [English](README_en.md) | **简体中文** | [日本語](README_ja.md)
+[繁體中文](README_zh-TW.md) | [English](README.md) | **简体中文** | [日本語](README_ja.md)
 
 > 界面支持繁体中文、简体中文、English、日本語（截图为繁体中文界面）。`docs/` 下的详细文档为繁体中文。
 
