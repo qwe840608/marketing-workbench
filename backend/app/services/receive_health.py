@@ -22,6 +22,14 @@ STATE = "receive_health.state"
 TARGET = "receive_health.target"
 PATH = "/webhook/mwb-gateway-probe"
 BANNER = "收訊通道中斷：新留言可能無法收到"
+# Shown verbatim and used as i18n keys by the frontend, so keep them in sync with the locales.
+REASONS = {
+    "scheduler": "後端排程器未運作",
+    "probe_secret_missing": "未設定公開探測密鑰（WEBHOOK_PROBE_SECRET）",
+    "probe_url_invalid": "公開網址不是 ngrok 網址，無法探測",
+    "probe_unreachable": "公開網址連不上，請確認 ngrok 已啟動",
+    "signature_surge": "驗簽失敗暴增",
+}
 logger = logging.getLogger("mwb.receive_health")
 
 
@@ -54,19 +62,39 @@ def probe(settings, now):
 
     scheduler = scheduler_for(settings)
     checks = {"scheduler": bool(scheduler and scheduler.healthy()), "public_probe": False}
+    url = settings.webhook_public_url.rstrip("/")
+    if not url:
+        # A fresh install has no public tunnel yet; nothing can arrive, so nothing to alarm about.
+        checks["public_probe"] = None
+        return checks
     secret = (
         settings.webhook_probe_secret.get_secret_value() if settings.webhook_probe_secret else ""
     )
-    with client() as http:
-        try:
-            # Never send probe credentials to arbitrary URLs or follow redirects.
-            url = settings.webhook_public_url.rstrip("/")
-            if not re.fullmatch(r"https://[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev)", url):
-                raise ValueError("invalid_public_url")
-            checks["public_probe"] = bool(secret) and signed_probe(http, url, secret, now)
-        except (httpx.HTTPError, ValueError, KeyError, TypeError):
-            pass
+    # Never send probe credentials to arbitrary URLs or follow redirects.
+    if not re.fullmatch(r"https://[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev)", url):
+        checks["probe_issue"] = "probe_url_invalid"
+    elif not secret:
+        checks["probe_issue"] = "probe_secret_missing"
+    else:
+        with client() as http:
+            try:
+                checks["public_probe"] = signed_probe(http, url, secret, now)
+            except (httpx.HTTPError, ValueError, KeyError, TypeError):
+                pass
+        if not checks["public_probe"]:
+            checks["probe_issue"] = "probe_unreachable"
     return checks
+
+
+def reasons(checks):
+    found = []
+    if checks.get("scheduler") is False:
+        found.append(REASONS["scheduler"])
+    if checks.get("public_probe") is False:
+        found.append(REASONS[checks.get("probe_issue", "probe_unreachable")])
+    if checks.get("signature_ok") is False:
+        found.append(REASONS["signature_surge"])
+    return found
 
 
 def signature_failure(session, platform, now=None):
@@ -148,6 +176,8 @@ def snapshot(session, settings, now=None):
     return {
         "interrupted": data.get("healthy") is False or stale,
         "message": BANNER,
+        "reasons": data.get("reasons", []) if data.get("healthy") is False else [],
+        "public_url_configured": bool(settings.webhook_public_url),
         "last_ok_at": data.get("last_ok_at"),
         "checked_at": data.get("checked_at"),
         "stale": stale,
@@ -213,7 +243,8 @@ def check(factory, settings, now=None):
         _begin_ingest(session, "receive_health.result")
         recent, surge = failure_counts(session, now)
         checks.update(signature_ok=not surge, signature_failures_5m=recent)
-        healthy = checks["scheduler"] and checks["public_probe"] and not surge
+        # A skipped probe (None, no public URL configured) is not an outage.
+        healthy = bool(checks["scheduler"] and checks["public_probe"] is not False and not surge)
         row = settings_store.get(session, STATE)
         data = dict(row.value_json)
         previous = data.get("healthy")
@@ -224,7 +255,7 @@ def check(factory, settings, now=None):
             if healthy and previous is False
             else None
         )
-        data.update(healthy=healthy, checked_at=now.isoformat())
+        data.update(healthy=healthy, checked_at=now.isoformat(), reasons=reasons(checks))
         if healthy:
             data["last_ok_at"] = now.isoformat()
         row.value_json = data
@@ -240,6 +271,7 @@ def check(factory, settings, now=None):
         record_id = record.id
         recipient = target(session, settings)[0]
         last_ok = data.get("last_ok_at")
+        causes = data["reasons"]
     if transition:
         stamp = (
             datetime.fromisoformat(last_ok)
@@ -251,6 +283,8 @@ def check(factory, settings, now=None):
         text = (
             BANNER if transition == "outage" else "收訊通道已恢復：新留言可正常接收"
         ) + f"\n上次正常：{stamp}（台北時間）"
+        if transition == "outage" and causes:
+            text += "\n原因：" + "、".join(causes)
         status = push_alert(settings, recipient, text)
         with factory.begin() as session:
             session.get(ReceiveHealthCheck, record_id).alert_status = status

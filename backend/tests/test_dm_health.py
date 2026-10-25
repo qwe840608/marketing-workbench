@@ -237,6 +237,47 @@ def test_probe_full_mode_signed_public_and_redirect_rejection(settings, monkeypa
     assert not any("evil.invalid" in p for p in paths)
 
 
+def test_fresh_install_without_public_url_is_not_an_outage(client, settings, monkeypatch):
+    from types import SimpleNamespace
+
+    from app.services import scheduler
+
+    factory = client.app.state.session_factory
+    settings.webhook_public_url = ""
+    monkeypatch.setattr(scheduler, "scheduler_for", lambda _: SimpleNamespace(healthy=lambda: True))
+    monkeypatch.setattr(health, "client", lambda: pytest.fail("no probe without a public URL"))
+    now = utc_now()
+    health.check(factory, settings, now)
+    with factory() as s:
+        state = health.snapshot(s, settings, now)
+        assert not state["interrupted"] and state["reasons"] == []
+        assert state["public_url_configured"] is False
+        assert state["history"][0]["checks"]["public_probe"] is None
+
+
+@pytest.mark.parametrize(
+    ("url", "secret", "reason"),
+    [
+        ("https://example.com", "s" * 32, "probe_url_invalid"),
+        ("https://example.ngrok.app", "", "probe_secret_missing"),
+    ],
+)
+def test_outage_names_its_cause(client, settings, monkeypatch, url, secret, reason):
+    from app.services import scheduler
+
+    factory = client.app.state.session_factory
+    settings.webhook_public_url = url
+    settings.webhook_probe_secret = SecretStr(secret) if secret else None
+    monkeypatch.setattr(scheduler, "scheduler_for", lambda _: None)
+    monkeypatch.setattr(health, "client", lambda: pytest.fail("no probe without valid config"))
+    now = utc_now()
+    health.check(factory, settings, now)
+    with factory() as s:
+        state = health.snapshot(s, settings, now)
+        assert state["interrupted"]
+        assert state["reasons"] == [health.REASONS["scheduler"], health.REASONS[reason]]
+
+
 def test_signature_counter_floor_and_relative_spike(client, settings):
     factory = client.app.state.session_factory
     now = utc_now().replace(second=0, microsecond=0)

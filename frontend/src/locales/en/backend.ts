@@ -202,4 +202,10 @@ export default {
   "工作檯已經建立過管理員，請直接登入": "An admin already exists. Sign in instead.",
   "帳號名稱須為 1–80 個字元": "Usernames must be 1–80 characters",
   "品牌名稱須為 1–200 個字元": "Brand names must be 1–200 characters",
+  "收訊通道中斷：新留言可能無法收到": "Message intake disrupted: new comments may not arrive",
+  "後端排程器未運作": "the backend scheduler is not running",
+  "未設定公開探測密鑰（WEBHOOK_PROBE_SECRET）": "the public probe secret (WEBHOOK_PROBE_SECRET) is not set",
+  "公開網址不是 ngrok 網址，無法探測": "the public URL is not an ngrok URL, so it cannot be probed",
+  "公開網址連不上，請確認 ngrok 已啟動": "the public URL is unreachable; make sure ngrok is running",
+  "驗簽失敗暴增": "a surge in signature failures",
 } satisfies Record<string, string>;
