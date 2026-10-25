@@ -1,5 +1,5 @@
 {
   "mcpServers": {
-    "mwb": { "type": "http", "url": "http://127.0.0.1:8000/mcp", "headers": { "X-MWB-Plugin-Version": "0.4.4" } }
+    "mwb": { "type": "http", "url": "http://127.0.0.1:8000/mcp", "headers": { "X-MWB-Plugin-Version": "0.4.5" } }
   }
 }

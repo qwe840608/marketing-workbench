@@ -43,7 +43,6 @@
 - **隱私權政策與服務條款要自己寫**，放在自己的網站再填進各平台後台，範本在 [`docs/templates/`](docs/templates/)。
 - **TikTok 只能送到收件匣草稿**，文案要在 TikTok App 內貼上。
 - **Google 同意畫面要設成正式版**，否則 YouTube 授權每 7 天失效。
-- **平台資料不能被拿去訓練模型**：Gemini API 的免費層會用送入的內容改善 Google 產品，所以工作檯預設不讓 Gemini 處理平台資料，Google Cloud 專案綁定帳單後才設 `GEMINI_PAID_TIER=true`。agent 若用個人訂閱登入（例如 Claude Pro／Max），透過 MCP 讀到的留言會進到對話裡，要在該服務關閉「用對話訓練模型」；用 API 金鑰的 agent 不必（Gemini 仍須付費層）。
 
 細節見 [`docs/合規須知.md`](docs/合規須知.md)，每條規定的官方出處見 [`docs/平台政策.md`](docs/平台政策.md)。
 

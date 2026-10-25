@@ -43,7 +43,6 @@ When you host this workbench, you are the developer of your own Meta, Google and
 - **Write your own privacy policy and terms of service**, publish them on your own website and enter them in each platform's developer settings. Templates are in [`docs/templates/`](docs/templates/).
 - **TikTok uploads arrive as inbox drafts only**; paste the caption in the TikTok app.
 - **Set the Google consent screen to production**, or YouTube authorization expires every 7 days.
-- **Keep platform data out of model training.** The Gemini API free tier uses submitted content to improve Google's products, so the workbench keeps Gemini away from platform data until the Google Cloud project has billing and you set `GEMINI_PAID_TIER=true`. If your agent signs in with a personal subscription (such as Claude Pro or Max), the comments it reads over MCP end up in your conversations, so turn off that service's setting for training on your conversations. Agents that use an API key need nothing extra (Gemini still needs the paid tier).
 
 Details are in [`docs/合規須知.md`](docs/合規須知.md) (compliance notes), with the official source for each rule in [`docs/平台政策.md`](docs/平台政策.md) (platform policies).
 

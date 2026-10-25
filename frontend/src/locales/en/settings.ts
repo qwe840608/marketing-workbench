@@ -193,4 +193,6 @@ export default {
   "送出、重試與取消發佈": "Publish, retry, and cancel",
   "平台連線與憑證": "Platform connections and credentials",
   "工作區與系統設定": "Workspace and system settings",
+  'AI 會自動判斷粉絲在各平台貼文下的留言（含留言回覆）屬於哪一類；私訊、品牌自己的回覆和 CSV 匯入的留言不分類。分類結果用在儀表板的「客人正在問什麼」、Agent 查詢熱門問題，以及客訴與緊急留言的 LINE 通知。': 'AI sorts fans’ comments on your posts across platforms (including replies) into these categories. Direct messages, your brand’s own replies, and comments imported from CSV aren’t classified. The results feed “What customers are asking” on the Dashboard, the agent’s popular-questions lookup, and LINE alerts for complaints and urgent comments.',
+  '每個類別可以補充這個品牌常見的說法或例子，AI 判斷時會一併參考；留空就照預設定義判斷。': 'Add phrases or examples typical for this brand to any category, and the AI will take them into account. Leave a field blank to use the default definition.',
 } satisfies Record<string, string>;

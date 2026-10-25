@@ -113,7 +113,7 @@ def test_desktop_deterministic_manifest_and_entrypoint(agent_client, origin):
         f'attachment; filename="mwb-{packages.PLUGIN_LATEST}.mcpb"')
     with unzip(first) as archive:
         manifest = json.loads(archive.read("manifest.json"))
-        assert manifest["version"] == packages.manifest()["version"] == "0.4.4"
+        assert manifest["version"] == packages.manifest()["version"] == "0.4.5"
         assert manifest["name"] == "mwb" and manifest["display_name"] == "行銷工作檯"
         assert manifest["manifest_version"] == "0.3"
         server = manifest["server"]

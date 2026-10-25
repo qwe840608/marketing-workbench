@@ -30,7 +30,7 @@ def test_identity_admin_csrf_version_and_docx(client, classified_data):
         "name": branding.DEFAULT_NAME,
         "version": 0,
         "backoffice_origin": client.app.state.settings.backoffice_origin,
-        "plugin_version": "0.4.4",
+        "plugin_version": "0.4.5",
     }
     body = {"name": "創作測試工作室", "version": 0}
     assert (

@@ -1,6 +1,6 @@
 # Agent 套件
 
-Claude Code 原始檔在 `mwb/`。`.claude-plugin/plugin.json` 的 version 是唯一版本來源，目前 0.4.4；開發用 `.mcp.json` 的版本 header 須同步，HTTP 打包會自動填入版本及請求 origin。Codex skills 直接使用相同五份 SKILL.md，流程由 `get_guide` 提供。
+Claude Code 原始檔在 `mwb/`。`.claude-plugin/plugin.json` 的 version 是唯一版本來源，目前 0.4.5；開發用 `.mcp.json` 的版本 header 須同步，HTTP 打包會自動填入版本及請求 origin。Codex skills 直接使用相同五份 SKILL.md，流程由 `get_guide` 提供。
 
 發佈新版：修改 `mwb/` 或 `desktop/` 內容 → 提高 plugin.json version 並同步開發 header → 在 backend 執行 `uv run python ../scripts/update_plugin_hash.py` → 跑測試 → 由授權操作者部署。`content-hash.json` 記錄共用版本與內容 SHA-256；計算包含 mwb 的路徑與完整檔案（只移除 plugin.json 的 version 欄位），以及以 desktop/ 為前綴的全部桌面擴充檔案。版本未變而內容不同時，更新工具拒絕覆寫記錄，測試提示「請提高 plugin 版本」。最低相容維持 0.3.0。
 

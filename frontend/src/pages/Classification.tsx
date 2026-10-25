@@ -41,6 +41,8 @@ function IntentNotesEditor({ brandId, canEdit }: { brandId: string; canEdit: boo
   }
   return <section className="settings-section section-card intent-notes" aria-labelledby="intent-notes-title" aria-busy={busy}>
     <h2 id="intent-notes-title">{t('類別說明')}</h2>
+    <p className="muted">{t('AI 會自動判斷粉絲在各平台貼文下的留言（含留言回覆）屬於哪一類；私訊、品牌自己的回覆和 CSV 匯入的留言不分類。分類結果用在儀表板的「客人正在問什麼」、Agent 查詢熱門問題，以及客訴與緊急留言的 LINE 通知。')}</p>
+    <p className="muted">{t('每個類別可以補充這個品牌常見的說法或例子，AI 判斷時會一併參考；留空就照預設定義判斷。')}</p>
     {data && <form onSubmit={event => void save(event)}>
       <div className="intent-notes-fields">{intentFields.map(([key, placeholder]) => <label key={key}>
         <span>{intents[key]}</span><input value={data[key]} placeholder={placeholder} maxLength={200} disabled={!canEdit || busy} onChange={event => { setData({ ...data, [key]: event.target.value }); setNotice(''); }} />

@@ -43,7 +43,6 @@
 - **隐私政策与服务条款要自己写**，放在自己的网站上，再填到各平台开发者后台，模板在 [`docs/templates/`](docs/templates/)。
 - **TikTok 只能发送为收件箱草稿**，文案需要在 TikTok App 内粘贴。
 - **Google 同意屏幕要设为正式版**，否则 YouTube 授权每 7 天失效。
-- **平台数据不能被拿去训练模型**：Gemini API 的免费层会用传入的内容改进 Google 产品，所以工作台默认不让 Gemini 处理平台数据，Google Cloud 项目绑定结算后才设 `GEMINI_PAID_TIER=true`。agent 若用个人订阅登录（例如 Claude Pro／Max），通过 MCP 读到的评论会进入对话，需要在该服务中关闭“用对话训练模型”；使用 API 密钥的 agent 不必（Gemini 仍须付费层）。
 
 详情见 [`docs/合規須知.md`](docs/合規須知.md)（合规须知），每条规定的官方出处见 [`docs/平台政策.md`](docs/平台政策.md)（平台政策）。
 
