@@ -12,6 +12,8 @@
 
 **繁體中文** | [English](README.md) | [简体中文](README_zh-CN.md) | [日本語](README_ja.md)
 
+> 介面支援繁體中文、簡體中文、English、日本語（截圖為繁體中文介面）。`docs/` 下的文件也有四種語言版本。
+
 ![儀表板](docs/images/dashboard.png)
 
 | 貼文數據 | 主題發想 |
