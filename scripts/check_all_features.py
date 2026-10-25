@@ -1038,13 +1038,13 @@ def content_operations(audit, origin, bid, pid, rid, sid):
            "已排入所選留言範圍與貼文的主題重算。")
     action(audit, page.locator(".ideation-page"), "立即發想", "/api/ideation/reports", report)
     expect(page.locator(".report-heading")).to_contain_text(f"#{rid}")
-    # 產生腳本、重新生成、延伸主題已移除；已有腳本的主題卡片改提供「查看腳本」。
+    # 網頁的產生腳本、重新生成、延伸主題已移除；已有腳本的主題卡片提供「查看腳本」，寫腳本交給 Agent。
     for name in ("產生腳本", "重新生成", "延伸主題"):
         expect(page.get_by_role("button", name=name)).to_have_count(0)
     card = page.locator(".ideation-card").first
     expect(card.locator(".idea-card-tools").get_by_role("button")).to_have_text(["編輯"])
     expect(card.locator(".idea-card-actions").get_by_role("button")).to_have_text(
-        ["查看腳本", "建立發佈草稿"]
+        ["查看腳本", "建立發佈草稿", "交給 Agent 寫腳本"]
     )
     card.get_by_role("button", name="查看腳本", exact=True).click()
     expect(page.locator(".script-editor")).to_be_visible()

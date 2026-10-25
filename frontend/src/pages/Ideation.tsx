@@ -73,11 +73,10 @@ function AgentSourceChip({ source }: { source?: AgentSource | null }) {
   return source ? <span className="agent-source-chip">{t('來自 {agent}', { agent: source.agent })}</span> : null;
 }
 
-// 等待 Agent 撰寫的報告：開啟桌面 App 並預填接手指令（仍需使用者自己送出），或複製指令貼到其他 Agent。
-function AgentHandoff({ reportId }: { reportId: number }) {
+// 交給 Agent 撰寫（主題或腳本）：開啟桌面 App 並預填接手指令（仍需使用者自己送出），或複製指令貼到其他 Agent。
+function AgentHandoff({ slash, plain }: { slash: string; plain: string }) {
   const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const plain = t('請用 mwb 工作檯的 get_guide("ideas") 接手主題報告 #{id}（report_id={id}）。', { id: reportId });
-  const links = handoffLinks({ slash: t('/mwb:ideas 接手主題報告 #{id}', { id: reportId }), plain });
+  const links = handoffLinks({ slash, plain });
   const labels = { 'claude-code': t('交給 Claude Code'), 'claude-chat': t('開啟 Claude 對話'), codex: t('開啟 Codex') };
   async function copyPrompt() {
     try { await navigator.clipboard.writeText(plain); setCopy('copied'); } catch { setCopy('failed'); }
@@ -254,6 +253,8 @@ export function IdeationPage({ brand, brands, canEdit, canConfigure, onDraft }: 
   const visibleSelected = visiblePosts.filter(p => postIds.includes(p.id)).length;
   const previewQuery = new URLSearchParams({ ...commentFields, brand_id: brandId }).toString();
   const [scripts, setScripts] = useState<Script[]>([]), [script, setScript] = useState<Script | null>(null);
+  // 腳本交給 Agent 撰寫的接手面板一次只展開一張主題卡。
+  const [scriptHandoff, setScriptHandoff] = useState<number | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   // 輪詢失敗的訊息依請求種類記下；同種請求恢復成功時才清掉，且只清仍是那則的橫幅，不會蓋掉操作錯誤。
   const pollErrors = useRef<Record<string, string>>({});
@@ -347,7 +348,7 @@ export function IdeationPage({ brand, brands, canEdit, canConfigure, onDraft }: 
     return pollWhileVisible(async signal => { try { const v = await api<{ reports: Report[]; defaults: { start_at: string; end_at: string } }>('/ideation/reports?brand_id=' + brandId, { signal }); if (!signal.aborted) { const visible = v.reports.filter(r => !deletedReports.current.has(r.id)); setReports(visible); setSelected(current => current || (scriptId ? null : visible[0]?.id || null)); setStart(s => s || local(v.defaults.start_at)); setEnd(s => s || local(v.defaults.end_at)); pollRecovered('reports'); } } catch (e) { if (!signal.aborted) pollFailed('reports', e); } }, 3000);
   }, [brandId]);
   useEffect(() => {
-    setReport(null); setScripts([]); setScript(null); restoredScript.current = null;
+    setReport(null); setScripts([]); setScript(null); setScriptHandoff(null); restoredScript.current = null;
     if (!selected) return;
     return pollWhileVisible(async signal => { try { const [r, s] = await Promise.all([api<Report>('/ideation/reports/' + selected, { signal }), api<Script[]>('/ideation/reports/' + selected + '/scripts', { signal })]); if (!signal.aborted && !deletedReports.current.has(selected) && String(r.brand_id) === brandId) { setReport(r); setScripts(s); pollRecovered('report'); } } catch (e) { if (!signal.aborted && !deletedReports.current.has(selected)) pollFailed('report', e); } }, 3000);
   }, [selected, brandId]);
@@ -479,7 +480,7 @@ export function IdeationPage({ brand, brands, canEdit, canConfigure, onDraft }: 
     <section className="settings-section"><h2>{t('主題列表（{count}）', { count: reports.length })}</h2>{!reports.length && <p className="muted">{t('尚無報告。設定例會後自動產生，也可立即發想。')}</p>}<div className="ideation-actions report-history">{reports.map(r => <div className="report-row" key={r.id} data-selected={selected === r.id}><button className="report-select" aria-current={selected === r.id ? 'true' : undefined} onClick={() => chooseReport(r.id)}>#{r.id} · {date(r.created_at)}<span className="report-row-state"><span className={`report-status ${r.status === 'ready' ? 'ready' : r.status === 'failed' ? 'failed' : 'pending'}`}>{statusLabel(selected === r.id && report ? report : r)}</span><AgentSourceChip source={r.source} /><ReportTimer report={selected === r.id && report ? report : r} now={now} compact /></span></button>{canEdit && <button className="primary danger" aria-label={t('刪除主題列表 #{id}', { id: r.id })} disabled={busy || activeStatuses.includes(r.status)} title={activeStatuses.includes(r.status) ? t('報告產生中，完成後才能刪除') : undefined} onClick={() => setConfirmingDelete(r.id)}>{t('刪除')}</button>}</div>)}</div></section>
     {confirmingDelete !== null && <DeleteDialog id={confirmingDelete} onClose={() => setConfirmingDelete(null)} onDelete={() => void deleteReport()} />}
     {report && <><section className="settings-section"><div className="report-heading"><h2>{t('報告 #{id} · {status}', { id: report.id, status: statusLabel(report) })}</h2><div className="report-heading-meta"><AgentSourceChip source={report.source} /><ReportTimer report={report} now={now} /></div></div><p>{t('貼文期間：{start} 至 {end}（台北，不含結束時間）', { start: date(report.start_at), end: date(report.end_at) })}<br />{t('留言範圍：{start} 至 {end}（台北，不含結束時間）', { start: date(report.data?.comment_start || report.start_at), end: date(report.data?.comment_end || report.end_at) })}</p><ExclusionNote excluded={report.data?.excluded_message_ids || []} agent={report.data?.agent_exclusions || []} />{report.error && <p className="error" title={report.error}>{aiErrorMessage(report.error, report.provider)}</p>}{report.can_retry && canEdit && <button className="primary" disabled={busy} onClick={retry}>{t('重試此報告')}</button>}
-      {report.status === 'awaiting_ideas' ? <><p className="agent-awaiting" role="status">{t('證據已彙整。請在 Claude Code 用 /mwb:ideas，或在其他 Agent 使用 get_guide("ideas") 接手，24 小時內存回主題。')}</p>{canEdit && <AgentHandoff reportId={report.id} />}</> : <ExportFiles exports={report.exports} kind="reports" id={report.id} />}{report.data?.notice && <p className="legacy-note ideation-notice warning">{report.data.notice}</p>}{report.data?.quote_note && <p className="ideation-notice">{report.data.quote_note}</p>}{report.data?.empty && <p className="ideation-notice">{t('此期間沒有可引用的觀眾文字，未生成主題。')}</p>}{report.data?.comparison_partial && <p className="ideation-notice warning">{t('前期有部分時間早於所選貼文發佈，變化僅供參考')}</p>}</section>
+      {report.status === 'awaiting_ideas' ? <><p className="agent-awaiting" role="status">{t('證據已彙整。請在 Claude Code 用 /mwb:ideas，或在其他 Agent 使用 get_guide("ideas") 接手，24 小時內存回主題。')}</p>{canEdit && <AgentHandoff slash={t('/mwb:ideas 接手主題報告 #{id}', { id: report.id })} plain={t('請用 mwb 工作檯的 get_guide("ideas") 接手主題報告 #{id}（report_id={id}）。', { id: report.id })} />}</> : <ExportFiles exports={report.exports} kind="reports" id={report.id} />}{report.data?.notice && <p className="legacy-note ideation-notice warning">{report.data.notice}</p>}{report.data?.quote_note && <p className="ideation-notice">{report.data.quote_note}</p>}{report.data?.empty && <p className="ideation-notice">{t('此期間沒有可引用的觀眾文字，未生成主題。')}</p>}{report.data?.comparison_partial && <p className="ideation-notice warning">{t('前期有部分時間早於所選貼文發佈，變化僅供參考')}</p>}</section>
       {goals.map(goal => { const ideas = (report.data?.ideas || []).map((idea, index) => ({ idea, index })).filter(({ idea }) => idea.goal === goal); return <section className="ideation-goal" data-goal={goal} key={goal} aria-label={goalLabel(goal)}><h2>{goalLabel(goal)} <span className="muted">{t('{count} 題', { count: ideas.length })}</span></h2><div className="ideation-grid">{ideas.map(({ idea, index }) => {
         const group = report.data?.groups?.find(g => g.topic === idea.topic);
         const quotes = (group?.quotes || []).filter(q => idea.quote_ids.includes(q.id));
@@ -493,7 +494,8 @@ export function IdeationPage({ brand, brands, canEdit, canConfigure, onDraft }: 
           <div className="ideation-tags" aria-label={t('關鍵字')}><span>{t('關鍵字')}</span>{idea.keyword.split(/[、，,；;\s]+/).filter(Boolean).map((keyword, i) => <span className="ideation-chip" key={i}>{keyword}</span>)}</div>
           </>}
           {!!quotes.length && <details><summary>{t('原話（{count}）', { count: quotes.length })}</summary><Quotes quotes={quotes} brandId={report.brand_id} reportId={report.id} /></details>}
-          {canEdit && editing?.index !== index && <div className="idea-card-actions">{cardScript && <button className="secondary" onClick={() => chooseScript(cardScript)}>{t('查看腳本')}</button>}<button className="secondary" disabled={busy || report.status !== 'ready' || !!editing} onClick={() => void createDraft(index)}>{hasDraft ? t('開啟發佈草稿') : t('建立發佈草稿')}</button></div>}
+          {canEdit && editing?.index !== index && <div className="idea-card-actions">{cardScript && <button className="secondary" onClick={() => chooseScript(cardScript)}>{t('查看腳本')}</button>}<button className="secondary" disabled={busy || report.status !== 'ready' || !!editing} onClick={() => void createDraft(index)}>{hasDraft ? t('開啟發佈草稿') : t('建立發佈草稿')}</button><button className="secondary" aria-expanded={scriptHandoff === index} disabled={report.status !== 'ready'} onClick={() => setScriptHandoff(v => v === index ? null : index)}>{t('交給 Agent 寫腳本')}</button></div>}
+          {canEdit && editing?.index !== index && scriptHandoff === index && report.status === 'ready' && <AgentHandoff slash={t('/mwb:script 為主題報告 #{id} 第 {number} 題寫腳本', { id: report.id, number: index + 1 })} plain={t('請用 mwb 工作檯的 get_guide("script") 為主題報告 #{id}（report_id={id}）第 {number} 題（topic_index={index}）撰寫腳本。', { id: report.id, number: index + 1, index })} />}
           {!!report.data?.ideas_history?.[String(index)]?.length && canEdit && editing?.index !== index && <button className="secondary idea-restore" disabled={busy || report.status !== 'ready' || !!editing} onClick={() => void restoreIdea(index)}>{t('還原上一版')}</button>}
         </article>;
       })}</div></section>; })}

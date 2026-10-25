@@ -18,7 +18,7 @@ import secrets
 import time
 from datetime import timedelta
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 
 # 長內文：驗證清單截斷與「[全文]」展開。
@@ -704,9 +704,19 @@ def check_idea_actions(page, origin, report_id, width, height):
     expect(page.get_by_role("checkbox", name="選取主題 #1")).to_have_count(0)
     expect(page.locator(".idea-select,.idea-selection-actions")).to_have_count(0)
     actions = card.locator(".idea-card-actions")
-    # 動作分兩組：底部是產出（沒有腳本時只有「建立發佈草稿」），右上角只剩「編輯」。
-    expect(actions.get_by_role("button")).to_have_text(["建立發佈草稿"])
-    assert actions.get_by_role("button").evaluate_all("es => es.map(e => e.className)") == ["secondary"]
+    # 動作分兩組：底部是產出（沒有腳本時是「建立發佈草稿」與「交給 Agent 寫腳本」），右上角只剩「編輯」。
+    expect(actions.get_by_role("button")).to_have_text(["建立發佈草稿", "交給 Agent 寫腳本"])
+    assert actions.get_by_role("button").evaluate_all("es => es.map(e => e.className)") == ["secondary", "secondary"]
+    # 腳本交給 Agent：卡片內展開接手按鈕，指令帶報告編號與題號，只預填不送出。
+    handoff_toggle = actions.get_by_role("button", name="交給 Agent 寫腳本", exact=True)
+    handoff_toggle.click()
+    expect(handoff_toggle).to_have_attribute("aria-expanded", "true")
+    handoff = card.locator(".agent-handoff")
+    expect(handoff.get_by_role("link")).to_have_count(3)
+    href = handoff.get_by_role("link", name="交給 Claude Code").get_attribute("href")
+    assert href.startswith("claude://code/new?q="), href
+    assert unquote(href.split("q=", 1)[1]) == f"/mwb:script 為主題報告 #{report_id} 第 1 題寫腳本", href
+    expect(page.locator(".agent-handoff")).to_have_count(1)
     tools = card.locator(".idea-card-heading .idea-card-tools")
     expect(tools.get_by_role("button")).to_have_text(["編輯"])
     assert tools.get_by_role("button").evaluate_all(
@@ -719,6 +729,8 @@ def check_idea_actions(page, origin, report_id, width, height):
         assert actions.evaluate("e => e.scrollWidth <= e.clientWidth + 1")
         assert tools.evaluate("e => e.scrollWidth <= e.clientWidth + 1")
     page.set_viewport_size({"width": width, "height": height})
+    handoff_toggle.click()
+    expect(page.locator(".agent-handoff")).to_have_count(0)
 
     screens = output_dir()
     screens.mkdir(parents=True, exist_ok=True)
@@ -739,8 +751,8 @@ def check_idea_actions(page, origin, report_id, width, height):
     # 已有腳本：卡片底部多一顆 secondary「查看腳本」，開啟既有腳本檢視與編輯。
     shown_scripts[0] = scripts
     page.reload()
-    expect(actions.get_by_role("button")).to_have_text(["查看腳本", "建立發佈草稿"])
-    assert actions.get_by_role("button").evaluate_all("es => es.map(e => e.className)") == ["secondary", "secondary"]
+    expect(actions.get_by_role("button")).to_have_text(["查看腳本", "建立發佈草稿", "交給 Agent 寫腳本"])
+    assert actions.get_by_role("button").evaluate_all("es => es.map(e => e.className)") == ["secondary", "secondary", "secondary"]
     for size in (1440, 390, 280):
         page.set_viewport_size({"width": size, "height": height})
         page.wait_for_load_state("networkidle")

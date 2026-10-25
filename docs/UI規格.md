@@ -118,7 +118,7 @@
 
 - 工作區 → 資料加入 `.obsidian-settings`，單一欄位「Obsidian 留言資料夾」與 `.obsidian-actions` 的「儲存 Obsidian 資料夾」「立即同步到 Obsidian」實心 primary 按鈕；名稱與匯出資料夾的儲存動作區分。僅管理員可檢視與操作，其他角色只見「我的帳號」；載入或操作中停用，結果沿用 status／alert，控制列自然換行。
 - `.ideation-card` 左上 `.idea-card-heading` 放序號（`.idea-number`，text-subtle）及舊資料的「已重新生成」「延伸自 #序號」標記；不再有選取 checkbox，卡片區頂端也沒有批次動作列。
-- 底部 `.idea-card-actions` 只放 secondary：有腳本時先「查看腳本」，再「建立發佈草稿」（已有未發佈草稿時為「開啟發佈草稿」），間距 8px、靠左、flex-wrap。可還原時顯示獨立 secondary「還原上一版」，沒有省略選單。
+- 底部 `.idea-card-actions` 只放 secondary：有腳本時先「查看腳本」，再「建立發佈草稿」（已有未發佈草稿時為「開啟發佈草稿」），最後「交給 Agent 寫腳本」，間距 8px、靠左、flex-wrap。「交給 Agent 寫腳本」只在報告 ready 時可按，切換卡片內的 `.agent-handoff`（同主題發想的四顆接手按鈕，卡內固定兩欄），指令帶報告編號與題號（`/mwb:script …`；複製版帶 `topic_index`），一次只展開一張卡；網頁本身不呼叫 AI 寫腳本。可還原時顯示獨立 secondary「還原上一版」，沒有省略選單。
 - 重新生成與延伸主題已移除：卡片沒有進度、骨架或失敗提示；報告 JSON 裡舊的 ideas_job 只保留在資料中，不影響畫面，舊報告的「已重新生成」「延伸自 #序號」標記仍顯示。報告處理中時停用卡片動作與刪除。
 - 貼文留言範圍增加「全部」；沒有範圍參數仍預設近 30 天，來源留言連結預設近 90 天，明確 comment_range=all 才選全部，重整保留所選範圍。只有全部範圍顯示次要「完整重抓」，確認後送 full_rescan=true。一般抓取與立即發想採增量；首次抓取讀到底。原 7／30／90 天與顯示更多仍保留。
 - 全部沿用 P1-1 的色彩／字體與 control／card 圓角 Token，390px 無溢出；新增文字底色配對納入 check_ui_contrast。check_ideation_fixes、check_workspace、check_comment_sync_frontend 覆蓋操作與手機，既有隔離檢查入口數量不變。
@@ -415,7 +415,7 @@ PageHeader 標題與動作垂直置中，工作區小字在動作左側；1440×
 
 - 設定 → AI 只有「基本」「品牌說明」「AI 金鑰」；沒有本機 CLI 分頁、啟用／更新／偵測／模型按鈕，預設 AI 與執行方式只列 API 供應者。
 - 主題發想建立區的「執行方式」為 API 供應者加「交給 Agent 撰寫」，兩者都用既有 `.policy-grid` 與原生 select；選後者不呼叫 AI，報告停在「等待 Agent 撰寫主題」並顯示接手說明。可編輯者另見 `.agent-handoff`：三個 secondary 連結「交給 Claude Code」（`claude://code/new?q=/mwb:ideas …`）、「開啟 Claude 對話」（`claude://claude.ai/new?q=`）、「開啟 Codex」（`codex://new?prompt=…&mode=codex`），加 secondary「複製給其他 Agent」；四顆等寬等高，手機版兩欄；指令帶報告編號，連結只預填不送出。Codex 與 ChatGPT 同一個 App，`mode` 參數（chat／work／codex）文件未列，2026-10-21 實測 `mode=codex` 才會開到 Codex 模式；Antigravity 桌面版無官方帶指令連結，只能複製。
-- 主題卡片右上只剩「編輯」，底部只有 secondary 的「查看腳本」（有腳本才顯示）與「建立發佈草稿」／「開啟發佈草稿」；舊報告的「已重新生成」「延伸自 #序號」標記保留顯示。
+- 主題卡片右上只剩「編輯」，底部只有 secondary 的「查看腳本」（有腳本才顯示）、「建立發佈草稿」／「開啟發佈草稿」與「交給 Agent 寫腳本」（2026-10-25 補回腳本入口）；舊報告的「已重新生成」「延伸自 #序號」標記保留顯示。
 - 建立發佈草稿不再有對話框，發佈頁沒有 AI 文案狀態、「重新撰寫」或「套用 AI 文案」。
 - 新增或保留的文字與底色配對（卡片序號 text-subtle／bg-surface、卡片 secondary 按鈕 text-main／bg-surface、Agent 接手說明 text-subtle／bg-surface、舊 CLI 報告錯誤說明 danger／bg-subtle、舊 CLI 用量列 text-main）已納入 check_ui_contrast；390px 不水平溢出，不載入外部資源。
 

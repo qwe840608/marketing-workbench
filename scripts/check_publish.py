@@ -109,11 +109,11 @@ def check_idea_drafts(page, settings, checks):
         cards = page.locator('.ideation-card')
         expect(cards).to_have_count(2)
         action = cards.first.locator('.idea-card-actions')
-        # 底部：有腳本時先「查看腳本」，再「建立發佈草稿」，兩顆都是 secondary；沒有腳本只剩後者。
-        expect(action.get_by_role('button')).to_have_text(['查看腳本', '建立發佈草稿'])
+        # 底部：有腳本時依序是「查看腳本」「建立發佈草稿」「交給 Agent 寫腳本」，都是 secondary；沒有腳本時沒有「查看腳本」。
+        expect(action.get_by_role('button')).to_have_text(['查看腳本', '建立發佈草稿', '交給 Agent 寫腳本'])
         expect(action.locator('.primary')).to_have_count(0)
-        assert action.get_by_role('button').evaluate_all('es => es.map(e => e.className)') == ['secondary', 'secondary']
-        expect(cards.nth(1).locator('.idea-card-actions').get_by_role('button')).to_have_text(['建立發佈草稿'])
+        assert action.get_by_role('button').evaluate_all('es => es.map(e => e.className)') == ['secondary', 'secondary', 'secondary']
+        expect(cards.nth(1).locator('.idea-card-actions').get_by_role('button')).to_have_text(['建立發佈草稿', '交給 Agent 寫腳本'])
         tools = cards.first.locator('.idea-card-tools')
         expect(tools.get_by_role('button')).to_have_text(['編輯'])
         tools.get_by_role('button', name='編輯', exact=True).click()
