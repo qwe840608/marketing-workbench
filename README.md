@@ -18,7 +18,7 @@
 |---|---|
 | ![貼文數據](docs/images/posts.png) | ![主題發想](docs/images/ideation.png) |
 
-<sub>儀表板與貼文數據是作者自己的帳號 ruidefilm 的實際畫面；主題發想是虛構的範例。</sub>
+<sub>截圖都是作者自己的帳號 ruidefilm 的實際畫面。</sub>
 
 ## 功能特色
 

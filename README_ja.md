@@ -18,7 +18,7 @@
 |---|---|
 | ![投稿データ](docs/images/posts.png) | ![アイデア出し](docs/images/ideation.png) |
 
-<sub>ダッシュボードと投稿データは作者自身のアカウント ruidefilm の実際の画面です。アイデア出しは架空のデモデータです。</sub>
+<sub>スクリーンショットはすべて作者自身のアカウント ruidefilm の実際の画面です。</sub>
 
 ## 主な機能
 

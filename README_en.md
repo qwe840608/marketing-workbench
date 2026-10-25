@@ -18,7 +18,7 @@ A self-hosted marketing workbench for independent creators and their own brand: 
 |---|---|
 | ![Post analytics](docs/images/posts.png) | ![Ideation](docs/images/ideation.png) |
 
-<sub>The dashboard and post analytics screenshots are real screens from the author's own account, ruidefilm; the ideation screenshot uses fictional demo data.</sub>
+<sub>All screenshots are real screens from the author's own account, ruidefilm.</sub>
 
 ## Features
 

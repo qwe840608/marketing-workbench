@@ -18,7 +18,7 @@
 |---|---|
 | ![帖子数据](docs/images/posts.png) | ![选题策划](docs/images/ideation.png) |
 
-<sub>仪表盘与帖子数据截图来自作者自己的账号 ruidefilm 的实际画面；选题策划为虚构的示范数据。</sub>
+<sub>截图均来自作者自己的账号 ruidefilm 的实际画面。</sub>
 
 ## 功能特点
 
