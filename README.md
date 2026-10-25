@@ -43,7 +43,7 @@
 - **隱私權政策與服務條款要自己寫**，放在自己的網站再填進各平台後台，範本在 [`docs/templates/`](docs/templates/)。
 - **TikTok 只能送到收件匣草稿**，文案要在 TikTok App 內貼上。
 - **Google 同意畫面要設成正式版**，否則 YouTube 授權每 7 天失效。
-- **Gemini 只能用付費方案**；用個人方案的 AI 當 agent 時，關閉「用對話訓練模型」。
+- **平台資料不能被拿去訓練模型**：Gemini API 的免費層會用送入的內容改善 Google 產品，所以工作檯預設不讓 Gemini 處理平台資料，Google Cloud 專案綁定帳單後才設 `GEMINI_PAID_TIER=true`。agent 若用個人訂閱登入（例如 Claude Pro／Max），透過 MCP 讀到的留言會進到對話裡，要在該服務關閉「用對話訓練模型」；用 API 金鑰的 agent 不必（Gemini 仍須付費層）。
 
 細節見 [`docs/合規須知.md`](docs/合規須知.md)，每條規定的官方出處見 [`docs/平台政策.md`](docs/平台政策.md)。
 
@@ -51,7 +51,7 @@
 
 需求：Windows（啟動與備份腳本是 PowerShell，macOS／Linux 尚未支援）、Python 3.13、[uv](https://docs.astral.sh/uv/)、Node.js、7-Zip、ngrok；建議另裝 Tailscale。
 
-不熟指令的話，可以把 [`docs/agent安裝引導.md`](docs/agent安裝引導.md) 交給自己的 AI agent 逐步帶領安裝。
+不熟指令的話，可以把 [`docs/agent安裝引導.md`](docs/agent安裝引導.md) 交給自己的 AI agent 逐步帶領安裝。引導有繁體中文、简体中文、English、日本語四種版本，agent 會依你使用的語言自動選用。
 
 ```powershell
 # 1. 建立設定檔並填入 NGROK_AUTHTOKEN；資料路徑可留白（見下方「環境變數設定」）
@@ -88,7 +88,36 @@ cd ..
 /plugin install mwb@marketing-workbench
 ```
 
-安裝後可在 Claude Code 用 `/mwb:ideas` 接手主題發想。Codex 與 Claude 桌面版的安裝方式見 [`docs/operations.md`](docs/operations.md#agent-連線)。
+Codex 與 Claude 桌面版的安裝方式見 [`docs/operations.md`](docs/operations.md#agent-連線)。
+
+### 用 agent 操作工作檯（MCP）
+
+工作檯在 `<內部網址>/mcp` 提供 MCP 端點（Streamable HTTP），只接受本機與 Tailscale 連線。除了上面的 plugin，其他支援遠端 MCP 的 agent 也能直接連：到「設定 → 我的帳號 → Agent 連線」建立連線權杖，放進環境變數 `MWB_TOKEN`，再把下面這段加進 agent 的 MCP 設定（這是 Claude Code `.mcp.json` 的寫法，其他 agent 填同樣的網址與標頭）：
+
+```json
+{
+  "mcpServers": {
+    "mwb": {
+      "type": "http",
+      "url": "<內部網址>/mcp",
+      "headers": { "Authorization": "Bearer ${MWB_TOKEN}" }
+    }
+  }
+}
+```
+
+權杖只顯示一次，不要貼進對話或提交到 git。連上後 agent 會先讀伺服器資訊與品牌說明（含禁語），再用 `get_guide` 取得完整流程，所以直接用白話交代就好：
+
+| 你可以這樣說 | agent 會用到的工具 |
+|---|---|
+| 「`/mwb:report` 整理近 30 天各平台成效，哪篇表現最好？」 | `get_dashboard`、`list_posts`、`get_post` |
+| 「最近的留言裡，觀眾最常問什麼？」 | `get_popular_questions`、`list_comments` |
+| 「`/mwb:ideas` 從最近三支影片的留言發想主題」 | `start_ideation`、`get_ideation_report`、`save_ideation_ideas` |
+| 「`/mwb:script` 把第 3 個主題寫成 60 秒短影音腳本，定案後存回」 | `get_script`、`save_script` |
+| 「`/mwb:post` 用這份腳本寫 IG 和 Threads 文案，附上這支影片」 | `create_draft_from_idea`、`save_publish_draft`、`create_upload_link` |
+| 「`/mwb:publish` 排程明天晚上 8 點發出去」 | `prepare_publish`，你確認後才 `confirm_publish` |
+
+發佈一律兩段式：agent 先把平台、帳號、完整文案、素材與發佈時間列給你看，你明確同意後才會送出。主題與腳本也要你定案並說「存回」才會儲存。斜線指令是 Claude Code plugin 的捷徑，其他 agent 用白話說即可；實際可用的工具以 agent 讀到的工具清單為準。
 
 <!-- TODO: 請補充一段從發想到發佈的完整操作示範（截圖或短片） -->
 

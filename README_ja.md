@@ -43,7 +43,7 @@
 - **プライバシーポリシーと利用規約は自分で作成し**、自分のウェブサイトに掲載して各プラットフォームの開発者設定に入力してください。テンプレートは [`docs/templates/`](docs/templates/) にあります。
 - **TikTok は受信トレイへの下書き送信のみ**です。キャプションは TikTok App 内で貼り付けます。
 - **Google の同意画面は「本番環境」に設定してください。** そうしないと YouTube の認可が 7 日ごとに切れます。
-- **Gemini は有料プランでのみ使用してください。** 個人向けプランの AI をエージェントとして使う場合は、会話をトレーニングに使う設定をオフにしてください。
+- **プラットフォームのデータをモデルの学習に使わせないでください。** Gemini API の無料枠は送信内容を Google のサービス改善に使うため、ワークベンチは既定で Gemini にプラットフォームのデータを渡しません。Google Cloud プロジェクトに請求先を設定してから `GEMINI_PAID_TIER=true` にしてください。エージェントが個人向けサブスクリプション（Claude Pro／Max など）でログインしている場合、MCP で読み込んだコメントが会話に含まれるため、そのサービスで会話を学習に使う設定をオフにしてください。API キーを使うエージェントは対応不要です（Gemini は有料枠が必要）。
 
 詳しくは [`docs/合規須知.md`](docs/合規須知.md)（コンプライアンスの注意事項）を、各ルールの公式出典は [`docs/平台政策.md`](docs/平台政策.md)（プラットフォームポリシー）をご覧ください。
 
@@ -51,7 +51,7 @@
 
 動作環境：Windows（起動とバックアップのスクリプトは PowerShell で、macOS／Linux は未対応）、Python 3.13、[uv](https://docs.astral.sh/uv/)、Node.js、7-Zip、ngrok。Tailscale の利用を推奨します。
 
-コマンド操作に慣れていない場合は、[`docs/agent安裝引導.md`](docs/agent安裝引導.md)（エージェント向けインストールガイド）を自分の AI エージェントに渡すと、順を追って案内してくれます。
+コマンド操作に慣れていない場合は、[`docs/agent安裝引導_ja.md`](docs/agent安裝引導_ja.md)（エージェント向けインストールガイド）を自分の AI エージェントに渡すと、順を追って案内してくれます。ガイドは日本語、繁體中文、简体中文、English の 4 言語があり、エージェントがあなたの使う言語に合わせて選びます。
 
 ```powershell
 # 1. 設定ファイルを作成し NGROK_AUTHTOKEN を入力（データのパスは空欄でも可。下の「環境変数」を参照）
@@ -88,7 +88,36 @@ Claude Code をワークベンチに接続する（アドレスは「設定 → 
 /plugin install mwb@marketing-workbench
 ```
 
-インストール後、Claude Code で `/mwb:ideas` を使うとアイデア出しを引き継げます。Codex と Claude デスクトップ版のインストール方法は [`docs/operations.md`](docs/operations.md#agent-連線) をご覧ください。
+Codex と Claude デスクトップ版のインストール方法は [`docs/operations.md`](docs/operations.md#agent-連線) をご覧ください。
+
+### エージェントでワークベンチを操作する（MCP）
+
+ワークベンチは `<内部アドレス>/mcp` で MCP エンドポイント（Streamable HTTP）を提供しており、ローカルと Tailscale からのみ接続できます。上の plugin のほか、リモート MCP に対応したエージェントなら直接接続できます。「設定 → マイアカウント → Agent 接続」で接続トークンを作成して環境変数 `MWB_TOKEN` に入れ、エージェントの MCP 設定に次を追加してください（Claude Code の `.mcp.json` の書き方です。他のエージェントでも同じ URL とヘッダーを指定します）：
+
+```json
+{
+  "mcpServers": {
+    "mwb": {
+      "type": "http",
+      "url": "<内部アドレス>/mcp",
+      "headers": { "Authorization": "Bearer ${MWB_TOKEN}" }
+    }
+  }
+}
+```
+
+トークンは一度しか表示されません。会話に貼り付けたり git にコミットしたりしないでください。接続すると、エージェントはまずサーバー情報とブランドガイド（NG ワードを含む）を読み、`get_guide` で手順全体を取得するので、普段の言葉で頼めば大丈夫です：
+
+| こう頼めます | エージェントが使うツール |
+|---|---|
+| 「`/mwb:report` 直近 30 日の各プラットフォームの成果をまとめて。一番よかった投稿は？」 | `get_dashboard`、`list_posts`、`get_post` |
+| 「最近のコメントで、視聴者が一番よく聞いていることは？」 | `get_popular_questions`、`list_comments` |
+| 「`/mwb:ideas` 直近 3 本の動画のコメントからテーマを考えて」 | `start_ideation`、`get_ideation_report`、`save_ideation_ideas` |
+| 「`/mwb:script` テーマ 3 を 60 秒のショート動画の台本にして、決まったら保存して」 | `get_script`、`save_script` |
+| 「`/mwb:post` この台本で Instagram と Threads のキャプションを書いて、この動画を添付して」 | `create_draft_from_idea`、`save_publish_draft`、`create_upload_link` |
+| 「`/mwb:publish` 明日の夜 8 時に予約投稿して」 | `prepare_publish`、あなたの確認後に `confirm_publish` |
+
+投稿は必ず 2 段階です。エージェントがプラットフォーム、アカウント、キャプション全文、素材、投稿日時を提示し、あなたがはっきり同意してから送信します。テーマと台本も、あなたが確定して「保存して」と伝えたときだけ保存されます。スラッシュコマンドは Claude Code plugin のショートカットで、他のエージェントでは普段の言葉で頼めば十分です。実際に使えるツールは、エージェントが読み込んだツール一覧のとおりです。
 
 デプロイ、更新、バックアップ、トラブルシューティングは [`docs/operations.md`](docs/operations.md)、アーキテクチャは [`docs/architecture.md`](docs/architecture.md) にあります。
 

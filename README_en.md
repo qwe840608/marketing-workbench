@@ -43,7 +43,7 @@ When you host this workbench, you are the developer of your own Meta, Google and
 - **Write your own privacy policy and terms of service**, publish them on your own website and enter them in each platform's developer settings. Templates are in [`docs/templates/`](docs/templates/).
 - **TikTok uploads arrive as inbox drafts only**; paste the caption in the TikTok app.
 - **Set the Google consent screen to production**, or YouTube authorization expires every 7 days.
-- **Use Gemini only on a paid plan.** If you use a personal AI plan as your agent, turn off training on your conversations.
+- **Keep platform data out of model training.** The Gemini API free tier uses submitted content to improve Google's products, so the workbench keeps Gemini away from platform data until the Google Cloud project has billing and you set `GEMINI_PAID_TIER=true`. If your agent signs in with a personal subscription (such as Claude Pro or Max), the comments it reads over MCP end up in your conversations, so turn off that service's setting for training on your conversations. Agents that use an API key need nothing extra (Gemini still needs the paid tier).
 
 Details are in [`docs/合規須知.md`](docs/合規須知.md) (compliance notes), with the official source for each rule in [`docs/平台政策.md`](docs/平台政策.md) (platform policies).
 
@@ -51,7 +51,7 @@ Details are in [`docs/合規須知.md`](docs/合規須知.md) (compliance notes)
 
 Requirements: Windows (the startup and backup scripts are PowerShell; macOS and Linux are not supported yet), Python 3.13, [uv](https://docs.astral.sh/uv/), Node.js, 7-Zip and ngrok. Tailscale is recommended.
 
-If you are not comfortable with the command line, give [`docs/agent安裝引導.md`](docs/agent安裝引導.md) (the agent install guide) to your own AI agent and let it walk you through.
+If you are not comfortable with the command line, give [`docs/agent安裝引導_en.md`](docs/agent安裝引導_en.md) (the agent install guide) to your own AI agent and let it walk you through. The guide comes in English, Traditional Chinese, Simplified Chinese and Japanese, and the agent picks the one that matches the language you use.
 
 ```powershell
 # 1. Create the config file and fill in NGROK_AUTHTOKEN; data paths can stay blank (see "Environment variables")
@@ -88,7 +88,36 @@ Connect Claude Code to the workbench (copy the address from Settings → My acco
 /plugin install mwb@marketing-workbench
 ```
 
-After installing, use `/mwb:ideas` in Claude Code to take over ideation. Installing for Codex and Claude Desktop is described in [`docs/operations.md`](docs/operations.md#agent-連線).
+Installing for Codex and Claude Desktop is described in [`docs/operations.md`](docs/operations.md#agent-連線).
+
+### Working with an agent (MCP)
+
+The workbench serves an MCP endpoint (Streamable HTTP) at `<internal-url>/mcp`, reachable only from the local machine and Tailscale. Besides the plugin above, any agent that supports remote MCP can connect directly: create a connection token in Settings → My account → Agent connections, put it in the `MWB_TOKEN` environment variable, and add this to the agent's MCP config (shown in Claude Code's `.mcp.json` format; other agents take the same URL and header):
+
+```json
+{
+  "mcpServers": {
+    "mwb": {
+      "type": "http",
+      "url": "<internal-url>/mcp",
+      "headers": { "Authorization": "Bearer ${MWB_TOKEN}" }
+    }
+  }
+}
+```
+
+The token is shown only once; never paste it into a chat or commit it to git. Once connected, the agent reads the server info and brand guide (including banned words) first, then fetches the full workflow with `get_guide`, so plain requests are enough:
+
+| You can say | Tools the agent uses |
+|---|---|
+| “`/mwb:report` Summarize the last 30 days across platforms. Which post did best?” | `get_dashboard`, `list_posts`, `get_post` |
+| “What do viewers ask most in recent comments?” | `get_popular_questions`, `list_comments` |
+| “`/mwb:ideas` Come up with ideas from the comments on my last three videos.” | `start_ideation`, `get_ideation_report`, `save_ideation_ideas` |
+| “`/mwb:script` Turn idea 3 into a 60-second short video script and save it once we agree.” | `get_script`, `save_script` |
+| “`/mwb:post` Write Instagram and Threads captions from this script and attach this video.” | `create_draft_from_idea`, `save_publish_draft`, `create_upload_link` |
+| “`/mwb:publish` Schedule it for 8 p.m. tomorrow.” | `prepare_publish`, then `confirm_publish` only after you approve |
+
+Publishing always takes two steps: the agent shows you the platforms, accounts, full captions, media and time, and sends only after you clearly approve. Ideas and scripts are saved only after you settle on them and say to save. Slash commands are shortcuts in the Claude Code plugin; with other agents, just ask in plain words. The tools actually available are whatever the agent's tool list shows.
 
 Deployment, updates, backups and troubleshooting are in [`docs/operations.md`](docs/operations.md); the architecture is in [`docs/architecture.md`](docs/architecture.md).
 

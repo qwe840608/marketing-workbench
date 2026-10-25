@@ -1,5 +1,9 @@
 # 給 AI Agent 的安裝引導
 
+> **語言 / Language / 语言 / 言語**：繁體中文 | [简体中文](agent安裝引導_zh-CN.md) | [English](agent安裝引導_en.md) | [日本語](agent安裝引導_ja.md)
+>
+> **Agent：開始前先判斷使用者用的語言**（看他寫給你的訊息；還沒開口就看系統語系）。不是繁體中文時，改讀上面對應語言的版本照做，全程用那個語言跟使用者溝通；四種都不符合時讀 English 版，但仍用使用者的語言回覆。工作檯介面也可以切換成同一個語言（登入頁或「設定 → 我的帳號」）。
+
 這份文件是寫給 **AI agent** 看的（例如 Claude Code、Codex 這類能在使用者電腦上讀檔、執行指令的 agent）。使用者把這份文件交給你，請你**一步一步帶他把工作檯架起來**。使用者不一定是工程師：你負責執行指令、檢查結果、用白話解釋；需要本人操作的步驟，清楚告訴他要點哪裡、要貼什麼回來。
 
 開始前先讀 [`合規須知.md`](合規須知.md)。這份文件只寫流程；平台規定與官方出處在 [`平台政策.md`](平台政策.md)，進階操作細節在 [`operations.md`](operations.md)。
@@ -115,7 +119,7 @@ Windows 預設可能禁止執行 `.ps1` 腳本（錯誤訊息提到「執行原�
 
 ## 階段 7：AI 與通知（選用）
 
-- **AI 服務**：管理員在工作檯「設定 → AI → 基本」選供應商（Gemini、OpenAI、Anthropic）、填 API 金鑰並驗證（加密儲存）。Gemini 只能用付費方案（`.env` 的 `GEMINI_PAID_TIER=true`）。提醒使用者：如果用 Claude、ChatGPT 等個人方案當 agent，到各自的隱私設定關閉「用對話訓練模型」。
+- **AI 服務**：管理員在工作檯「設定 → AI → 基本」選供應商（Gemini、OpenAI、Anthropic）、填 API 金鑰並驗證（加密儲存）。Gemini API 的免費層會用送入的內容訓練模型，所以要先在 Google Cloud 專案綁定帳單，再把 `.env` 的 `GEMINI_PAID_TIER` 設成 `true`，否則工作檯不讓 Gemini 處理平台資料。如果使用者連接工作檯的 agent 是用個人訂閱登入（例如 Claude Pro／Max、ChatGPT Plus），提醒他到該服務的隱私設定關閉「用對話訓練模型」；agent 用 API 金鑰就不必。
 - **jev 留言分類**：jev 是 TypeSafe 的判斷模型，用來快速分類留言。在「設定 → 平台連線 → jev」卡片照「設定教學」貼金鑰、按「測試連線」。
 - **LINE 通知**：在「設定 → 平台連線 → LINE 通知」卡片照「設定教學」做：建立 LINE 官方帳號並啟用 Messaging API、把 Channel secret 與 Channel access token 貼進卡片、Webhook URL 填卡片顯示的網址（需要先有 ngrok 公開網址），把官方帳號邀進群組並傳一則訊息，再到「設定 → 工作區 → 通知 → LINE 群組通知」選群組並啟用品牌通知，最後按「測試連線」。Push 有月額度。
 
@@ -131,7 +135,7 @@ Windows 預設可能禁止執行 `.ps1` 腳本（錯誤訊息提到「執行原�
 
 ## 階段 9：讓 agent 連上工作檯（選用）
 
-工作檯提供 MCP 介面，讓 agent 幫忙寫主題、腳本與發佈草稿。請使用者用**內部 https 網址**（階段 4）開啟工作檯，到「設定 → 我的帳號 → 安裝 Agent」選 Claude Code、Codex 或 Claude 桌面版，依畫面安裝；Claude Code 的 plugin marketplace 只接受 https 網址。第一次使用時以自己的工作檯帳號登入核准。細節見 [`operations.md`](operations.md) 的「Agent 連線」。發佈一律兩段式確認：agent 準備好明細給使用者看，使用者明確同意後才送出。
+工作檯提供 MCP 介面，讓 agent 幫忙寫主題、腳本與發佈草稿。請使用者用**內部 https 網址**（階段 4）開啟工作檯，到「設定 → 我的帳號 → 安裝 Agent」選 Claude Code、Codex 或 Claude 桌面版，依畫面安裝；Claude Code 的 plugin marketplace 只接受 https 網址。第一次使用時以自己的工作檯帳號登入核准。其他支援遠端 MCP 的 agent 可以用連線權杖連線，見 [README](../README.md) 的「用 agent 操作工作檯（MCP）」。細節見 [`operations.md`](operations.md) 的「Agent 連線」。發佈一律兩段式確認：agent 準備好明細給使用者看，使用者明確同意後才送出。
 
 ## 完成檢查清單
 

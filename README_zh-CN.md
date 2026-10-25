@@ -43,7 +43,7 @@
 - **隐私政策与服务条款要自己写**，放在自己的网站上，再填到各平台开发者后台，模板在 [`docs/templates/`](docs/templates/)。
 - **TikTok 只能发送为收件箱草稿**，文案需要在 TikTok App 内粘贴。
 - **Google 同意屏幕要设为正式版**，否则 YouTube 授权每 7 天失效。
-- **Gemini 只能使用付费方案**；用个人方案的 AI 作为 agent 时，关闭“用对话训练模型”。
+- **平台数据不能被拿去训练模型**：Gemini API 的免费层会用传入的内容改进 Google 产品，所以工作台默认不让 Gemini 处理平台数据，Google Cloud 项目绑定结算后才设 `GEMINI_PAID_TIER=true`。agent 若用个人订阅登录（例如 Claude Pro／Max），通过 MCP 读到的评论会进入对话，需要在该服务中关闭“用对话训练模型”；使用 API 密钥的 agent 不必（Gemini 仍须付费层）。
 
 详情见 [`docs/合規須知.md`](docs/合規須知.md)（合规须知），每条规定的官方出处见 [`docs/平台政策.md`](docs/平台政策.md)（平台政策）。
 
@@ -51,7 +51,7 @@
 
 要求：Windows（启动与备份脚本是 PowerShell，暂不支持 macOS／Linux）、Python 3.13、[uv](https://docs.astral.sh/uv/)、Node.js、7-Zip、ngrok；建议另装 Tailscale。
 
-不熟悉命令行的话，可以把 [`docs/agent安裝引導.md`](docs/agent安裝引導.md)（agent 安装引导）交给自己的 AI agent，由它一步步带你安装。
+不熟悉命令行的话，可以把 [`docs/agent安裝引導_zh-CN.md`](docs/agent安裝引導_zh-CN.md)（agent 安装引导）交给自己的 AI agent，由它一步步带你安装。引导有简体中文、繁體中文、English、日本語四个版本，agent 会按你使用的语言自动选用。
 
 ```powershell
 # 1. 创建配置文件并填入 NGROK_AUTHTOKEN；数据路径可留空（见下方“环境变量”）
@@ -88,7 +88,36 @@ cd ..
 /plugin install mwb@marketing-workbench
 ```
 
-安装后可在 Claude Code 中用 `/mwb:ideas` 接手选题策划。Codex 与 Claude 桌面版的安装方式见 [`docs/operations.md`](docs/operations.md#agent-連線)。
+Codex 与 Claude 桌面版的安装方式见 [`docs/operations.md`](docs/operations.md#agent-連線)。
+
+### 用 agent 操作工作台（MCP）
+
+工作台在 `<内部地址>/mcp` 提供 MCP 端点（Streamable HTTP），只接受本机与 Tailscale 连接。除了上面的 plugin，其他支持远程 MCP 的 agent 也能直接连接：在“设置 → 我的账号 → Agent 连接”创建连接令牌，放进环境变量 `MWB_TOKEN`，再把下面这段加入 agent 的 MCP 配置（这是 Claude Code `.mcp.json` 的写法，其他 agent 填同样的地址与请求头）：
+
+```json
+{
+  "mcpServers": {
+    "mwb": {
+      "type": "http",
+      "url": "<内部地址>/mcp",
+      "headers": { "Authorization": "Bearer ${MWB_TOKEN}" }
+    }
+  }
+}
+```
+
+令牌只显示一次，不要粘贴到对话里或提交到 git。连接后 agent 会先读取服务器信息与品牌说明（含禁用词），再用 `get_guide` 获取完整流程，所以直接用大白话交代即可：
+
+| 你可以这样说 | agent 会用到的工具 |
+|---|---|
+| “`/mwb:report` 整理近 30 天各平台的效果，哪篇表现最好？” | `get_dashboard`、`list_posts`、`get_post` |
+| “最近的评论里，观众最常问什么？” | `get_popular_questions`、`list_comments` |
+| “`/mwb:ideas` 根据最近三个视频的评论策划选题” | `start_ideation`、`get_ideation_report`、`save_ideation_ideas` |
+| “`/mwb:script` 把第 3 个选题写成 60 秒短视频脚本，定稿后保存” | `get_script`、`save_script` |
+| “`/mwb:post` 根据这份脚本写 IG 和 Threads 文案，附上这个视频” | `create_draft_from_idea`、`save_publish_draft`、`create_upload_link` |
+| “`/mwb:publish` 定时在明天晚上 8 点发布” | `prepare_publish`，你确认后才 `confirm_publish` |
+
+发布一律分两步：agent 先把平台、账号、完整文案、素材与发布时间列给你看，你明确同意后才会发出。选题与脚本也要你定稿并说“保存”才会保存。斜杠命令是 Claude Code plugin 的快捷方式，其他 agent 直接用大白话说即可；实际可用的工具以 agent 读到的工具列表为准。
 
 部署、更新、备份与排错见 [`docs/operations.md`](docs/operations.md)；架构见 [`docs/architecture.md`](docs/architecture.md)。
 
