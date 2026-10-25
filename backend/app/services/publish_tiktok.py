@@ -1,6 +1,6 @@
 """TikTok Content Posting API adapter: send one video to the creator's TikTok inbox.
 
-The app stays unaudited (docs/TikTok規劃.md), so it never posts directly: the video lands in
+The app stays unaudited (docs/en/tiktok-plan.md), so it never posts directly: the video lands in
 the inbox and the creator adds the caption, sound and privacy in the TikTok app. The inbox
 API takes no caption at all, which is why the publish page offers "copy caption". HTTP always
 goes through publish_platforms.client_factory (MockTransport in tests) and only reaches

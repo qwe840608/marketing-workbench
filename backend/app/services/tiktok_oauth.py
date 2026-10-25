@@ -2,7 +2,7 @@
 
 The owner's client key and secret live in encrypted credentials. Access tokens last 24 hours
 and are refreshed on demand; the refresh token's expiry is what the user sees, and LINE warns
-14 days before it. See docs/平台政策.md.
+14 days before it. See docs/en/platform-policies.md.
 """
 
 import re

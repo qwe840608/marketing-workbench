@@ -40,17 +40,17 @@ When you host this workbench, you are the developer of your own Meta, Google and
 
 - **Use it only for yourself or your own brand** (single brand). Do not use it to manage clients' accounts or open it to other people: that requires each platform's review, and TikTok explicitly does not accept it.
 - **Account types**: Facebook needs a Page; Instagram needs a professional account linked to that Page; Threads, YouTube and TikTok work with personal accounts.
-- **Write your own privacy policy and terms of service**, publish them on your own website and enter them in each platform's developer settings. Templates are in [`docs/templates/`](docs/templates/).
+- **Write your own privacy policy and terms of service**, publish them on your own website and enter them in each platform's developer settings. Templates are in [`docs/en/templates/`](docs/en/templates/).
 - **TikTok uploads arrive as inbox drafts only**; paste the caption in the TikTok app.
 - **Set the Google consent screen to production**, or YouTube authorization expires every 7 days.
 
-Details are in [`docs/compliance-notes.md`](docs/compliance-notes.md) (compliance notes), with the official source for each rule in [`docs/platform-policies.md`](docs/platform-policies.md) (platform policies).
+Details are in [`docs/en/compliance-notes.md`](docs/en/compliance-notes.md) (compliance notes), with the official source for each rule in [`docs/en/platform-policies.md`](docs/en/platform-policies.md) (platform policies).
 
 ## Installation
 
 Requirements: Windows (the startup and backup scripts are PowerShell; macOS and Linux are not supported yet), Python 3.13, [uv](https://docs.astral.sh/uv/), Node.js, 7-Zip and ngrok. Tailscale is recommended.
 
-If you are not comfortable with the command line, give [`docs/agent-install-guide.md`](docs/agent-install-guide.md) (the agent install guide) to your own AI agent and let it walk you through. The guide comes in English, Traditional Chinese, Simplified Chinese and Japanese, and the agent picks the one that matches the language you use.
+If you are not comfortable with the command line, give [`docs/en/agent-install-guide.md`](docs/en/agent-install-guide.md) (the agent install guide) to your own AI agent and let it walk you through. The guide comes in English, Traditional Chinese, Simplified Chinese and Japanese, and the agent picks the one that matches the language you use.
 
 ```powershell
 # 1. Create the config file and fill in NGROK_AUTHTOKEN; data paths can stay blank (see "Environment variables")
@@ -72,7 +72,7 @@ cd ..
 ./scripts/start-all.ps1
 ```
 
-`start-all.ps1` creates the schema only for a brand-new database and never upgrades an existing one; see [`docs/operations.md`](docs/operations.md) for upgrades.
+`start-all.ps1` creates the schema only for a brand-new database and never upgrades an existing one; see [`docs/en/operations.md`](docs/en/operations.md) for upgrades.
 
 ## Usage
 
@@ -87,7 +87,7 @@ Connect Claude Code to the workbench (copy the address from Settings → My acco
 /plugin install mwb@marketing-workbench
 ```
 
-Installing for Codex and Claude Desktop is described in [`docs/operations.md`](docs/operations.md#agent-connections).
+Installing for Codex and Claude Desktop is described in [`docs/en/operations.md`](docs/en/operations.md#agent-connections).
 
 ### Working with an agent (MCP)
 
@@ -118,7 +118,7 @@ The token is shown only once; never paste it into a chat or commit it to git. On
 
 Publishing always takes two steps: the agent shows you the platforms, accounts, full captions, media and time, and sends only after you clearly approve. Ideas and scripts are saved only after you settle on them and say to save. Slash commands are shortcuts in the Claude Code plugin; with other agents, just ask in plain words. The tools actually available are whatever the agent's tool list shows.
 
-Deployment, updates, backups and troubleshooting are in [`docs/operations.md`](docs/operations.md); the architecture is in [`docs/architecture.md`](docs/architecture.md).
+Deployment, updates, backups and troubleshooting are in [`docs/en/operations.md`](docs/en/operations.md); the architecture is in [`docs/en/architecture.md`](docs/en/architecture.md).
 
 To run the backend and frontend separately during development:
 
@@ -172,9 +172,9 @@ Enter each platform's app keys (Meta, Threads, YouTube, TikTok) on the platform 
 - Before sending a PR, run `uv run pytest` in `backend/`, and `npm --prefix frontend test`, `npm --prefix frontend run build` and `node --test scripts/*.test.mjs` from the repo root. The full acceptance run is `python scripts/verify_all.py` (needs Chromium).
 - Tests always use isolated data and HTTP stand-ins and must never call a real platform API.
 - Database changes always go through an Alembic migration.
-- Wrap new interface text in `t('Traditional Chinese source text')` and add the English, Simplified Chinese and Japanese translations in `frontend/src/locales/`, following [`docs/i18n-glossary.md`](docs/i18n-glossary.md).
+- Wrap new interface text in `t('Traditional Chinese source text')` and add the English, Simplified Chinese and Japanese translations in `frontend/src/locales/`, following [`docs/en/i18n-glossary.md`](docs/en/i18n-glossary.md).
 - Platform integrations use official APIs only; scraping, unofficial APIs and browser automation are not accepted.
-- Architecture and rules: [`docs/architecture.md`](docs/architecture.md), [`docs/mcp-spec.md`](docs/mcp-spec.md), [`docs/ui-spec.md`](docs/ui-spec.md).
+- Architecture and rules: [`docs/en/architecture.md`](docs/en/architecture.md), [`docs/en/mcp-spec.md`](docs/en/mcp-spec.md), [`docs/en/ui-spec.md`](docs/en/ui-spec.md).
 
 Pull requests are welcome. For larger changes (a new platform, database changes, permission rules), please open an issue to discuss the direction first. Response times vary; thanks for your patience.
 
@@ -182,7 +182,7 @@ Questions or collaboration: support@ruidefilm.com. Please report security issues
 
 ## License
 
-MIT License, see [`LICENSE`](LICENSE). Using this project still requires following each platform's terms; see [`docs/compliance-notes.md`](docs/compliance-notes.md).
+MIT License, see [`LICENSE`](LICENSE). Using this project still requires following each platform's terms; see [`docs/en/compliance-notes.md`](docs/en/compliance-notes.md).
 
 ## Acknowledgements
 

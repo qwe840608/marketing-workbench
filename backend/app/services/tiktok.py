@@ -3,7 +3,7 @@
 Display API video.list returns only public videos and already carries view/like/comment/share
 counts, so one listing both upserts posts and feeds the due metric snapshots. A complete listing
 (first page to last) also hides videos that disappeared, which on TikTok means deleted or made
-private; an incomplete or empty listing never judges anything. See docs/TikTok規劃.md.
+private; an incomplete or empty listing never judges anything. See docs/en/tiktok-plan.md.
 """
 
 import re

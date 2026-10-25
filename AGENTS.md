@@ -2,9 +2,9 @@
 
 個人與團隊的通用行銷工作檯。
 
-若有 `docs/專案現況.md`（維護者的私人現況紀錄，不隨公開版發佈），接手時先讀它，工作告一段落時更新它。開始修改前讀 `docs/架構.md`；涉及介面時讀 `docs/UI規格.md`；部署、資料轉換及備份時讀 `docs/部署與維運.md`；MCP 變更時讀 `docs/MCP規範.md`。涉及平台 API、資料保存、送審或條款時讀 `docs/平台政策.md`，查到新規定就補進去並更新查證日期。使用者請你協助安裝或初次設定工作檯時，照 `docs/agent安裝引導.md` 帶領，不必修改程式。要在各平台開發者後台建立應用程式（Meta／Threads／YouTube／TikTok）時，照 `docs/agent平台串接引導.md`，可以操作瀏覽器代填設定，但登入、密鑰與授權一律由使用者本人操作。維護者更新或推送開源公開版時讀 `docs/開源發佈.md`（私人文件，不隨公開版發佈），推送前一定跑 `scripts/release_scan.py` 並取得作者同意。使用者最新授權優先於歷史規則。
+若有 `docs/專案現況.md`（維護者的私人現況紀錄，不隨公開版發佈），接手時先讀它，工作告一段落時更新它。開始修改前讀 `docs/zh-tw/架構.md`；涉及介面時讀 `docs/zh-tw/UI規格.md`；部署、資料轉換及備份時讀 `docs/zh-tw/部署與維運.md`；MCP 變更時讀 `docs/zh-tw/MCP規範.md`。涉及平台 API、資料保存、送審或條款時讀 `docs/zh-tw/平台政策.md`，查到新規定就補進去並更新查證日期。使用者請你協助安裝或初次設定工作檯時，照 `docs/zh-tw/agent安裝引導.md` 帶領，不必修改程式。要在各平台開發者後台建立應用程式（Meta／Threads／YouTube／TikTok）時，照 `docs/zh-tw/agent平台串接引導.md`，可以操作瀏覽器代填設定，但登入、密鑰與授權一律由使用者本人操作。維護者更新或推送開源公開版時讀 `docs/開源發佈.md`（私人文件，不隨公開版發佈），推送前一定跑 `scripts/release_scan.py` 並取得作者同意。使用者最新授權優先於歷史規則。
 
-公開版的 `docs/` 文件都有四種語言，每個語言版本的檔名用該語言命名（例如 `docs/部署與維運.md`、`docs/部署与运维.md`、`docs/operations.md`、`docs/デプロイと運用.md`），開頭有語言切換列可互相跳轉。修改文件時四種語言一起更新，連結指向同語言版本；只有不隨公開版發佈的 `專案現況.md`、`開源發佈.md` 維持繁中單一語言。
+公開版的 `docs/` 文件都有四種語言，依語言放在 `docs/zh-tw/`、`docs/cn/`、`docs/en/`、`docs/jp/` 四個資料夾，檔名也用該語言命名（例如 `docs/zh-tw/部署與維運.md`、`docs/cn/部署与运维.md`、`docs/en/operations.md`、`docs/jp/デプロイと運用.md`），開頭有語言切換列可互相跳轉。修改文件時四種語言一起更新，連結指向同語言版本；只有不隨公開版發佈的 `專案現況.md`、`開源發佈.md` 維持繁中單一語言。
 
 ## 工作方式
 
@@ -22,7 +22,7 @@
 - 不得擅自修改實機 `send_enabled`、`publishing.enabled`，或送出任何平台內容。發佈到平台只能透過「發佈」功能，在總開關開啟並經確認視窗後由使用者操作送出；開發與驗收一律用 HTTP mock，不得呼叫平台 API。送出需後端權限與完整確認。
 - Webhook 必須驗原始位元組簽章。公開入口只允許驗簽 Webhook 與限時媒體權杖路徑（`/media/<權杖>`）；UI/API 限本機及 Tailscale。
 - 外部事件以平台 ID 冪等。LINE 只用於通知（品牌通知群組與收訊健康警示），Push 需確認額度。
-- 未明確授權時不讀寫外部知識庫或第三方助理設定。MCP 寫入只能透過 `docs/MCP規範.md` 規範、`agent_tools` 註冊的工具，並由後端重驗權限；對外動作須兩段式確認（prepare／confirm），破壞性動作須先取得使用者同意；不將原始留言或個資寫入外部知識庫。
+- 未明確授權時不讀寫外部知識庫或第三方助理設定。MCP 寫入只能透過 `docs/zh-tw/MCP規範.md` 規範、`agent_tools` 註冊的工具，並由後端重驗權限；對外動作須兩段式確認（prepare／confirm），破壞性動作須先取得使用者同意；不將原始留言或個資寫入外部知識庫。
 - `data/` 存放正式資料（資料庫、匯出、日誌），已被 git 忽略。**禁止執行會刪除被忽略檔案的指令**（例如 `git clean -x`、`git clean -X`、`git clean -fdx`），也不得刪除、搬移或覆寫 `data/` 內容；需要乾淨環境時改用 `.runtime/` 或另建副本。
 
 ## 技術與驗收
@@ -41,12 +41,12 @@ Python 3.13、uv、FastAPI、SQLAlchemy 2、Alembic、SQLite WAL；路由只呼�
 
 ### Issue tracker
 
-議題記錄在本 repo 的 GitHub Issues，以 `gh` 指令操作。See `docs/agents/issue-tracker.md`.
+議題記錄在本 repo 的 GitHub Issues，以 `gh` 指令操作。See `docs/en/agents/issue-tracker.md`.
 
 ### Triage labels
 
-使用預設五個分類標籤（needs-triage、needs-info、ready-for-agent、ready-for-human、wontfix）。See `docs/agents/triage-labels.md`.
+使用預設五個分類標籤（needs-triage、needs-info、ready-for-agent、ready-for-human、wontfix）。See `docs/en/agents/triage-labels.md`.
 
 ### Domain docs
 
-單一情境。`CONTEXT.md` 與 `docs/adr/` 目前尚未建立，需要時才建立；不存在時直接略過。See `docs/agents/domain.md`.
+單一情境。`CONTEXT.md` 與 `docs/adr/` 目前尚未建立，需要時才建立；不存在時直接略過。See `docs/en/agents/domain.md`.

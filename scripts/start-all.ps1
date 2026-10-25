@@ -55,7 +55,7 @@ function Get-MwbMigrationState {
 
 function Get-MwbMigrationMessage {
     param($State)
-    return "資料庫結構版本（$($State.Current -join ', ')）落後程式（$($State.Heads -join ', ')），未自動升級。請照 docs/部署與維運.md「部署順序」第 1–3 步：先備份、停止服務，並依「Migration 注意事項」在副本演練；完成後以 start-all.ps1 -ApplyMigrations 重新執行，或在 backend 執行 uv run alembic upgrade head。"
+    return "資料庫結構版本（$($State.Current -join ', ')）落後程式（$($State.Heads -join ', ')），未自動升級。請照 docs/zh-tw/部署與維運.md「部署順序」第 1–3 步：先備份、停止服務，並依「Migration 注意事項」在副本演練；完成後以 start-all.ps1 -ApplyMigrations 重新執行，或在 backend 執行 uv run alembic upgrade head。"
 }
 
 try {
@@ -119,7 +119,7 @@ try {
     if (-not $gateway) { Assert-MwbPortFree -Port 4040 }
     if (-not $backend) {
         Invoke-Step $uv @('sync', '--frozen') (Join-Path $projectRoot 'backend') '同步後端套件'
-        # migration 前要先備份並在副本演練（docs/部署與維運.md）；一鍵啟動與開機自動啟動不能繞過這些檢查。
+        # migration 前要先備份並在副本演練（docs/zh-tw/部署與維運.md）；一鍵啟動與開機自動啟動不能繞過這些檢查。
         $state = Get-MwbMigrationState -Python $python -Backend (Join-Path $projectRoot 'backend')
         if (-not $state.AtHead) {
             # 全新資料庫沒有版本、也沒有資料要保護，直接建立結構。

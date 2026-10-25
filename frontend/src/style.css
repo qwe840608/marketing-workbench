@@ -51,7 +51,7 @@
   --muted:var(--text-muted);
   --accent:var(--state-pending-text);
 
-  /* 共用尺寸：用途與例外見 docs/UI規格.md。 */
+  /* 共用尺寸：用途與例外見 docs/zh-tw/UI規格.md。 */
   --ui-font-page-title:26px;
   --ui-font-section-title:18px;
   --ui-font-body:14px;

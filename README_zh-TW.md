@@ -42,17 +42,17 @@
 
 - **只給自己或自有品牌使用**（單一品牌）。不要拿來代操客戶帳號或開放他人註冊，這需要各平台審核，TikTok 明確不接受。
 - **帳號類型**：Facebook 需要粉絲專頁；Instagram 需要專業帳號並連結該粉專；Threads、YouTube、TikTok 用個人帳號即可。
-- **隱私權政策與服務條款要自己寫**，放在自己的網站再填進各平台後台，範本在 [`docs/templates/`](docs/templates/)。
+- **隱私權政策與服務條款要自己寫**，放在自己的網站再填進各平台後台，範本在 [`docs/zh-tw/templates/`](docs/zh-tw/templates/)。
 - **TikTok 只能送到收件匣草稿**，文案要在 TikTok App 內貼上。
 - **Google 同意畫面要設成正式版**，否則 YouTube 授權每 7 天失效。
 
-細節見 [`docs/合規須知.md`](docs/合規須知.md)，每條規定的官方出處見 [`docs/平台政策.md`](docs/平台政策.md)。
+細節見 [`docs/zh-tw/合規須知.md`](docs/zh-tw/合規須知.md)，每條規定的官方出處見 [`docs/zh-tw/平台政策.md`](docs/zh-tw/平台政策.md)。
 
 ## 安裝步驟
 
 需求：Windows（啟動與備份腳本是 PowerShell，macOS／Linux 尚未支援）、Python 3.13、[uv](https://docs.astral.sh/uv/)、Node.js、7-Zip、ngrok；建議另裝 Tailscale。
 
-不熟指令的話，可以把 [`docs/agent安裝引導.md`](docs/agent安裝引導.md) 交給自己的 AI agent 逐步帶領安裝。引導有繁體中文、简体中文、English、日本語四種版本，agent 會依你使用的語言自動選用。
+不熟指令的話，可以把 [`docs/zh-tw/agent安裝引導.md`](docs/zh-tw/agent安裝引導.md) 交給自己的 AI agent 逐步帶領安裝。引導有繁體中文、简体中文、English、日本語四種版本，agent 會依你使用的語言自動選用。
 
 ```powershell
 # 1. 建立設定檔並填入 NGROK_AUTHTOKEN；資料路徑可留白（見下方「環境變數設定」）
@@ -74,7 +74,7 @@ cd ..
 ./scripts/start-all.ps1
 ```
 
-`start-all.ps1` 只會替全新資料庫建立結構，不會升級既有資料庫；升級步驟見 [`docs/部署與維運.md`](docs/部署與維運.md)。
+`start-all.ps1` 只會替全新資料庫建立結構，不會升級既有資料庫；升級步驟見 [`docs/zh-tw/部署與維運.md`](docs/zh-tw/部署與維運.md)。
 
 ## 使用範例
 
@@ -89,7 +89,7 @@ cd ..
 /plugin install mwb@marketing-workbench
 ```
 
-Codex 與 Claude 桌面版的安裝方式見 [`docs/部署與維運.md`](docs/部署與維運.md#agent-連線)。
+Codex 與 Claude 桌面版的安裝方式見 [`docs/zh-tw/部署與維運.md`](docs/zh-tw/部署與維運.md#agent-連線)。
 
 ### 用 agent 操作工作檯（MCP）
 
@@ -122,7 +122,7 @@ Codex 與 Claude 桌面版的安裝方式見 [`docs/部署與維運.md`](docs/�
 
 <!-- TODO: 請補充一段從發想到發佈的完整操作示範（截圖或短片） -->
 
-部署、更新、備份與排錯見 [`docs/部署與維運.md`](docs/部署與維運.md)；架構見 [`docs/架構.md`](docs/架構.md)。
+部署、更新、備份與排錯見 [`docs/zh-tw/部署與維運.md`](docs/zh-tw/部署與維運.md)；架構見 [`docs/zh-tw/架構.md`](docs/zh-tw/架構.md)。
 
 開發時可以分開啟動：
 
@@ -176,9 +176,9 @@ npm run dev
 - 送 PR 前請在 `backend/` 跑 `uv run pytest`，並在根目錄跑 `npm --prefix frontend test`、`npm --prefix frontend run build`、`node --test scripts/*.test.mjs`。完整驗收是 `python scripts/verify_all.py`（需要 Chromium）。
 - 測試一律使用隔離資料與 HTTP 替身，不可呼叫真實平台 API。
 - 資料表變更一律透過 Alembic migration。
-- 新增介面文字用 `t('繁中原文')` 包起來，並補 `frontend/src/locales/` 的英文、簡中、日文翻譯，用詞依 [`docs/i18n術語表.md`](docs/i18n術語表.md)。
+- 新增介面文字用 `t('繁中原文')` 包起來，並補 `frontend/src/locales/` 的英文、簡中、日文翻譯，用詞依 [`docs/zh-tw/i18n術語表.md`](docs/zh-tw/i18n術語表.md)。
 - 平台串接只用官方 API，不接受爬蟲、非官方 API 或瀏覽器自動化。
-- 架構與規則見 [`docs/架構.md`](docs/架構.md)、[`docs/MCP規範.md`](docs/MCP規範.md)、[`docs/UI規格.md`](docs/UI規格.md)。
+- 架構與規則見 [`docs/zh-tw/架構.md`](docs/zh-tw/架構.md)、[`docs/zh-tw/MCP規範.md`](docs/zh-tw/MCP規範.md)、[`docs/zh-tw/UI規格.md`](docs/zh-tw/UI規格.md)。
 
 歡迎送 PR。較大的改動（新平台、資料表變更、權限規則）請先開 issue 討論方向。回覆時間不固定，請多包涵。
 
@@ -186,7 +186,7 @@ npm run dev
 
 ## 授權
 
-MIT License，見 [`LICENSE`](LICENSE)。使用本專案仍須遵守各平台條款，見 [`docs/合規須知.md`](docs/合規須知.md)。
+MIT License，見 [`LICENSE`](LICENSE)。使用本專案仍須遵守各平台條款，見 [`docs/zh-tw/合規須知.md`](docs/zh-tw/合規須知.md)。
 
 ## 致謝
 
