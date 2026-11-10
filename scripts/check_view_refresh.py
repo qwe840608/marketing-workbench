@@ -107,10 +107,10 @@ def check_refresh(page, open_thread, shot, checks):
     if mobile:
         bar = page.locator('.mobile-bottom-nav')
         expect(bar).to_be_visible()
-        expect(bar.locator('button')).to_have_count(6)
+        expect(bar.locator('button')).to_have_count(5)
         expect(page.locator('.inbox-nav-toggle')).to_have_count(0)
         current('儀表板')
-        expect(bar.locator('button')).to_have_text(['儀表板', '貼文數據', '主題發想', '發佈', '流程', '設定'])
+        expect(bar.locator('button')).to_have_text(['儀表板', '貼文數據', '主題發想', '發佈', '設定'])
         expect(page.locator('.mobile-more')).to_have_count(0)
         open_settings(page)
         # uiorder：只有一個品牌時手機沒有品牌選單（多品牌行為見 check_brand_scope），仍有登出。
@@ -120,7 +120,7 @@ def check_refresh(page, open_thread, shot, checks):
         checks.append('mobile-six-navigation-settings-brand-logout')
     else:
         expect(page.locator('.mobile-bottom-nav,.mobile-more')).to_have_count(0)
-        expect(page.locator('.workspace-nav button')).to_have_count(6)
+        expect(page.locator('.workspace-nav button')).to_have_count(5)
         assert page.locator('.sidebar').bounding_box()['width'] == 220
         checks.append('desktop-sidebar-unchanged-no-mobile-dom')
 

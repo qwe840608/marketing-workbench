@@ -2,7 +2,7 @@ export type Evidence = { id: number; kind?: string | null; post_id?: number | nu
 export function positiveId(value: string | null): number | null {
   const id = Number(value); return /^[1-9]\d*$/.test(value || '') && Number.isSafeInteger(id) ? id : null;
 }
-export const views = ['dashboard', 'posts', 'ideation', 'publish', 'flows', 'settings'] as const;
+export const views = ['dashboard', 'posts', 'ideation', 'publish', 'settings'] as const;
 export type View = typeof views[number];
 export type SettingsTab = 'ai' | 'connections' | 'policy' | 'workspace' | 'members' | 'account';
 export function readSettingsTab(search: string): SettingsTab {

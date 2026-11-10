@@ -12,3 +12,5 @@
 docs/專案現況.md export-ignore
 # 維護者用的開源決策與發佈步驟，含私人 repo 的背景，不進公開版。
 docs/開源發佈.md export-ignore
+# 匯出時把尚未公開的流程功能剪掉，腳本本身也不進公開版。
+scripts/release_strip_flows.py export-ignore

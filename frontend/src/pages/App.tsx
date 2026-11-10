@@ -9,7 +9,6 @@ import { api, ApiError, refreshCsrf, setCsrf, errorMessage } from '../api';
 import type { Brand, User } from '../api';
 import { Posts } from './Posts';
 import { Publish } from './Publish';
-import { Flows } from './Flows';
 import { Dashboard } from './Dashboard';
 import { SettingsHub, settingsTabsFor } from './SettingsHub';
 import { can } from '../permissions';
@@ -215,7 +214,7 @@ function Workspace({ user, onChanged, onLogout, onSelfReset }: { user: User; onC
     const request = ++navigationRequest.current;
     if (next === view) return;
     // 發佈頁與流程頁（畫布、草稿彈窗）離開前都要先存完。
-    if ((view === 'publish' || view === 'flows') && beforePublishLeave.current && !await beforePublishLeave.current()) return;
+    if (view === 'publish' && beforePublishLeave.current && !await beforePublishLeave.current()) return;
     if (request !== navigationRequest.current) return;
     if (next === 'posts') setPostId(null); setView(next);
   }
@@ -234,16 +233,15 @@ function Workspace({ user, onChanged, onLogout, onSelfReset }: { user: User; onC
         <button className={view === 'posts' ? 'current' : ''} onClick={() => void navigate('posts')}>{t('貼文數據')}</button>
         <button className={view === 'ideation' ? 'current' : ''} onClick={() => void navigate('ideation')}>{t('主題發想')}</button>
         <button className={view === 'publish' ? 'current' : ''} onClick={() => void navigate('publish')}>{t('發佈')}</button>
-        {can(user, 'publish.edit') && <button className={view === 'flows' ? 'current' : ''} onClick={() => void navigate('flows')}>{t('流程')}</button>}
         <button className={view === 'settings' ? 'current' : ''} onClick={() => void navigate('settings')}>{t('設定')}</button></nav>
       <div className="sidebar-note"><span className="live-dot" /> {t('品牌營運工作檯')}</div>
       <div className="user-card"><div className="avatar small">{user.display_name[0]}</div><div><strong>{user.display_name}</strong><small>{user.role === 'admin' ? t('管理員') : user.role === 'marketing' ? t('行銷人員') : user.role === 'viewer' ? t('唯讀成員') : user.role_name || t('自訂角色')}</small></div><button className="quiet" onClick={logout}>{t('登出')}</button></div>
     </aside>
     {mobile && <nav className="mobile-bottom-nav" aria-label={t('手機導覽')}>
-      {([{ view: 'dashboard', label: t('儀表板') }, { view: 'posts', label: t('貼文數據') }, { view: 'ideation', label: t('主題發想') }, { view: 'publish', label: t('發佈') }, ...(can(user, 'publish.edit') ? [{ view: 'flows', label: t('流程') }] as const : []), { view: 'settings', label: t('設定') }] as const).map(item => <button key={item.view} className={view === item.view ? 'primary current' : 'quiet'} aria-current={view === item.view ? 'page' : undefined} onClick={() => navigate(item.view)}>{item.label}</button>)}
+      {([{ view: 'dashboard', label: t('儀表板') }, { view: 'posts', label: t('貼文數據') }, { view: 'ideation', label: t('主題發想') }, { view: 'publish', label: t('發佈') }, { view: 'settings', label: t('設定') }] as const).map(item => <button key={item.view} className={view === item.view ? 'primary current' : 'quiet'} aria-current={view === item.view ? 'page' : undefined} onClick={() => navigate(item.view)}>{item.label}</button>)}
     </nav>}
     {error && <p className="error" role="alert">{error}</p>}
     {mobile && <div className={'mobile-settings-controls' + (brands.length > 1 ? '' : ' in-topbar')}>{brands.length > 1 && <label className="mobile-brand-picker">{t('目前品牌')}<select value={brand} onChange={e => changeBrand(e.target.value)}><option value="">{t('全部可見品牌')}</option>{brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}<button className="secondary mobile-logout" onClick={logout}>{t('登出')}</button></div>}
-    {!brandsReady ? null : view === 'settings' ? <SettingsHub tab={settingsTab} onTab={setSettingsTab} brand={activeBrand} brands={brands} user={user} onChanged={onChanged} onUserChanged={() => void refreshUser()} onSelfReset={onSelfReset} /> : user.role !== 'admin' && !user.brand_ids.length ? <section className="section-card no-brands"><p>{t('尚未指派品牌，請聯絡管理員')}</p></section> : view === 'publish' ? (needBrand ? <BrandRequired title={t('發佈')} /> : <Publish brand={activeBrand} brands={brands} user={user} draftId={publishDraft.id} fromIdea={publishDraft.created} onDraftId={id => setPublishDraft(value => value.id === id ? value : { id, created: false })} beforeLeave={beforePublishLeave} onConnections={() => { setSettingsTab('connections'); void navigate('settings'); }} />) : view === 'flows' && can(user, 'publish.edit') ? (needBrand ? <BrandRequired title={t('流程')} /> : <Flows brandId={activeBrand} brands={brands} user={user} beforeLeave={beforePublishLeave} onOpenDraft={id => { setPublishDraft({ id, created: false }); setView('publish'); }} />) : view === 'ideation' ? needBrand ? <BrandRequired title={t('主題發想')} /> : <IdeationPage brand={activeBrand} brands={brands} canEdit={can(user, 'ideation.edit')} canConfigure={can(user, 'settings.manage')} onDraft={(id, brandId, created) => { setBrand(String(brandId)); setPublishDraft({ id, created }); setView('publish'); }} /> : view === 'posts' ? <Posts brand={activeBrand} initialPostId={postId} onLogout={onLogout} canSync={can(user, 'posts.sync')} /> : <Dashboard brand={activeBrand} canExport={can(user, 'reports.export')} onPost={id => { setPostId(id); setView('posts'); }} />}
+    {!brandsReady ? null : view === 'settings' ? <SettingsHub tab={settingsTab} onTab={setSettingsTab} brand={activeBrand} brands={brands} user={user} onChanged={onChanged} onUserChanged={() => void refreshUser()} onSelfReset={onSelfReset} /> : user.role !== 'admin' && !user.brand_ids.length ? <section className="section-card no-brands"><p>{t('尚未指派品牌，請聯絡管理員')}</p></section> : view === 'publish' ? (needBrand ? <BrandRequired title={t('發佈')} /> : <Publish brand={activeBrand} brands={brands} user={user} draftId={publishDraft.id} fromIdea={publishDraft.created} onDraftId={id => setPublishDraft(value => value.id === id ? value : { id, created: false })} beforeLeave={beforePublishLeave} onConnections={() => { setSettingsTab('connections'); void navigate('settings'); }} />) : view === 'ideation' ? needBrand ? <BrandRequired title={t('主題發想')} /> : <IdeationPage brand={activeBrand} brands={brands} canEdit={can(user, 'ideation.edit')} canConfigure={can(user, 'settings.manage')} onDraft={(id, brandId, created) => { setBrand(String(brandId)); setPublishDraft({ id, created }); setView('publish'); }} /> : view === 'posts' ? <Posts brand={activeBrand} initialPostId={postId} onLogout={onLogout} canSync={can(user, 'posts.sync')} /> : <Dashboard brand={activeBrand} canExport={can(user, 'reports.export')} onPost={id => { setPostId(id); setView('posts'); }} />}
   </main><UpdateNotice /></>;
 }

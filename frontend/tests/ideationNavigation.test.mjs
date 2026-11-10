@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { positiveId, quoteHref, readView, readSettingsTab, reportReturn, selectionQuery, viewQuery, views } from '../src/ideationNavigation.ts';
 
 test('設定四分頁相容舊網址並保留最後分頁', () => {
-  assert.deepEqual(views, ['dashboard', 'posts', 'ideation', 'publish', 'flows', 'settings']);
+  assert.deepEqual(views, ['dashboard', 'posts', 'ideation', 'publish', 'settings']);
   for (const [legacy, tab] of [['ai', 'ai'], ['policy', 'policy'], ['settings', 'workspace']]) {
     assert.equal(readView('?view=' + legacy), 'settings');
     assert.equal(readSettingsTab('?view=' + legacy), tab);
