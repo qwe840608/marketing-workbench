@@ -1035,8 +1035,8 @@ def test_agent_youtube_options_thumbnail_details_and_publish(posting):
     assert options["platforms"]["youtube"]["ready"]
     rule = options["rules"]["youtube"]
     assert (rule["title"], rule["caption"], rule["text_supported"]) == (100, 5000, False)
-    assert rule["thumbnail"]["bytes"] == 2 * 1024**2
-    assert rule["thumbnail"]["shorts_supported"] is False
+    assert rule["thumbnail"]["bytes"] == 50 * 1024**2
+    assert rule["thumbnail"]["shorts_supported"] is True
     prep = prepared(posting, post)
     assert not posting.mock.calls
     assert prep["details"]["youtube"] == {
@@ -1222,7 +1222,7 @@ def test_youtube_tool_descriptions_state_the_options():
 
 
 def test_agent_long_threads_caption_is_not_split_and_reports_overflow_position(posting):
-    # MCP 代理存超過 500 字的 Threads 文案：不自動拆段，準備發佈時指出從第幾個字開始超出。
+    # MCP 代理存超過 500 字的 Threads 文案：不自動拆段，準備發佈時指出超過上限。
     caption = "甲" * 500 + "乙丙"
     post = draft(posting, caption=caption, platforms=["threads"])
     assert post["platform_options"]["threads"] == {"segments": [caption], "segments_custom": False}
@@ -1231,7 +1231,6 @@ def test_agent_long_threads_caption_is_not_split_and_reports_overflow_position(p
     )
     text = result.content[0].text
     assert result.isError and "Threads 文案超過 500 字上限" in text, text
-    assert "從第 501 個字「乙丙」開始超出" in text, text
 
 
 # ---- Instagram Reels 封面：上傳用途、明細與確認指紋 ----

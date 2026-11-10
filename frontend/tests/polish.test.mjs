@@ -5,10 +5,13 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
+// verify_all 會直接跑 check_polish_frontend.py（同一份前端原始碼建置），這裡不再重建、重跑一次。
+const alreadyRun = process.env.VERIFY_ALL_RUNS_BROWSER_CHECKS === '1' && 'verify_all 已直接執行 check_polish_frontend';
+
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const dist = temporaryDirectory({ after }, 'frontend-build-');
 // check_polish_frontend 也涵蓋四項導覽與已移除收件匣（原 ui_inbox_layout／ui_composer）。
-test('React 接收健康狀態可見頁面輪詢（HTTP mock、桌面及手機）', { timeout: 240000 }, () => {
+test('React 接收健康狀態可見頁面輪詢（HTTP mock、桌面及手機）', { timeout: 240000, skip: alreadyRun }, () => {
   const build = spawnSync(process.execPath, ['node_modules/typescript/bin/tsc', '--noEmit'], { cwd: path.join(root, 'frontend'), encoding: 'utf8' });
   assert.equal(build.status, 0, build.stdout + build.stderr);
   const bundle = spawnSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--outDir', dist], { cwd: path.join(root, 'frontend'), encoding: 'utf8' });

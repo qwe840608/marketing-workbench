@@ -70,7 +70,7 @@ async def upload(
     request: Request,
     access: Access,
     filename: str = "media",
-    role: Literal["media", "thumbnail", "cover", "fb_cover"] = "media",
+    role: Literal["media", "thumbnail", "cover", "fb_cover", "fb_comment"] = "media",
 ):
     return await publish_media.upload(
         request, access, publish.get(access, identity), filename, role=role

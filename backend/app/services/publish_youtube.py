@@ -17,6 +17,7 @@ from app.services.publish_media import path_for
 
 UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/videos"
 THUMBNAIL_URL = "https://www.googleapis.com/upload/youtube/v3/thumbnails/set"
+VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos"
 HOSTS = {"www.googleapis.com"}
 # 分段大小必須是 256 KiB 的整數倍（最後一段除外）。
 CHUNK = 8 * 1024 * 1024
@@ -28,6 +29,8 @@ PRIVACY = {"public", "unlisted", "private"}
 # videos.insert 每日 100 次（獨立額度）；thumbnails.set 約 50 單位，與讀取共用每日單位數。
 UPLOAD_DAILY_LIMIT = 100
 THUMBNAIL_UNITS = 50
+# Shorts 要等影片處理完成才能套用縮圖：上傳後依序等待這些秒數再查 videos.list（每次 1 單位）。
+PROCESSING_WAITS = (10, 20, 30, 60)
 UPLOADS_KEY = "youtube.uploads"
 QUOTA_KEY = "youtube.quota"
 
@@ -130,6 +133,8 @@ def reserve(factory, kind):
 
     if kind == "upload":
         key, units, limit = UPLOADS_KEY, 1, UPLOAD_DAILY_LIMIT
+    elif kind == "status":
+        key, units, limit = QUOTA_KEY, 1, DAILY_LIMIT
     else:
         key, units, limit = QUOTA_KEY, THUMBNAIL_UNITS, DAILY_LIMIT
     day = utc_now().astimezone(PACIFIC).date().isoformat()
@@ -329,6 +334,39 @@ def apply_thumbnail(settings, token, identifier, thumbnail):
     return {"status": "failed", "code": thumbnail_failure(response)}
 
 
+def upload_status(token, identifier):
+    """videos.list 的 status.uploadStatus（uploaded／processed／failed…）；查不到回 None。"""
+    try:
+        with publish_platforms.client_factory() as client:
+            response = client.get(
+                VIDEOS_URL, params={"part": "status", "id": identifier}, headers=headers(token)
+            )
+    except httpx.HTTPError:
+        return None
+    if response.status_code != 200:
+        return None
+    try:
+        items = response.json().get("items") or []
+        return items[0]["status"]["uploadStatus"] if items else None
+    except (ValueError, KeyError, TypeError, AttributeError, IndexError):
+        return None
+
+
+def short_thumbnail(settings, token, identifier, thumbnail, quota, waits=None):
+    """Shorts：影片處理完成才呼叫 thumbnails.set；等不到就回 processing，讓使用者稍後重新套用。"""
+    for wait in PROCESSING_WAITS if waits is None else waits:
+        if wait:
+            time.sleep(wait)
+        quota("status")
+        state = upload_status(token, identifier)
+        if state == "processed":
+            quota("thumbnail")
+            return apply_thumbnail(settings, token, identifier, thumbnail)
+        if state in {"failed", "rejected", "deleted"}:
+            return {"status": "failed", "code": "not_found" if state == "deleted" else "unknown"}
+    return {"status": "failed", "code": "processing"}
+
+
 def metadata_for(post, category):
     options = publish_rules.platform_options(post)["youtube"]
     caption = publish_rules.youtube_caption(post)
@@ -382,14 +420,14 @@ def publish(
     link = watch_url(identifier)
     previous = progress.get("thumbnail") or {}
     if thumbnail is not None and previous.get("status") != "applied":
-        if publish_rules.is_short(media[0]):
-            outcome = {"status": "skipped", "code": "shorts"}
-        else:
-            try:
+        try:
+            if publish_rules.is_short(media[0]):
+                outcome = short_thumbnail(settings, token, identifier, thumbnail, quota)
+            else:
                 quota("thumbnail")
                 outcome = apply_thumbnail(settings, token, identifier, thumbnail)
-            except publish_platforms.PlatformFailure as failure:
-                outcome = {"status": "failed", "code": failure.code}
+        except publish_platforms.PlatformFailure as failure:
+            outcome = {"status": "failed", "code": failure.code}
         checkpoint({**saved, "thumbnail": outcome}, identifier, link)
     return identifier, link
 

@@ -260,12 +260,21 @@ def test_fresh_install_without_public_url_is_not_an_outage(client, settings, mon
     [
         ("https://example.com", "s" * 32, "probe_url_invalid"),
         ("https://example.ngrok.app", "", "probe_secret_missing"),
+        # 閘道設成 ngrok 時，自有網域不送探測金鑰；反之亦然。
+        ("https://mwb.example.com", "s" * 32, "probe_url_invalid"),
+        ("cloudflare:https://example.ngrok.app", "s" * 32, "probe_url_invalid"),
+        ("cloudflare:https://mwb.example.ts.net", "s" * 32, "probe_url_invalid"),
+        ("cloudflare:https://203.0.113.5", "s" * 32, "probe_url_invalid"),
+        ("cloudflare:https://mwb.example.com/x", "s" * 32, "probe_url_invalid"),
+        ("cloudflare:https://mwb.example.com", "", "probe_secret_missing"),
     ],
 )
 def test_outage_names_its_cause(client, settings, monkeypatch, url, secret, reason):
     from app.services import scheduler
 
     factory = client.app.state.session_factory
+    if url.startswith("cloudflare:"):
+        settings.webhook_gateway, url = "cloudflare", url.removeprefix("cloudflare:")
     settings.webhook_public_url = url
     settings.webhook_probe_secret = SecretStr(secret) if secret else None
     monkeypatch.setattr(scheduler, "scheduler_for", lambda _: None)

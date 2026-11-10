@@ -33,6 +33,8 @@ RULES = {
         "story_seconds_max": 60,
         "story_count": 10,
         "caption": 63206,
+        # 一次最多留幾則評論：工作檯自訂的上限，不是平台規定。
+        "comments": 20,
         "carousel": 10,
         "video_seconds": 1200,
         "reels_seconds_min": 3,
@@ -50,6 +52,8 @@ RULES = {
         "caption": 2200,
         "hashtag": 30,
         "mentions": 20,
+        # 一次最多留幾則評論：工作檯自訂的上限，不是平台規定；每則字數沿用文案上限。
+        "comments": 20,
         "carousel": 10,
         "video_seconds": 900,
         # Reels 封面（cover_url）：官方只收 JPEG、8 MB 內，非 9:16 會裁切中間；PNG 送出前轉 JPEG。
@@ -76,12 +80,16 @@ RULES = {
         "hashtag_effective": 15,
         "long_video_seconds": 900,
         "shorts_seconds": 180,
-        # YouTube 說明：Shorts 自訂縮圖目前只能在電腦版 YouTube Studio 加入，API 文件未列支援。
-        "shorts_thumbnail": False,
-        "thumbnail_bytes": 2 * MB,
+        # YouTube Data API 修訂紀錄：2026-11-03 起 Shorts 處理完成後
+        # 可用 thumbnails.set 套用自訂縮圖；2026-09-14 起縮圖上限從 2 MB 提高到 50 MB。
+        "shorts_thumbnail": True,
+        "thumbnail_bytes": 50 * MB,
         "thumbnail_min_width": 640,
         "thumbnail_mimes": ["image/jpeg", "image/png"],
-        "description": "只支援影片；標題 100 字、說明 5000 位元組；自訂縮圖 JPEG／PNG 2 MB 內",
+        "description": (
+            "只支援影片；標題 100 字、說明 5000 位元組；"
+            "自訂縮圖 JPEG／PNG 50 MB 內（Shorts 於影片處理完成後套用）"
+        ),
     },
     "tiktok": {
         # 只送影片到收件匣（未審核應用程式不能直接發佈）；收件匣 API 不收文案，文案只供複製。
@@ -96,6 +104,26 @@ RULES = {
         "description": (
             "只支援影片，送到 TikTok 收件匣後在 App 內補文案並發佈；"
             "最長 10 分鐘，長寬 360–4096 px；24 小時內最多 5 支待處理"
+        ),
+    },
+    "x": {
+        # 字數依 twitter-text 加權：中日韓等字算 2、網址一律 23、emoji 算 2（見 x_weight）。
+        "caption": 280,
+        "caption_counting": "x_weighted",
+        "carousel": 4,
+        "image_bytes": 5 * MB,
+        "video_seconds_min": 0.5,
+        "video_seconds": 1200,
+        # 非 Premium 帳號的影片上限是 140 秒；API 無法事先查帳號等級，只提示。
+        "standard_video_seconds": 140,
+        "video_ratio": [1 / 3, 3],
+        "video_side_max": [1280, 1024],
+        # 發文按次扣預付點數（2026-11 官方價目）：一般貼文 $0.015、內含網址 $0.20。
+        "post_cost_usd": 0.015,
+        "url_post_cost_usd": 0.2,
+        "description": (
+            "加權 280 字（中文字算 2）；JPEG／PNG 每張 5 MB、最多 4 張，或 1 支影片；"
+            "按次扣預付點數，含網址的貼文較貴"
         ),
     },
 }
@@ -150,6 +178,9 @@ ERRORS = {
     "platform_busy": "TikTok 暫時無法處理影片，請稍後重試",
     "posting_limited": "TikTok 24 小時內透過 API 發文的次數已達上限，請改從 App 上傳",
     "spam_risk": "TikTok 判定這次上傳有風險，官方建議不要重試，請改從 App 上傳",
+    "credits_exhausted": "X 預付點數不足或已達花費上限，請到 X 開發者後台儲值或調整上限後重試",
+    "duplicate_content": "平台不允許重複發佈相同內容，請修改文案後重試",
+    "content_rejected": "平台拒絕這則內容，請檢查文案與素材後重試",
 }
 # 縮圖在影片成功後才另外套用；失敗不影響影片，原因另外記在發佈目標的 detail。
 THUMBNAIL_ERRORS = {
@@ -160,6 +191,7 @@ THUMBNAIL_ERRORS = {
     "token_invalid": "授權無效，請重新連結 YouTube 後再重新套用",
     "not_found": "找不到影片，可能已在 YouTube 刪除",
     "file_missing": "縮圖檔案已不存在，無法重新套用",
+    "processing": "Shorts 影片還在處理，處理完成後才能套用縮圖，請稍後按「重新套用縮圖」",
     "unknown": "YouTube 暫時無法套用縮圖，請稍後再試",
 }
 
@@ -173,12 +205,21 @@ NAMES = {
     "threads": "Threads",
     "youtube": "YouTube",
     "tiktok": "TikTok",
+    "x": "X",
 }
 DEFAULT_OPTIONS = {
     # cover_media_id（各平台）只由伺服端維護（上傳封面時綁定、移除時清除）。
-    "facebook": {"video_format": "reels", "cover_media_id": None},
+    # comments：發文成功後由粉專依序留言（Facebook 沒有串文）；comment_media 與 comments 同序，
+    # 每則評論可附一張圖（fb_comment 素材編號或 None）。
+    "facebook": {
+        "video_format": "reels",
+        "cover_media_id": None,
+        "comments": [],
+        "comment_media": [],
+    },
     # cover_media_id 只由伺服端維護（上傳封面時綁定、移除時清除）。
-    "instagram": {"share_to_feed": True, "cover_media_id": None},
+    # comments：發文成功後由帳號依序留言；IG 評論 API 只收文字，沒有附圖。
+    "instagram": {"share_to_feed": True, "cover_media_id": None, "comments": []},
     "threads": {"segments": [], "segments_custom": False},
     # title 空白＝沿用 YouTube 說明（預設跟共用文案）的第一行；thumbnail_media_id 只由伺服端維護。
     "youtube": {
@@ -189,6 +230,8 @@ DEFAULT_OPTIONS = {
     },
     # TikTok 沒有可設定的選項（隱私、音樂、文案都在 App 內完成）；保留鍵讓既有迴圈一致。
     "tiktok": {},
+    # X 第一版沒有平台專屬選項（不支援回覆串）。
+    "x": {},
 }
 
 
@@ -288,7 +331,12 @@ def overflow(text, limit, platform="threads"):
     字數依平台計法，位置以畫面上的字計。
     """
     used = 0
-    units = list(text_units(text)) if platform == "threads" else [(c, 1) for c in text]
+    if platform == "threads":
+        units = list(text_units(text))
+    elif platform == "x":
+        units = list(x_units(text))
+    else:
+        units = [(c, 1) for c in text]
     for position, (_, size) in enumerate(units, 1):
         used += size
         if used > limit:
@@ -300,11 +348,8 @@ def over_limit_reason(label, text, limit, platform="threads"):
     found = overflow(text, limit, platform)
     if not found:
         return None
-    position, snippet = found
-    return (
-        f"{label}超過 {limit:,} 字上限：共 {text_length(text, platform):,} 字，"
-        f"從第 {position:,} 個字「{snippet}」開始超出"
-    )
+    # 網頁輸入框直接把超出的字標紅，提示只說超過上限（與前端 overLimitReason 相同文字）。
+    return f"{label}超過 {limit:,} 字上限"
 
 
 def raw_caption(post, platform):
@@ -327,6 +372,35 @@ def threads_segments(post):
             segments[0] = platform_caption(post, "threads")
         return segments
     return [platform_caption(post, "threads")]
+
+
+def facebook_comments(post):
+    """發文成功後要留的評論（已轉成平台文字）；存成 FB 草稿時貼文沒有公開，不留評論。"""
+    if post.facebook_unpublished or post.format == "story":
+        return []
+    return [to_platform_text(text) for text in platform_options(post)["facebook"]["comments"]]
+
+
+def instagram_comments(post):
+    """IG 發文成功後要留的評論（已轉成平台文字）；限時動態沒有留言欄，不留評論。"""
+    if post.format == "story":
+        return []
+    return [to_platform_text(text) for text in platform_options(post)["instagram"]["comments"]]
+
+
+def platform_comments(post, platform):
+    if platform == "facebook":
+        return facebook_comments(post)
+    if platform == "instagram":
+        return instagram_comments(post)
+    return []
+
+
+def facebook_comment_media(post):
+    """與 facebook_comments 同序的附圖編號（沒附圖為 None）；只對齊長度，不檢查素材是否還在。"""
+    options = platform_options(post)["facebook"]
+    images = list(options.get("comment_media") or [])[: len(options["comments"])]
+    return images + [None] * (len(options["comments"]) - len(images))
 
 
 def rules_view():
@@ -369,6 +443,8 @@ def check(
         return check_youtube(format, caption, media, options, thumbnail)
     if platform == "tiktok":
         return check_tiktok(format, caption, media)
+    if platform == "x":
+        return check_x(format, caption, media)
     rule = RULES[platform]
     limits = MEDIA_RULES[platform]
     reasons, warnings = [], []
@@ -392,6 +468,18 @@ def check(
         caption = "\n".join(segments)
     elif len(caption) > rule["caption"]:
         reasons.append(over_limit_reason("文案", caption, rule["caption"], platform))
+    comments = (options.get("comments") or []) if platform in {"facebook", "instagram"} else []
+    images = (options.get("comment_media") or []) if platform == "facebook" else []
+    if len(comments) > rule.get("comments", 0):
+        reasons.append(f"評論最多 {rule['comments']} 則")
+    for index, comment in enumerate(comments, 1):
+        # 有附圖的評論可以不寫字（Facebook 至少要文字或圖片其中一個）。
+        if not comment.strip() and not (index <= len(images) and images[index - 1]):
+            reasons.append(f"評論 {index} 不可空白")
+        elif len(comment) > rule["caption"]:
+            reasons.append(over_limit_reason(f"評論 {index} ", comment, rule["caption"], platform))
+    if comments and unpublished and platform == "facebook":
+        warnings.append("存成 FB 草稿時不會留評論")
     tags = HASHTAGS.findall(caption)
     if platform == "instagram" and len(tags) > rule["hashtag"]:
         reasons.append("hashtag 最多 30 個")
@@ -541,8 +629,8 @@ def check_youtube(format, caption, media, options, thumbnail):
     if short:
         warnings.append("將被歸為 Shorts（直式或正方形且 3 分鐘內，無法指定）")
     if thumbnail is not None and supported:
-        if short and not rule["shorts_thumbnail"]:
-            reasons.append("Shorts 不支援自訂縮圖，請移除縮圖")
+        if short:
+            warnings.append("Shorts 的自訂縮圖要等 YouTube 處理完影片才會套用")
         if thumbnail.mime not in rule["thumbnail_mimes"]:
             reasons.append("縮圖只支援 JPG／PNG")
         if thumbnail.size > rule["thumbnail_bytes"]:
@@ -638,5 +726,95 @@ def check_story(platform, caption, media, options=None, *, unpublished=False):
         "ok": not reasons,
         "reasons": [NAMES[platform] + "：" + reason for reason in reasons],
         "warnings": warnings,
+        "topic_tag": None,
+    }
+
+
+# twitter-text v3 設定：這些範圍的字算 1，其餘（含中日韓）算 2；網址固定 23，emoji 序列算 2。
+X_LIGHT = ((0x0000, 0x10FF), (0x2000, 0x200D), (0x2010, 0x201F), (0x2032, 0x2037))
+X_URL = re.compile(r"https?://\S+", re.IGNORECASE)
+X_URL_WEIGHT = 23
+# 與前端 publishComposer 的 X_CAPTION_LABEL 同字。
+X_CAPTION_LABEL = "文案（加權計字，中文字與 emoji 算 2、網址算 23）"
+
+
+def x_char_weight(unit):
+    if EMOJI.search(unit) and (len(unit) > 1 or ord(unit) > 0xFF):
+        return 2
+    return sum(1 if any(low <= ord(char) <= high for low, high in X_LIGHT) else 2 for char in unit)
+
+
+def x_units(text):
+    """X 加權計字的單位（官方 twitter-text 的簡化版：只辨識 http(s) 開頭的網址，一律算 23）。"""
+    text = unicodedata.normalize("NFC", text)
+    last = 0
+    for match in X_URL.finditer(text):
+        for unit, _ in text_units(text[last : match.start()]):
+            yield unit, x_char_weight(unit)
+        yield match.group(), X_URL_WEIGHT
+        last = match.end()
+    for unit, _ in text_units(text[last:]):
+        yield unit, x_char_weight(unit)
+
+
+def x_weight(text):
+    return sum(size for _, size in x_units(text))
+
+
+def x_has_url(text):
+    return bool(X_URL.search(text or ""))
+
+
+def check_x(format, caption, media):
+    rule = RULES["x"]
+    reasons, warnings = [], []
+    supported = format in {"text", "image", "video", "carousel"}
+    if not supported:
+        reasons.append("不支援這個格式")
+    over = over_limit_reason(X_CAPTION_LABEL, caption, rule["caption"], "x")
+    if over:
+        reasons.append(over)
+    if format == "text" and (media or not caption.strip()):
+        reasons.append("純文字須有文案且不能包含媒體")
+    if format in {"image", "video"} and len(media) != 1:
+        reasons.append("此格式需 1 個媒體檔")
+    if format == "carousel" and not 2 <= len(media) <= rule["carousel"]:
+        reasons.append(f"多圖需 2–{rule['carousel']} 張圖片")
+    for item in media:
+        video = item.mime.startswith("video/")
+        if (format == "video" and not video) or (format in {"image", "carousel"} and video):
+            reasons.append("媒體型別與格式不符（影片不能和圖片混用）")
+            continue
+        if not video:
+            if item.size > rule["image_bytes"]:
+                reasons.append("圖片最多 5 MB")
+            continue
+        if item.size > VIDEO_BYTES:
+            reasons.append("影片最多 1 GB")
+        seconds = item.duration or 0
+        if not rule["video_seconds_min"] <= seconds <= rule["video_seconds"]:
+            reasons.append("影片長度需 0.5 秒–20 分鐘")
+        elif seconds > rule["standard_video_seconds"]:
+            warnings.append("影片超過 140 秒：非 X Premium 帳號會被拒絕")
+        if item.width <= 0 or item.height <= 0:
+            reasons.append("無法讀取影片尺寸")
+        else:
+            low, high = rule["video_ratio"]
+            if not low <= item.width / item.height <= high:
+                reasons.append("影片比例需 1:3–3:1")
+            wide, tall = rule["video_side_max"]
+            if max(item.width, item.height) > wide or min(item.width, item.height) > tall:
+                warnings.append("影片超過官方建議的 1280×1024，X 可能拒收或重新壓縮")
+    if x_has_url(caption):
+        warnings.append(
+            f"文案含網址：這則貼文會扣 ${rule['url_post_cost_usd']:.2f}"
+            f"（一般貼文 ${rule['post_cost_usd']:.3f}）"
+        )
+    reasons = list(dict.fromkeys(reasons))
+    return {
+        "supported": supported,
+        "ok": not reasons,
+        "reasons": [NAMES["x"] + "：" + reason for reason in reasons],
+        "warnings": list(dict.fromkeys(warnings)),
         "topic_tag": None,
     }

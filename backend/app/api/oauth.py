@@ -67,6 +67,22 @@ def tiktok_callback(
     return RedirectResponse(target, status_code=303)
 
 
+@router.get("/x/callback")
+def x_callback(
+    request: Request, session: Database, state: str = "", code: str = "", error: str = ""
+):
+    target = oauth.receive(session, request.app.state.settings, "x", state, code, bool(error))
+    return RedirectResponse(target, status_code=303)
+
+
+@router.post("/x/disconnect")
+def x_disconnect(request: Request, access: Access):
+    from app.services import x_oauth
+
+    return x_oauth.disconnect(access, request.app.state.settings)
+
+
+
 @router.post("/tiktok/disconnect")
 def tiktok_disconnect(request: Request, access: Access):
     from app.services import tiktok_oauth

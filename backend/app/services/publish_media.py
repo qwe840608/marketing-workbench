@@ -211,12 +211,21 @@ def metadata(path):
 
 
 async def upload(request, access, post, filename, *, revalidate=None, role="media"):
-    from app.services.publish import editable, instagram_sent, media_rows, targets, view
+    from app.services.publish import (
+        comment_rows,
+        editable,
+        instagram_sent,
+        media_rows,
+        targets,
+        view,
+    )
 
-    if role not in {"media", *BOUND_ROLES}:
+    if role not in {"media", "fb_comment", *BOUND_ROLES}:
         raise HTTPException(422, "不支援的媒體用途")
     # thumbnail／cover 都是每篇一張、綁在平台選項上的圖片，不算發佈素材。
     thumbnail = role in BOUND_ROLES
+    # fb_comment 是評論附圖：只收圖片、不算素材，由前端把編號放進 facebook.comment_media。
+    comment = role == "fb_comment"
     platform, option_key, bound_bytes, noun = BOUND_ROLES.get(role, (None, None, 0, ""))
     settings, session = request.app.state.settings, access.session
 
@@ -250,8 +259,11 @@ async def upload(request, access, post, filename, *, revalidate=None, role="medi
                     image = header.startswith((b"\x89PNG", b"\xff\xd8\xff"))
                     if thumbnail and not image:
                         raise HTTPException(422, f"{noun}僅接受 JPEG／PNG")
+                    if comment and not image:
+                        raise HTTPException(422, "Facebook 評論只能附圖片（JPEG／PNG）")
                     checked = True
-                if image and size > IMAGE_BYTES:
+                # 縮圖與封面另有各自上限（YouTube 縮圖 50 MB），不套用一般圖片的 8 MB。
+                if image and not thumbnail and size > IMAGE_BYTES:
                     raise HTTPException(413, "圖片最多 8 MB")
                 if thumbnail and size > bound_bytes:
                     raise HTTPException(413, f"{noun}最多 {bound_bytes // 1024**2} MB")
@@ -280,9 +292,22 @@ async def upload(request, access, post, filename, *, revalidate=None, role="medi
                     raise HTTPException(422, f"{noun}僅接受 JPEG／PNG")
                 if role == "cover" and instagram_sent(session, post):
                     raise HTTPException(409, "Instagram 已發佈，不可變更封面")
+            elif comment:
+                if post.format == "story":
+                    raise HTTPException(422, "限時動態沒有評論")
+                if not mime.startswith("image/"):
+                    raise HTTPException(422, "Facebook 評論只能附圖片（JPEG／PNG）")
+                if any(
+                    t.platform == "facebook"
+                    and (t.status in {"succeeded", "publishing"} or t.detail_json.get("post_id"))
+                    for t in targets(session, post.id)
+                ):
+                    raise HTTPException(409, "Facebook 已發佈，不可變更評論圖片")
+                if len(comment_rows(session, post.id)) >= 2 * RULES["facebook"]["comments"]:
+                    raise HTTPException(422, "評論圖片太多，請先移除不用的圖片")
             elif len(rows) >= limit:
                 raise HTTPException(422, f"最多 {limit} 個媒體檔")
-            if mime.startswith("image/") and size > IMAGE_BYTES:
+            if mime.startswith("image/") and not thumbnail and size > IMAGE_BYTES:
                 raise HTTPException(413, "圖片最多 8 MB")
             name = Path(filename.replace("\\", "/")).name[:255]
             name = "".join(c for c in name if ord(c) >= 32) or "media"
@@ -300,7 +325,7 @@ async def upload(request, access, post, filename, *, revalidate=None, role="medi
                     replaced.append(old)
             item = PublishMedia(
                 post_id=post.id,
-                position=0 if thumbnail else len(rows),
+                position=0 if thumbnail or comment else len(rows),
                 original_name=name,
                 relative_path=path.name,
                 mime=mime,

@@ -55,6 +55,7 @@ def build(client, settings, monkeypatch, *, upload=True):
     # 退避等待不實際睡眠；分段縮到協定允許的最小單位，小檔案也能測多段。
     monkeypatch.setattr(publish_youtube, "BACKOFF", (0,) * publish_youtube.RETRY_LIMIT)
     monkeypatch.setattr(publish_youtube, "CHUNK", 256 * KB)
+    monkeypatch.setattr(publish_youtube, "PROCESSING_WAITS", (0, 0, 0))
     password = SecretStr("isolated-youtube-publish")
     factory = client.app.state.session_factory
     with factory.begin() as session:
@@ -185,7 +186,15 @@ def thumbnails(yt):
 
 
 def video_calls(yt):
-    return [c for c in yt.google.calls if not c[1].endswith("/thumbnails/set")]
+    return [
+        c
+        for c in yt.google.calls
+        if not c[1].endswith("/thumbnails/set") and c[1] != "/youtube/v3/videos"
+    ]
+
+
+def status_checks(yt):
+    return [c for c in yt.google.calls if c[0] == "GET" and c[1] == "/youtube/v3/videos"]
 
 
 def padded(size, **kwargs):
@@ -350,9 +359,44 @@ def test_shorts_notice_and_thumbnail_rule(yt, size, duration, short):
     assert any("Shorts" in item for item in result["warnings"]) is short
     post = upload_thumbnail(yt, post, jpeg_bytes(1280, 720))
     result = checks(yt, post)["youtube"]
-    # Shorts 不支援自訂縮圖（YouTube 說明：只能在電腦版 Studio 加入），帶縮圖就擋下並說明原因。
-    assert result["ok"] is not short
-    assert any("Shorts 不支援自訂縮圖" in item for item in result["reasons"]) is short
+    # 2026-11-03 起 Shorts 也能用 API 套用自訂縮圖，只是要等影片處理完成，所以只提醒不擋。
+    assert result["ok"]
+    assert ("Shorts 的自訂縮圖要等 YouTube 處理完影片才會套用" in result["warnings"]) is short
+
+
+def test_shorts_thumbnail_waits_for_processing_then_applies(yt):
+    yt.google.processing = ["uploaded", "uploaded"]
+    post = make(yt, video=video_bytes(1080, 1920, duration=12), thumbnail=jpeg_bytes(1080, 1920))
+    assert submit(yt, post).status_code == 200
+    detail = fresh(yt, post)["targets"][0]["detail"]
+    assert detail["thumbnail"] == {"status": "applied"}
+    # 處理完成前不呼叫 thumbnails.set；每次查狀態只用 part=status。
+    assert len(status_checks(yt)) == 3 and len(thumbnails(yt)) == 1
+    paths = {"/youtube/v3/videos", "/upload/youtube/v3/thumbnails/set"}
+    order = [c[1] for c in yt.google.calls if c[1] in paths]
+    assert order[-1] == "/upload/youtube/v3/thumbnails/set"
+
+
+def test_shorts_thumbnail_still_processing_can_be_reapplied_later(yt):
+    yt.google.processing = ["uploaded"] * 3
+    post = make(yt, video=video_bytes(1080, 1920, duration=12), thumbnail=jpeg_bytes(1080, 1920))
+    assert submit(yt, post).status_code == 200
+    done = fresh(yt, post)
+    assert done["status"] == "done"
+    thumbnail = done["targets"][0]["detail"]["thumbnail"]
+    assert thumbnail["code"] == "processing"
+    assert thumbnail["reason"] == publish_rules.THUMBNAIL_ERRORS["processing"]
+    assert not thumbnails(yt)
+    uploads_before = len(video_calls(yt))
+    url = f"/api/publish/posts/{post['id']}/youtube-thumbnail"
+    # 手動重新套用只查一次狀態：還在處理就維持 processing，不重傳影片。
+    yt.google.processing = ["uploaded"]
+    again = yt.client.post(url, json={"confirmed": True})
+    assert again.json()["targets"][0]["detail"]["thumbnail"]["code"] == "processing"
+    assert len(status_checks(yt)) == 4 and not thumbnails(yt)
+    fixed = yt.client.post(url, json={"confirmed": True})
+    assert fixed.json()["targets"][0]["detail"]["thumbnail"] == {"status": "applied"}
+    assert len(thumbnails(yt)) == 1 and len(video_calls(yt)) == uploads_before
 
 
 def test_thumbnail_rules_are_notes_for_ratio_and_blocks_for_format_and_size(yt):
@@ -363,13 +407,14 @@ def test_thumbnail_rules_are_notes_for_ratio_and_blocks_for_format_and_size(yt):
     assert checks(yt, post)["youtube"]["warnings"] == []
     post = upload_thumbnail(yt, post, jpeg_bytes(320, 180))
     assert any("寬度建議至少 640" in w for w in checks(yt, post)["youtube"]["warnings"])
-    # 縮圖只收 JPG／PNG、2 MB 內；影片檔或過大的圖不能當縮圖。
+    # 縮圖只收 JPG／PNG、50 MB 內（2026-09-14 起）；影片檔或過大的圖不能當縮圖。
     upload_thumbnail(yt, post, video_bytes(), expected=422)
-    big = jpeg_bytes(1280, 720) + b"0" * (2 * 1024**2)
+    limit = 50 * 1024**2
+    assert publish_rules.RULES["youtube"]["thumbnail_bytes"] == limit
+    big = jpeg_bytes(1280, 720) + b"0" * limit
     upload_thumbnail(yt, post, big, expected=413)
-    assert publish_rules.RULES["youtube"]["thumbnail_bytes"] == 2 * 1024**2
-    fine = jpeg_bytes(1280, 720) + b"0" * (2 * 1024**2 - len(jpeg_bytes(1280, 720)))
-    assert upload_thumbnail(yt, post, fine)["thumbnail"]["size"] == 2 * 1024**2
+    fine = jpeg_bytes(1280, 720) + b"0" * (limit - len(jpeg_bytes(1280, 720)))
+    assert upload_thumbnail(yt, post, fine)["thumbnail"]["size"] == limit
 
 
 def test_thumbnail_is_not_publish_media_and_can_be_replaced_removed_previewed(yt):

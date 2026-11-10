@@ -4,7 +4,7 @@
 
 This document collects the platform terms and API specifications the workbench runs into, so they don't have to be looked up again every time. Each item notes its source and verification date; **"Inference"** marks our own judgment based on the text, and **"Unverified"** marks claims we have not yet found backed by official documentation. Terms change; when something here differs from the official source, the official source wins, and this document and its verification date should be updated.
 
-Verified: 2026-10-15 to 2026-10-17 (app modes, Google OAuth and TikTok Sandbox rechecked on 2026-10-17; Facebook Page webhooks and per-platform audience data rechecked on 2026-10-19).
+Verified: 2026-10-15 to 2026-10-17 (app modes, Google OAuth and TikTok Sandbox rechecked on 2026-10-17; Facebook Page webhooks and per-platform audience data rechecked on 2026-10-19; X checked on 2026-11-05).
 
 > This document only records the rules and how the workbench handles them; it is not legal advice. Once open-sourced, every self-hoster is the developer of their own apps, and the obligations are theirs (README to be added; see the open-source plan).
 
@@ -43,6 +43,7 @@ Sources: [App modes](https://developers.facebook.com/docs/development/build-and-
 - **Facebook regular video cover** ([Page Videos](https://developers.facebook.com/docs/graph-api/reference/page/videos/)): the `thumb` parameter at upload (raw image data); the docs give no format or size limits.
 - **Facebook Reels cover** ([Reels Publishing](https://developers.facebook.com/docs/video-api/guides/reels-publishing)): none of the three Reels publishing steps (start / upload / finish) has a cover parameter; at the end the docs point to [Video Thumbnails](https://developers.facebook.com/docs/graph-api/reference/video/thumbnails) to "add a custom cover to Reels".
 - **Video Thumbnails**: `POST /{video-id}/thumbnails`, `source` (image file) + `is_preferred=true`; up to 10 MB, same aspect ratio as the video recommended; only for videos associated with a Page. Requires a Page token and `pages_read_user_content`, `pages_manage_engagement`, `pages_show_list`. The docs don't say explicitly that it applies to Reels; the Reels docs just point to it → confirmed by testing. Workbench 0049 uses this endpoint for both regular videos and Reels (not the `thumb` parameter), applying it only after the post succeeds. `pages_manage_engagement` is an optional permission; after enabling it in the Meta console, the account has to be reconnected before it appears in the token (confirmed on 2026-10-17 that the production token lacked it).
+- **Post comments**: `POST /{post-id}/comments` with `message`, using the Page token so the Page comments; existing comments via `GET /{post-id}/comments?fields=id,message,from&filter=stream`. Requires `pages_manage_engagement` (plus `pages_read_user_content` to read). The workbench uses it to post the "comments" in order after a Facebook post succeeds; the 20-comment cap is the workbench's own, not a platform rule. Based on the Graph API Comments docs (2026-11-04); not yet tested on a real Page, and whether Reels／video post IDs accept comments directly still needs testing. Comment images are sent as `source` (a multipart image file). The Comments docs list only image (`attachment_id`／`attachment_url`／`source`) and GIF (`attachment_share_url`) parameters, with no video parameter, so comments can't carry videos (checked 2026-11-04).
 - Graph API version: `v26.0` (`oauth.FB`).
 
 ## YouTube / Google
@@ -62,7 +63,9 @@ OAuth publishing status (verified 2026-10-17, [OAuth 2.0](https://developers.goo
 - **Personal use (under 100 users) needs no verification**: once the publishing status is changed to "In production", users can click through the "unverified app" warning when signing in; verification is required only above 100 users. Unverified apps must still follow the API User Data Policy.
 - Videos uploaded by unverified API projects are **not** restricted to private (per the `videos.insert` docs, 2026-10-17); the workbench actually uploaded an "Unlisted" video, and its actual status was Unlisted.
 
-API specifications: `videos.insert` uses resumable upload; `thumbnails.set` accepts JPEG / PNG up to 2 MB; custom thumbnails for Shorts are not listed as supported by the API (disabled in the workbench). Quota: `videos.insert` has its own daily upload allowance; other reads share `youtube.quota` (see `docs/en/operations.md`).
+Community posts (checked 2026-11-05, [YouTube Data API reference](https://developers.google.com/youtube/v3/docs), [revision history](https://developers.google.com/youtube/v3/revision_history)): the Data API's resource list has no method for creating Community posts (now called "Posts" in Studio), and no 2025–2026 revision adds one, so the workbench can't publish YouTube posts; they have to be posted by hand in YouTube Studio or the app. The revision history also says that from 2026-11-03 `thumbnails.set` supports custom thumbnails for Shorts after processing, and from 2026-09-14 the thumbnail limit rose from 2 MB to 50 MB; the workbench caught up on 2026-11-05.
+
+API specifications: `videos.insert` uses resumable upload; `thumbnails.set` accepts JPEG / PNG up to 50 MB (since 2026-09-14, previously 2 MB); custom thumbnails for Shorts can be set only after processing completes (since 2026-11-03), and the docs don't say what error comes back before that, so the workbench checks `uploadStatus` from `videos.list` first. Quota: `videos.insert` has its own daily upload allowance; other reads share `youtube.quota` (see `docs/en/operations.md`).
 
 ## TikTok
 
@@ -102,6 +105,21 @@ Sources: [Developer Terms of Service](https://www.tiktok.com/legal/page/global/t
 - **Covers** ([Query Videos](https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query), checked 2026-10-19): `POST /v2/video/query/` needs `video.list`, takes at most 20 video IDs per call and returns only the authorized account's own videos; the docs say it can be used to "refresh the expiry of cover URLs" (without saying how long). The workbench's thumbnail cache uses it to get `cover_image_url` and immediately shrinks it to a JPEG file. The CDN domains aren't documented; the workbench currently allows `tiktokcdn.com` / `tiktokcdn-us.com` / `tiktokcdn-eu.com`, **not tested**.
 - **Comments**: only TikTok API for Business can read them; applicants must be a company using a company-domain email, and individual developers aren't accepted → the workbench doesn't read TikTok comments.
 
+## X (verified 2026-11-05)
+
+Sources: [X API pricing](https://docs.x.com/x-api/getting-started/pricing), [OAuth 2.0 authorization code flow (PKCE)](https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code), [Chunked media upload](https://docs.x.com/x-api/media/quickstart/media-upload-chunked), [Media best practices](https://docs.x.com/x-api/media/quickstart/best-practices).
+
+| Rule | Details | What the workbench does |
+|---|---|---|
+| Billing | No free posting tier; each call deducts prepaid credits: about $0.015 per regular post and about $0.20 per post containing a URL; reading your own posts (owned reads) costs about $0.001 each. When credits run out the API returns 402. | The confirm dialog and editor warn "contains a link, higher cost"; a 402 asks the user to top up or raise the cap in the developer portal. Self-hosters must top up credits in the developer portal and set a monthly spending cap. |
+| Authorization | OAuth 2.0 authorization code + PKCE (S256); scopes `tweet.read tweet.write users.read media.write offline.access`. Access tokens last 2 hours; the refresh token rotates on every refresh. | Tokens are stored encrypted, refreshed before expiry, and the new refresh token is saved. "Disconnect" calls the revoke endpoint. |
+| Posting | `POST /2/tweets`; text uses weighted counting up to 280 (CJK characters and emoji count 2, every URL counts 23). Content identical to a recent post is rejected (403 duplicate). | The editor uses the same weighted counting and highlights the overflow in red; duplicates ask the user to edit the text and retry. |
+| Media | v2 `/2/media/upload` initialize → append → finalize, then STATUS polling for video processing. JPEG / PNG images up to 5 MB each, up to 4, or 1 video. Videos over 140 seconds need an X Premium account, and the API cannot check the account tier in advance. | Checked against these specs; over 140 seconds only warns, it does not block. |
+| Retries | When a response is lost there is no way to tell whether the post went out. | Before retrying, the workbench reads its own latest posts (owned read, about $0.001) and skips posting again if it finds the post, so you are not charged twice. |
+| Reading | Replies, mentions and metrics are all separately billed reads. | Phase 1 reads none of them; phase 2 adds them only with a monthly spending cap. |
+
+- **Developer agreement**: the full text of the X Developer Agreement and Policy was not reviewed clause by clause this time, **unverified**. The workbench only posts content the user confirmed and does not collect other people's data.
+
 ## Audience data (per platform, verified 2026-10-19)
 
 | Platform | Officially available | Conditions | What the workbench does |
@@ -112,6 +130,7 @@ Sources: [Developer Terms of Service](https://www.tiktok.com/legal/page/global/t
 | YouTube | YouTube Analytics: `viewerPercentage` by `ageGroup`, `gender`; `views` by `country` | `yt-analytics.readonly`. Age and gender cover signed-in viewers only. Studio's "When your viewers are on YouTube" isn't available through the API (**inference**: the official dimension list has no matching item) | Last 28 days |
 | TikTok | The Display API has no audience data; the Business API (business accounts) has age, gender, location and active hours | The Business API needs a separate application and review, and is limited to business accounts | Not done; the UI explains why |
 | LINE | The Messaging API has demographics for the official account's friends (`/v2/bot/insight/demographic`) | Requires connecting the brand's official account; the workbench uses LINE only for notifications (`AGENTS.md`) | Not done; the UI explains why |
+| X | Audience data is a separately billed read | Credits per call | Phase 1 does not read it |
 
 Sources: [IG account Insights](https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights), [Deprecated Page Insights metrics](https://developers.facebook.com/documentation/pages-api/platforminsights/page/deprecated-metrics), [Threads Insights](https://developers.facebook.com/docs/threads/insights/).
 
@@ -124,6 +143,7 @@ Sources: [IG account Insights](https://developers.facebook.com/docs/instagram-pl
 | YouTube | Analytics: `averageViewDuration`, `estimatedMinutesWatched`, `averageViewPercentage`; the retention curve `audienceWatchRatio` needs a separate report call per video | Average view percentage comes in the same call as the existing report; the retention curve isn't fetched for now (one extra call per video would eat into the 420-call cap per round) |
 | Threads | Post insights only have views, likes, replies, reposts, quotes, shares | No watch time or retention; the UI explains this |
 | TikTok | The Display API `video/list` only has view / like / comment / share counts and duration; watch time and completion rate need the Business API (business accounts, separate review) | Not done; the UI explains this |
+| X | Post metrics are a separately billed read | Phase 1 does not read them |
 
 Sources: [IG Media Insights](https://developers.facebook.com/documentation/instagram-platform/reference/instagram-media/insights), [Page / Post Insights](https://developers.facebook.com/docs/graph-api/reference/insights), [YouTube Analytics metrics](https://developers.google.com/youtube/analytics/metrics).
 

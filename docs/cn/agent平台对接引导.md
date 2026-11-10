@@ -4,7 +4,7 @@
 >
 > **Agent：开始前先判断用户使用的语言**（看用户发给你的消息；还没开口就看系统语言）。不是简体中文时，改读上面对应语言的版本照做，全程用那种语言与用户沟通；四种都不符合时读 English 版，但仍用用户的语言回复。
 
-这份文档是写给 **AI agent** 看的。用户第一次搭好工作台后，要把 Facebook 公共主页、Instagram、Threads、YouTube、TikTok 连进来，得先在各平台的**开发者后台**创建自己的应用。步骤繁琐，你可以操作浏览器替用户填写设置，用户只做必须本人做的部分。
+这份文档是写给 **AI agent** 看的。用户第一次搭好工作台后，要把 Facebook 公共主页、Instagram、Threads、YouTube、TikTok、X 连进来，得先在各平台的**开发者后台**创建自己的应用。步骤繁琐，你可以操作浏览器替用户填写设置，用户只做必须本人做的部分。
 
 - 前提：已按 [`agent安装引导.md`](agent安装引导.md)（给 AI Agent 的安装引导）完成阶段 1–5（工作台能用内部 https 地址打开、隐私政策与服务条款已公开）。
 - 你能操作浏览器时按这份文档做（例如 Claude in Chrome、Claude 内置浏览器、Codex 的浏览器工具）；不能时，就按同样的步骤用文字一步一步带用户自己点。
@@ -44,7 +44,7 @@
 1. （先问）“创建应用” <https://developers.facebook.com/apps/creation/>，名称用品牌名；用例选择与公共主页相关的项目，其余点击“下一步”。
 2. “应用设置 → 基本”：填写隐私政策网址、服务条款网址、数据删除说明网址（可指向隐私政策的 `#delete`）、类别与联系邮箱，保存。应用编号与密钥请用户自己粘贴到工作台 Meta 卡片的“应用 ID”与“应用密钥”。
 3. 在“Facebook 登录 → 设置”（通过用例流程创建的叫“Facebook 企业版登录 → 设置”）的“有效 OAuth 跳转 URI”中粘贴 meta 回调网址，点击“保存更改”。
-4. 在“用例 → 自定义 → 权限和功能”中逐个找到并点击“添加”（不支持一次全部添加，可用页面搜索）：`pages_show_list`、`pages_read_engagement`、`pages_read_user_content`、`pages_manage_metadata`、`pages_manage_posts`、`read_insights`。可选：`pages_manage_engagement`（用于视频自定义封面；缺少时只停用封面功能）。
+4. 在“用例 → 自定义 → 权限和功能”中逐个找到并点击“添加”（不支持一次全部添加，可用页面搜索）：`pages_show_list`、`pages_read_engagement`、`pages_read_user_content`、`pages_manage_metadata`、`pages_manage_posts`、`read_insights`。可选：`pages_manage_engagement`（用于视频自定义封面与 Facebook 评论；缺少时只停用这两项功能）。
 5. 有 Instagram 时：在同一页面再添加 `instagram_basic`、`instagram_manage_comments`、`instagram_manage_insights`、`instagram_content_publish`。同一页面找不到时，到“用例”添加“管理 Instagram 上的消息和内容”，选择“通过 Facebook 登录设置 API”后再添加。
 6. 交给用户：在工作台点击“连接 Meta 账号”，在授权页面点击“编辑设置”（或“编辑访问权限”）勾选公共主页和 Instagram。
 
@@ -95,6 +95,15 @@
 8. 交给用户：Sandbox“Credentials”中的 Client key 与 Client secret 由用户自己粘贴到工作台 TikTok 卡片，再点击“连接 TikTok 账号”。
 
 **绝对不要**：提交 Production 审核（TikTok 不接受私人或自用工具）、开启 Direct Post、申请 TikTok API for Business（只接受公司身份）。提醒用户：视频只会发送到收件箱草稿（24 小时内最多 5 个待处理），文案与封面在 App 内处理，发布时选择“所有人”，之后用未登录的浏览器确认已公开。
+
+## X
+
+后台：<https://console.x.com/>
+
+1. 左侧“Apps”通常已有自动创建的应用（Default Project、Pay Per Use），直接使用；没有才（先问）点“Create App”，名称用品牌名。
+2. 交给用户：在左侧“Billing”→“Credits”点“Purchase credits”充值，并在“Billing Cycle Cap”点“Manage Spend Cap”设置花费上限（付款一律由本人操作）。X API 按次扣点数：普通帖子约 $0.015、含网址约 $0.20。
+3. 点进应用，“Keys & Tokens”最下方“User authentication settings”点“Set up”：App permissions 选“Read and write”，Type of App 选“Web App, Automated App or Bot”，Callback URI / Redirect URL 粘贴 x 回调网址，Website URL 填用户的网站，保存。
+4. 交给用户：OAuth 2.0 的 Client ID 与 Client Secret 由用户自己粘贴到工作台 X 卡片，再点“连接 X 账号”（权限 `tweet.read`、`tweet.write`、`users.read`、`media.write`、`offline.access`）。
 
 ## 收尾
 

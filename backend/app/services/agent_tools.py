@@ -197,7 +197,7 @@ PUBLISH_SPECS = {
         False,
         "查看完整發佈草稿或結果，所有角色可讀；post_id 必填，取自 list_publish_posts。"
         "回文案、captions平台覆寫、媒體型別大小尺寸長度（無路徑）、平台、台北排程、"
-        "version、platform_options（facebook.video_format、instagram.share_to_feed、"
+        "version、platform_options（facebook.video_format／comments、instagram.share_to_feed／comments、"
         "threads.segments及segments_custom、youtube.title／privacy／made_for_kids）、thumbnail"
         "（YouTube自訂縮圖，無縮圖為null；不算發佈素材）、"
         "cover（Instagram Reels封面）、facebook_cover（Facebook影片封面），"
@@ -227,8 +227,8 @@ PUBLISH_SPECS = {
         "facebook_unpublished可選，預設false，只影響Facebook，"
         "true代表Facebook存成草稿不發佈（Meta Business Suite草稿匣，"
         "Instagram／Threads照常公開），需platforms含facebook，更新時省略沿用原值；"
-        "platform_options可選，內含facebook.video_format=feed或reels（新草稿reels）、instagram.share_to_feed布林（true）、"
-        "threads.segments字串陣列及segments_custom布林；第一段為Threads文案、其後為各則回覆；提供分段即視為手動，false時只有Threads文案一則，不自動拆段，Threads分段不加編號，超過500字由規則提示從第幾個字開始超出；"
+        "platform_options可選，內含facebook.video_format=feed或reels（新草稿reels）、facebook.comments字串陣列（最多20則，Facebook發文成功後由粉專依序留言，FB草稿不留，需pages_manage_engagement）、instagram.share_to_feed布林（true）、instagram.comments字串陣列（最多20則、只有文字，Instagram發文成功後由IG帳號依序留言，限時動態不留）、"
+        "threads.segments字串陣列及segments_custom布林；第一段為Threads文案、其後為各則回覆；提供分段即視為手動，false時只有Threads文案一則，不自動拆段，Threads分段不加編號，超過500字由規則提示超過上限；"
         "youtube.title（空白或省略時沿用YouTube說明第一行；標題上限100字，發佈時必須有標題）、youtube.privacy=public／unlisted／private（預設public）、"
         "youtube.made_for_kids布林（預設false）；platforms可含youtube，只支援format=video，說明為平台文案youtube（上限5000位元組），"
         "縮圖用create_upload_link的role=thumbnail上傳，不能直接指定縮圖編號；"
@@ -237,6 +237,8 @@ PUBLISH_SPECS = {
         "不能直接指定封面編號；"
         "platforms可含tiktok，只支援format=video，影片送到TikTok收件匣、由使用者在App內補文案並發佈，"
         "平台文案tiktok不會送出（只供使用者複製），沒有可設定的選項；"
+        "platforms可含x（文案依加權280字計：中文字算2、網址23；圖片JPG／PNG每張5MB最多4張或1支影片；"
+        "X按次扣預付點數，含網址的貼文較貴），不支援限時動態，沒有可設定的選項；"
         "更新省略平台或子選項沿用原值，未公開Facebook影片強制feed。更新另填post_id及version。回草稿與新version，沿用驗證且檢查禁語，來源標記連線名稱。"
         "下一步：版本衝突先get_publish_post重讀；排程先cancel_schedule再改；已送出不可改刪。",
     ),
@@ -257,7 +259,7 @@ PUBLISH_SPECS = {
         posting.Upload,
         True,
         "取得草稿一次性媒體上傳連結，需對應功能權限；post_id、filename必填（僅檔名），role可選media（預設，發佈素材）"
-        "或thumbnail（YouTube自訂縮圖，僅影片草稿、JPG／PNG、2MB內，取代舊縮圖、不算素材）"
+        "或thumbnail（YouTube自訂縮圖，僅影片草稿、JPG／PNG、50MB內，取代舊縮圖、不算素材）"
         "或cover（Instagram Reels封面，僅影片草稿、JPG／PNG、8MB內、建議9:16，"
         "取代舊封面、不算素材）或fb_cover（Facebook影片／Reels封面，僅影片草稿、JPG／PNG、8MB內，"
         "影片成功後另外套用，需pages_manage_engagement）。回當次origin的"

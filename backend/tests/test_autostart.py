@@ -110,6 +110,20 @@ def test_fixed_commands_and_actual_state(client, task):
         assert "$a.Execute -eq $exe" in script and "$a.Arguments -ceq $arguments" in script
         assert "$actions.Count -ne 1 -or $triggers.Count -ne 1" in script
         assert "SameUser $t.UserId" in script and "SameUser $p.UserId" in script
+        # The same switch owns the gateway watchdog; a foreign task of that name is a conflict.
+        for token in (
+            "$watchName = 'MWB-GatewayWatchdog'",
+            "System32\\conhost.exe",
+            "'--headless \"' + $exe",
+            "scripts\\watchdog.ps1",
+            "-RepetitionInterval (New-TimeSpan -Minutes 5)",
+            "New-TimeSpan -Minutes 10",
+            "$a.Execute -eq $watchExe -and $a.Arguments -ceq $watchArguments",
+            "Unregister-ScheduledTask -TaskName $watchName",
+        ):
+            assert token in script
+        guard = script.index("if ($watch -and -not (WatchMatches $watch)) { exit 20 }")
+        assert guard < script.index("Register-ScheduledTask -TaskName $watchName")
     # GET re-reads externally changed state, without writing audit records.
     task[0]["enabled"] = True
     assert client.get("/api/workspace/autostart").json()["enabled"] is True

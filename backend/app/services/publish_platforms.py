@@ -289,6 +289,7 @@ def publish(
     story_url=None,
     thumbnail=None,
     cover_url=None,
+    comment_images=None,
     category=None,
     quota=None,
 ):
@@ -298,6 +299,13 @@ def publish(
 
         return publish_tiktok.publish(
             settings, token, post, media, progress=progress, checkpoint=checkpoint
+        )
+    if platform == "x":
+        # 由工作檯直接上傳檔案位元組，不使用公開媒體連結。
+        from app.services import publish_x
+
+        return publish_x.publish(
+            settings, token, account, post, media, progress=progress, checkpoint=checkpoint
         )
     if platform == "youtube":
         # 影片直接以官方 resumable upload 送出位元組，不使用公開媒體連結。
@@ -318,8 +326,15 @@ def publish(
         return publish_stories(
             settings, platform, account, token, media, urls, progress, checkpoint, story_url
         )
-    segments = publish_rules.threads_segments(post) if platform == "threads" else []
     progress = progress or {}
+    if platform in {"facebook", "instagram"} and (
+        publish_rules.platform_comments(post, platform) or "post_id" in progress
+    ):
+        return publish_with_comments(
+            settings, platform, account, token, post, media, urls, media_ready, progress,
+            checkpoint, cover_url, comment_images if platform == "facebook" else None,
+        )
+    segments = publish_rules.threads_segments(post) if platform == "threads" else []
     if platform != "threads" or (len(segments) <= 1 and not progress.get("segment_ids")):
         if platform == "threads" and segments:
             post = SimpleNamespace(
@@ -385,6 +400,141 @@ def publish(
             permalink = link
             persist()
     return ids[0], permalink
+
+
+def publish_with_comments(
+    settings,
+    platform,
+    account,
+    token,
+    post,
+    media,
+    urls,
+    media_ready,
+    progress,
+    checkpoint,
+    cover_url,
+    comment_images=None,
+):
+    """先發貼文，再由粉專／IG 帳號依序留評論（POST /{貼文}/comments）。
+
+    Facebook 評論可附圖（source 檔案）；Instagram 只收文字。每個成功的編號在下一個 HTTP 前
+    持久化；失敗後重試只接續還沒留的評論，不重發貼文。
+    """
+    comments = publish_rules.platform_comments(post, platform)
+    images = list(comment_images or [])[: len(comments)]
+    images += [None] * (len(comments) - len(images))
+    image_ids = [row.id if row else None for row in images]
+    identity, permalink = progress.get("post_id"), progress.get("first_permalink")
+    ids = list(progress.get("comment_ids", []))
+    if ids and (
+        progress.get("comments") != comments
+        or progress.get("comment_media", [None] * len(comments)) != image_ids
+    ):
+        raise PlatformFailure("interrupted")
+
+    def persist(failed=None):
+        if checkpoint:
+            checkpoint(
+                {
+                    "post_id": identity,
+                    "comments": comments,
+                    "comment_media": image_ids,
+                    "comment_ids": ids.copy(),
+                    "successful_comments": len(ids),
+                    "total_comments": len(comments),
+                    "first_permalink": permalink,
+                    "failed_comment": failed,
+                },
+                identity,
+                permalink,
+            )
+
+    resumed = identity is not None
+    if not resumed:
+        identity, permalink = publish_single(
+            settings, platform, account, token, post, media, urls, media_ready,
+            cover_url=cover_url,
+        )
+        persist()
+    lookup = existing_comments if platform == "facebook" else existing_instagram_comments
+    with client_factory() as client:
+        # 重試前一次可能已留言成功但沒收到回應：先找帳號自己留過的同文字評論，避免重複留言。
+        existing = lookup(client, identity, account, token) if resumed else []
+        for index in range(len(ids), len(comments)):
+            found = next(
+                (c for c in existing if (c[1] or "") == comments[index] and c[0] not in ids), None
+            )
+            try:
+                if found:
+                    comment = found[0]
+                else:
+                    comment = post_comment(
+                        client, settings, identity, token, comments[index], images[index]
+                    )
+            except PlatformFailure:
+                persist(index + 1)
+                raise
+            ids.append(comment)
+            persist()
+    return identity, permalink
+
+
+def post_comment(client, settings, identity, token, message, image):
+    data = {"message": message} if message else {}
+    if image is None:
+        body = request(client, FB, safe_id(identity) + "/comments", token, data=data)
+    else:
+        with path_for(settings, image).open("rb") as file:
+            body = request(
+                client,
+                FB,
+                safe_id(identity) + "/comments",
+                token,
+                data=data,
+                files={"source": ("media", file, image.mime)},
+            )
+    return safe_id(str(body.get("id", "")))
+
+
+def existing_instagram_comments(client, identity, account, token):
+    # IG 評論的 user 只在留言者是 app 使用者（這個 IG 帳號）時回傳，其他人只回 username。
+    body = request(
+        client,
+        FB,
+        safe_id(identity) + "/comments",
+        token,
+        params={"fields": "id,text,user", "limit": "100"},
+    )
+    rows = body.get("data") if isinstance(body.get("data"), list) else []
+    found = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str):
+            continue
+        user = row.get("user")
+        user = user.get("id") if isinstance(user, dict) else user
+        if user == account:
+            found.append((row["id"], row.get("text")))
+    return found
+
+
+def existing_comments(client, identity, account, token):
+    body = request(
+        client,
+        FB,
+        safe_id(identity) + "/comments",
+        token,
+        params={"fields": "id,message,from", "filter": "stream", "limit": "100"},
+    )
+    rows = body.get("data") if isinstance(body.get("data"), list) else []
+    return [
+        (row["id"], row.get("message"))
+        for row in rows
+        if isinstance(row, dict)
+        and isinstance(row.get("id"), str)
+        and isinstance(row.get("from"), dict)
+        and row["from"].get("id") == account
+    ]
 
 
 def publish_single(

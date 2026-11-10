@@ -20,6 +20,7 @@ from app.api.credentials import router as credentials_router
 from app.api.csv_import import router as csv_import_router
 from app.api.dependencies import enforce_password_change
 from app.api.exports import router as exports_router
+from app.api.flows import router as flows_router
 from app.api.health import router as health_router
 from app.api.ideation import router as ideation_router
 from app.api.members import roles_router
@@ -166,6 +167,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(credentials_router)
     application.include_router(oauth_router)
     application.include_router(publish_router)
+    application.include_router(flows_router)
     application.include_router(media_router)
     application.include_router(workspace_router)
     application.include_router(exports_router)
@@ -181,4 +183,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     return application
 
 
-app = create_app()
+def __getattr__(name: str):
+    # uvicorn 讀取 app.main:app 時才建立；只匯入 create_app 的隔離驗收不會因此讀到正式 .env。
+    if name == "app":
+        global app
+        app = create_app()
+        return app
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -138,6 +138,42 @@ function Start-MwbDetached {
     return $process.Id
 }
 
+function Get-MwbGatewayAgent {
+    param([string]$Root, [string]$Node)
+    # 閘道（ngrok 或 cloudflared）的本機狀態埠與網址，由 .env 的 WEBHOOK_GATEWAY 決定。
+    Push-Location $Root
+    try {
+        $json = & $Node --input-type=module -e "import {readSettings,gatewayAgent} from './scripts/webhooks.mjs'; console.log(JSON.stringify(gatewayAgent(readSettings())))"
+        if ($LASTEXITCODE -ne 0) { throw 'WEBHOOK_GATEWAY 設定不合法（只能是 ngrok 或 cloudflare）。' }
+    } finally { Pop-Location }
+    return ($json | ConvertFrom-Json)
+}
+
+function Start-MwbGateway {
+    param([string]$Root, [string]$Node, [int]$Seconds)
+    # start-all.ps1 與 watchdog.ps1 共用：啟動 webhooks.mjs up，等到固定網址驗收通過才返回。
+    $runtime = Join-Path $Root '.runtime'
+    $stdout = Join-Path $runtime 'gateway.stdout.log'
+    $agent = Get-MwbGatewayAgent -Root $Root -Node $Node
+    $servicePid = Start-MwbDetached -FilePath $Node -ArgumentList @((Join-Path $Root 'scripts/webhooks.mjs'), 'up') -WorkingDirectory $Root -StdoutPath $stdout -StderrPath (Join-Path $runtime 'gateway.stderr.log')
+    Set-Content -LiteralPath (Join-Path $runtime 'gateway.pid') -Value $servicePid -Encoding ASCII
+    try {
+        Wait-MwbHealth -Url $agent.url -Name gateway -Root $Root -Seconds $Seconds
+        # up 會驗證既有固定網址；等它完成後才算就緒。
+        $deadline = [DateTime]::UtcNow.AddSeconds($Seconds)
+        do {
+            if (-not (Get-MwbProcess -Name gateway -Root $Root)) { throw 'Webhook 服務啟動失敗。' }
+            if ((Test-Path -LiteralPath $stdout) -and (Select-String -LiteralPath $stdout -Pattern '固定網址驗收通過' -Quiet)) { return }
+            if ([DateTime]::UtcNow.Second % 10 -eq 0) { Write-Host '等待固定網址驗收完成；進度見 .runtime/gateway.stdout.log。' }
+            Start-Sleep -Seconds 1
+        } while ([DateTime]::UtcNow -lt $deadline)
+        throw 'Webhook 固定網址驗收逾時；請檢查 .runtime/gateway.stdout.log、gateway.stderr.log 及 gateway-startup-tail.log 最後 12 行。'
+    } catch {
+        try { Stop-MwbProcess -Name gateway -Root $Root } catch { }
+        throw
+    }
+}
+
 function Test-MwbPortFree {
     param([int]$Port)
     $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
@@ -166,7 +202,7 @@ function Wait-MwbHealth {
         if (-not (Get-MwbProcess -Name $Name -Root $Root)) { $detail = ''
             if ($Name -eq 'gateway') {
                 $log = Join-Path $Root '.runtime/gateway.stderr.log'
-                if (Test-Path -LiteralPath $log) { $detail = (Get-Content -LiteralPath $log -Encoding UTF8 | Where-Object { $_ -match '啟動失敗|找不到 ngrok|NGROK_AUTHTOKEN|逾時|已等待' } | Select-Object -Last 1) }
+                if (Test-Path -LiteralPath $log) { $detail = (Get-Content -LiteralPath $log -Encoding UTF8 | Where-Object { $_ -match '啟動失敗|找不到 ngrok|NGROK_AUTHTOKEN|找不到 cloudflared|CLOUDFLARE_TUNNEL_TOKEN|WEBHOOK_PUBLIC_URL|逾時|已等待' } | Select-Object -Last 1) }
             }
             throw "$Name 啟動失敗：$detail；請檢查 .runtime 的服務日誌。" }
         try {

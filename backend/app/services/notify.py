@@ -40,12 +40,14 @@ PLATFORM_NAMES = {
     "threads": "Threads",
     "youtube": "YouTube",
     "tiktok": "TikTok",
+    "x": "X",
 }
 
 OAUTH_NOTICES = {
     "meta": "Meta 授權即將到期，請重新連結",
     "threads": "Threads 授權即將到期，請重新連結",
     "tiktok": "TikTok 授權即將到期或已失效，請到工作檯重新連結",
+    "x": "X 授權已失效，請到工作檯重新連結",
 }
 
 

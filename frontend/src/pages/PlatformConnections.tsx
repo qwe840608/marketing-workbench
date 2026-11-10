@@ -7,6 +7,8 @@ import { ConfirmDialog } from './ConfirmDialog';
 const GuideModal = lazy(() => import('./GuideModal'));
 // YouTube 政策要求刪除方式說清楚：只刪工作檯存的資料，不影響 YouTube 上的影片。
 export const TIKTOK_DISCONNECT_NOTICE = t('工作檯會撤銷 TikTok 授權，並刪除已同步的 TikTok 影片資料與數據；TikTok 上的影片不受影響，要刪除影片請到 TikTok App 操作。');
+export const X_DISCONNECT_NOTICE = t('工作檯會撤銷 X 授權並移除帳號連結；已發到 X 的貼文不受影響，要刪除貼文請到 X 操作。');
+export const X_COST_NOTICE = t('X API 按次扣預付點數：一般貼文約 $0.015、含網址約 $0.20，請先在開發者後台儲值並設定每月上限');
 export const YOUTUBE_DISCONNECT_NOTICE = t('工作檯會撤銷授權，並刪除已同步的 YouTube 影片資料、縮圖、留言與主題發想報告中的 YouTube 引用；YouTube 上的影片不受影響，要刪除影片請到 YouTube 操作。');
 
 type Credential = { name: string; configured: boolean; source: 'DB' | 'env' | '未設定'; mask: string | null; version: number; error: string | null };
@@ -18,6 +20,7 @@ const groups = [
   { id: 'threads', title: 'Threads', names: ['THREADS_APP_ID', 'THREADS_APP_SECRET', 'THREADS_USER_ID', 'THREADS_ACCESS_TOKEN'] },
   { id: 'youtube', title: 'YouTube', names: ['YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET'] },
   { id: 'tiktok', title: 'TikTok', names: ['TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET'] },
+  { id: 'x', title: 'X', names: ['X_CLIENT_ID', 'X_CLIENT_SECRET'] },
   { id: 'notify', title: t('LINE 通知'), names: ['NOTIFY_LINE_CHANNEL_ACCESS_TOKEN', 'NOTIFY_LINE_CHANNEL_SECRET', 'NOTIFY_LINE_BOT_USER_ID', 'NOTIFY_LINE_GROUP_ID'] },
   { id: 'jev', title: 'jev', names: ['JEV_API_KEY', 'JEV_API_BASE_URL'] },
 ];
@@ -32,6 +35,7 @@ const labels: Record<string, string> = {
   NOTIFY_LINE_BOT_USER_ID: t('通知用官方帳號 User ID'), NOTIFY_LINE_GROUP_ID: t('接收通知的群組 ID'),
   YOUTUBE_CLIENT_ID: t('OAuth 用戶端 ID'), YOUTUBE_CLIENT_SECRET: t('OAuth 用戶端密鑰'),
   TIKTOK_CLIENT_KEY: 'Client key', TIKTOK_CLIENT_SECRET: 'Client secret',
+  X_CLIENT_ID: 'Client ID', X_CLIENT_SECRET: 'Client Secret',
   JEV_API_KEY: tx('field', 'API 金鑰'), JEV_API_BASE_URL: t('API 網址'),
 };
 
@@ -69,9 +73,9 @@ function ConnectionGroup({ group, data, onChange, oauth, refresh }: { group: typ
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [pageId, setPageId] = useState(''), [guideOpen, setGuideOpen] = useState(false), [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const guide = group.id as GuideId;
-  const youtube = group.id === 'youtube', tiktok = group.id === 'tiktok';
-  // YouTube 與 TikTok 都是使用者自建的 OAuth 用戶端：卡片上直接設定金鑰、可中斷連結，權杖自動換發。
-  const clientApp = youtube || tiktok;
+  const youtube = group.id === 'youtube', tiktok = group.id === 'tiktok', x = group.id === 'x';
+  // YouTube、TikTok、X 都是使用者自建的 OAuth 用戶端：卡片上直接設定金鑰、可中斷連結。
+  const clientApp = youtube || tiktok || x;
   const oauthPlatform = group.id === 'meta' || group.id === 'threads' || clientApp;
   const status = oauth?.platforms[group.id];
   const correctOrigin = !!oauth && oauth.backoffice_origin.startsWith('https://') && location.origin === oauth.backoffice_origin;
@@ -114,10 +118,11 @@ function ConnectionGroup({ group, data, onChange, oauth, refresh }: { group: typ
       {dataHint && <p className="notice warning oauth-permissions" role="status">{youtube ? t('需要重新連結以取得上傳權限') : t('需要重新連結以取得數據與回覆權限')}</p>}
       {youtube && status?.linked && !!status.categories?.length && <label className="youtube-category">{t('上傳類別')}<select aria-label={t('YouTube 上傳類別')} value={status.category_id} disabled={busy} onChange={e => void saveCategory(e.target.value)}>{status.categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
       {group.id === 'meta' && !!oauth?.pages.length ? <form className="oauth-page-choice" onSubmit={e => { e.preventDefault(); void choose(); }}><label>{t('粉絲專頁')}<select value={pageId || oauth.pages[0].id} onChange={e => setPageId(e.target.value)} disabled={busy}>{oauth.pages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><button className="primary" disabled={busy}>{t('使用這個粉專')}</button></form>
-        : <button className={dataHint || (clientApp && status?.linked) ? 'secondary' : 'primary'} disabled={busy || !correctOrigin || (clientApp && !status?.configured)} onClick={() => void link()}>{status?.linked ? t('重新連結') : t('連結 {platform} 帳號', { platform: group.id === 'meta' ? 'Meta' : youtube ? 'YouTube' : tiktok ? 'TikTok' : 'Threads' })}</button>}
+        : <button className={dataHint || (clientApp && status?.linked) ? 'secondary' : 'primary'} disabled={busy || !correctOrigin || (clientApp && !status?.configured)} onClick={() => void link()}>{status?.linked ? t('重新連結') : t('連結 {platform} 帳號', { platform: group.id === 'meta' ? 'Meta' : clientApp ? group.title : 'Threads' })}</button>}
       {oauth && !correctOrigin && <p className="notice oauth-origin">{t('請用內部 https 網址開啟工作檯後再連結')}{oauth.backoffice_origin.startsWith('https://') && <> · <a href={oauth.backoffice_origin}>{t('開啟工作檯')}</a></>}</p>}
       {clientApp && status?.linked && <button className="secondary" disabled={busy} onClick={() => setConfirmDisconnect(true)}>{t('中斷連結')}</button>}
-      {confirmDisconnect && <ConfirmDialog heading={t('中斷 {platform} 連結？', { platform: group.title })} confirmLabel={t('中斷並刪除資料')} danger onClose={() => setConfirmDisconnect(false)} onConfirm={() => { setConfirmDisconnect(false); void disconnect(); }}><p className="youtube-disconnect-notice">{tiktok ? TIKTOK_DISCONNECT_NOTICE : YOUTUBE_DISCONNECT_NOTICE}</p></ConfirmDialog>}
+      {confirmDisconnect && <ConfirmDialog heading={t('中斷 {platform} 連結？', { platform: group.title })} confirmLabel={t('中斷並刪除資料')} danger onClose={() => setConfirmDisconnect(false)} onConfirm={() => { setConfirmDisconnect(false); void disconnect(); }}><p className="youtube-disconnect-notice">{tiktok ? TIKTOK_DISCONNECT_NOTICE : x ? X_DISCONNECT_NOTICE : YOUTUBE_DISCONNECT_NOTICE}</p></ConfirmDialog>}
+      {x && <p className="notice x-cost" role="note">{X_COST_NOTICE}{t('。')}</p>}
       {tiktok && <p className="notice tiktok-comments"><strong>{t('留言（選用）')}</strong>{tiktokCommentNotice}{t('。')}</p>}
     </>}
     {(group.id === 'threads' || clientApp) && <div className="list-box">{data.items.filter(row => group.names.includes(row.name) && (clientApp || ['THREADS_APP_ID', 'THREADS_APP_SECRET'].includes(row.name))).map(row => <CredentialField key={row.name} row={row} editing={editingRow === row.name} setEditing={editing => setEditingRow(editing ? row.name : null)} onChange={value => { onChange(value); void refresh().catch(() => setError(t('無法更新連線狀態'))); }} />)}</div>}
@@ -141,7 +146,7 @@ export function PlatformConnections({ canManage }: { canManage: boolean }) {
     setResult(url.searchParams.get('oauth_result') || '');
     url.searchParams.delete('oauth_result'); url.searchParams.delete('oauth_pending'); history.replaceState(history.state, '', url);
     // 平台導回時瀏覽器不帶登入 cookie，後端只暫存授權碼；回到頁面後由目前登入的 session 完成連結。
-    if (pending === 'meta' || pending === 'threads' || pending === 'youtube' || pending === 'tiktok') {
+    if (pending === 'meta' || pending === 'threads' || pending === 'youtube' || pending === 'tiktok' || pending === 'x') {
       api<{ result: string }>('/oauth/' + pending + '/complete', { method: 'POST', body: '{}', signal: c.signal })
         .then(r => { setResult(r.result); return api<OAuthStatus>('/oauth/status', { signal: c.signal }).then(setOAuth); })
         .catch(() => { if (!c.signal.aborted) setResult('failed'); });

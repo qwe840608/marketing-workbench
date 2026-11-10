@@ -5,7 +5,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-test('React AI 備援欄位、版本、中文錯誤、移除背景輪詢與實際模型（HTTP mock）', { timeout: 120000 }, (t) => {
+// verify_all 會直接跑 check_ai_resilience_frontend.py（同一份前端原始碼建置），這裡不再重建、重跑一次。
+const alreadyRun = process.env.VERIFY_ALL_RUNS_BROWSER_CHECKS === '1' && 'verify_all 已直接執行 check_ai_resilience_frontend';
+
+test('React AI 備援欄位、版本、中文錯誤、移除背景輪詢與實際模型（HTTP mock）', { timeout: 120000, skip: alreadyRun }, (t) => {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const dist = temporaryDirectory(t, 'frontend-build-');
   const build = spawnSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--outDir', dist], { cwd: path.join(root, 'frontend'), encoding: 'utf8' });

@@ -198,4 +198,6 @@ export default {
   "工作區與系統設定": "Workspace and system settings",
   'AI 會自動判斷粉絲在各平台貼文下的留言（含留言回覆）屬於哪一類；私訊、品牌自己的回覆和 CSV 匯入的留言不分類。分類結果用在儀表板的「客人正在問什麼」、Agent 查詢熱門問題，以及客訴與緊急留言的 LINE 通知。': 'AI sorts fans’ comments on your posts across platforms (including replies) into these categories. Direct messages, your brand’s own replies, and comments imported from CSV aren’t classified. The results feed “What customers are asking” on the Dashboard, the agent’s popular-questions lookup, and LINE alerts for complaints and urgent comments.',
   '每個類別可以補充這個品牌常見的說法或例子，AI 判斷時會一併參考；留空就照預設定義判斷。': 'Add phrases or examples typical for this brand to any category, and the AI will take them into account. Leave a field blank to use the default definition.',
+  '工作檯會撤銷 X 授權並移除帳號連結；已發到 X 的貼文不受影響，要刪除貼文請到 X 操作。': 'The workbench revokes X access and removes the account link. Posts already on X are not affected; delete them on X.',
+  'X API 按次扣預付點數：一般貼文約 $0.015、含網址約 $0.20，請先在開發者後台儲值並設定每月上限': 'X API charges prepaid credits per request: about $0.015 per regular post and $0.20 with a link. Buy credits and set a monthly cap in the developer portal first',
 } satisfies Record<string, string>;

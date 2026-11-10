@@ -24,9 +24,9 @@ def check_retired_ui(page):
     expect(page.get_by_role('button', name='價目表', exact=True)).to_have_count(0)
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
     if page.viewport_size['width'] < 600:
-        expect(page.locator('.mobile-bottom-nav button')).to_have_text(['儀表板', '貼文數據', '主題發想', '發佈', '設定'])
+        expect(page.locator('.mobile-bottom-nav button')).to_have_text(['儀表板', '貼文數據', '主題發想', '發佈', '流程', '設定'])
     else:
-        expect(page.locator('.workspace-nav button')).to_have_text(['儀表板', '貼文數據', '主題發想', '發佈', '設定'])
+        expect(page.locator('.workspace-nav button')).to_have_text(['儀表板', '貼文數據', '主題發想', '發佈', '流程', '設定'])
     expect(page.locator('.mobile-more')).to_have_count(0)
 
 

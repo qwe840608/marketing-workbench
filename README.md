@@ -26,7 +26,7 @@ A self-hosted marketing workbench for independent creators and their own brand: 
 - Fetches comments on your own posts every hour; personal data is redacted before anything is sent to a cloud model.
 - Gathers evidence from the comments on posts you select and produces 15 content ideas, each with your audience's own words.
 - Writes scripts from an idea, checks them against your brand's banned words, and exports them.
-- Publishes now or on a schedule to FB, IG, Threads and YouTube with a two-step confirmation; TikTok uploads can only go to the app's inbox as drafts.
+- Publishes now or on a schedule to FB, IG, Threads, YouTube and X with a two-step confirmation; TikTok uploads can only go to the app's inbox as drafts.
 - Built-in MCP endpoint (Streamable HTTP) for the Claude Code plugin, the Claude Desktop extension and Codex.
 - Members and roles (admin, marketer, viewer), audit log, and one-time recovery codes for administrators.
 - Interface in Traditional Chinese, Simplified Chinese, English and Japanese, down to a 390px phone width.
@@ -36,12 +36,13 @@ Tech stack: Python 3.13, uv, FastAPI, SQLAlchemy 2, Alembic, SQLite (WAL); front
 
 ## Read before you self-host
 
-When you host this workbench, you are the developer of your own Meta, Google and TikTok apps, and the platforms' terms apply to you.
+When you host this workbench, you are the developer of your own Meta, Google, TikTok and X apps, and the platforms' terms apply to you.
 
 - **Use it only for yourself or your own brand** (single brand). Do not use it to manage clients' accounts or open it to other people: that requires each platform's review, and TikTok explicitly does not accept it.
-- **Account types**: Facebook needs a Page; Instagram needs a professional account linked to that Page; Threads, YouTube and TikTok work with personal accounts.
+- **Account types**: Facebook needs a Page; Instagram needs a professional account linked to that Page; Threads, YouTube, TikTok and X work with personal accounts.
 - **Write your own privacy policy and terms of service**, publish them on your own website and enter them in each platform's developer settings. Templates are in [`docs/en/templates/`](docs/en/templates/).
 - **TikTok uploads arrive as inbox drafts only**; paste the caption in the TikTok app.
+- **The X API is pay-per-use**: buy credits in the X developer console first; every post uses credits. Only publishing is supported for now; X analytics and replies are not synced.
 - **Set the Google consent screen to production**, or YouTube authorization expires every 7 days.
 
 Details are in [`docs/en/compliance-notes.md`](docs/en/compliance-notes.md) (compliance notes), with the official source for each rule in [`docs/en/platform-policies.md`](docs/en/platform-policies.md) (platform policies).
@@ -165,7 +166,7 @@ Copy `.env.example` to `.env`. Every backend setting has a default, and paths le
 | `NOTIFY_LINE_*` | Messaging API credentials and group for LINE notifications |
 | `BACKUP_LOCAL_ROOT` / `BACKUP_DRIVE_ROOT` / `BACKUP_PASSWORD` / `SEVEN_ZIP_PATH` | Encrypted backup locations, password and 7-Zip path |
 
-Enter each platform's app keys (Meta, Threads, YouTube, TikTok) on the platform connection cards in the UI; they are stored encrypted in the database. Tokens are written by the connection flow, so you do not fill them in. Never commit keys, tokens or passwords to git.
+Enter each platform's app keys (Meta, Threads, YouTube, TikTok, X) on the platform connection cards in the UI; they are stored encrypted in the database. Tokens are written by the connection flow, so you do not fill them in. Never commit keys, tokens or passwords to git.
 
 ## Contributing
 

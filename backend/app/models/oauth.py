@@ -16,6 +16,8 @@ class OAuthState(Base):
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
     consumed: Mapped[bool] = mapped_column(default=False)
     encrypted_payload: Mapped[str] = mapped_column(Text, default="")
+    # PKCE（X）：授權開始時產生的 code_verifier，加密保存到換權杖為止；其他平台留空。
+    encrypted_verifier: Mapped[str] = mapped_column(Text, default="", server_default="")
 
 
 class OAuthConnection(Base):

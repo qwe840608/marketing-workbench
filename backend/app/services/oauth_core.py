@@ -15,7 +15,7 @@ from app.services import credentials
 from app.services.ai_keys import cipher
 
 # 連結流程支援的平台；也是回呼網址與稽核紀錄接受的平台名稱。
-PLATFORMS = ("meta", "threads", "youtube", "tiktok")
+PLATFORMS = ("meta", "threads", "youtube", "tiktok", "x")
 
 
 class ProviderFailure(Exception):

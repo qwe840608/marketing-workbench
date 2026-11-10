@@ -15,7 +15,14 @@ from sqlalchemy import delete, select
 from app.db import ensure_write
 from app.models import OAuthConnection, OAuthState, Setting
 from app.models.base import utc_now
-from app.services import auth, credentials, settings_store, tiktok_oauth, youtube_oauth
+from app.services import (
+    auth,
+    credentials,
+    settings_store,
+    tiktok_oauth,
+    x_oauth,
+    youtube_oauth,
+)
 from app.services.ai_keys import cipher
 from app.services.graph_api import DIALOG, FB
 from app.services.oauth_core import (  # noqa: F401  其他模組仍由 oauth 取用這些名稱
@@ -62,6 +69,7 @@ SCOPES = {
     "threads": THREADS_SCOPES,
     "youtube": youtube_oauth.SCOPES,
     "tiktok": tiktok_oauth.SCOPES,
+    "x": x_oauth.SCOPES,
 }
 RETURN_PATH = "/?view=settings&settings_tab=connections"
 FACEBOOK_COVER_HINT = "自訂封面需要 pages_manage_engagement 權限，請重新連結 Meta"
@@ -88,6 +96,8 @@ class Platform:
     # YouTube／TikTok：權杖由各自模組換發與保存；Meta／Threads 在本模組處理。
     module: Any = None
     identity_name: str = ""
+    # X 要求 PKCE：verifier 加密存在 OAuthState，換權杖時交給模組。
+    pkce: bool = False
 
 
 PLATFORM = {
@@ -111,6 +121,14 @@ PLATFORM = {
         id_param="client_key",
         module=tiktok_oauth,
         identity_name="TIKTOK_OPEN_ID",
+    ),
+    "x": Platform(
+        authorize_url=x_oauth.AUTHORIZE_URL,
+        app_prefix="X_CLIENT",
+        scope_separator=" ",
+        module=x_oauth,
+        identity_name="X_USER_ID",
+        pkce=True,
     ),
 }
 
@@ -191,6 +209,7 @@ def start(access, settings, cookie, platform, origin):
         raise HTTPException(422, "請先設定應用程式編號與密鑰")
     cipher(settings)
     nonce = secrets.token_urlsafe(32)
+    verifier, challenge = x_oauth.pkce_pair() if spec.pkce else ("", "")
     ensure_write(session)
     session.execute(delete(OAuthState).where(OAuthState.expires_at <= utc_now()))
     session.add(
@@ -200,6 +219,9 @@ def start(access, settings, cookie, platform, origin):
             staff_id=staff_id,
             platform=platform,
             expires_at=utc_now() + timedelta(minutes=10),
+            encrypted_verifier=cipher(settings).encrypt(verifier.encode()).decode()
+            if verifier
+            else "",
         )
     )
     audit(session, platform, "start", f"staff:{staff_id}")
@@ -211,6 +233,7 @@ def start(access, settings, cookie, platform, origin):
         **spec.authorize_extra,
         "state": nonce,
         "response_type": "code",
+        **({"code_challenge": challenge, "code_challenge_method": "S256"} if challenge else {}),
     }
     return {"url": spec.authorize_url + "?" + urlencode(params)}
 
@@ -557,15 +580,22 @@ def complete(access, settings, cookie, platform):
         session.commit()
         raise HTTPException(400, "授權驗證失敗或已過期，請重新連結")
     received = json.loads(cipher(settings).decrypt(row.encrypted_payload.encode()).decode())
-    row.consumed, row.encrypted_payload = True, ""
+    verifier = (
+        cipher(settings).decrypt(row.encrypted_verifier.encode()).decode()
+        if row.encrypted_verifier
+        else ""
+    )
+    row.consumed, row.encrypted_payload, row.encrypted_verifier = True, "", ""
     identity = row.id
     session.commit()
     return {
-        "result": finish(access, settings, platform, identity, received["code"], received["denied"])
+        "result": finish(
+            access, settings, platform, identity, received["code"], received["denied"], verifier
+        )
     }
 
 
-def finish(access, settings, platform, identity, code, denied):
+def finish(access, settings, platform, identity, code, denied, verifier=""):
     session, staff_id = access.session, access.staff.id
     result = "failed"
     diagnostics = None
@@ -577,7 +607,9 @@ def finish(access, settings, platform, identity, code, denied):
         else:
             module = PLATFORM[platform].module
             payload = (
-                module.exchange(session, settings, code)
+                module.exchange(session, settings, code, verifier)
+                if module and PLATFORM[platform].pkce
+                else module.exchange(session, settings, code)
                 if module
                 else meta_exchange(session, settings, code)
                 if platform == "meta"
@@ -844,6 +876,7 @@ def publish_readiness(session, settings, *, cached=False):
         "threads": ("threads", set(THREADS_PUBLISH_SCOPES)),
         "youtube": ("youtube", set()),
         "tiktok": ("tiktok", set()),
+        "x": ("x", set()),
     }
     result = {}
     for platform, (source, scopes) in requirements.items():
@@ -858,6 +891,27 @@ def publish_readiness(session, settings, *, cached=False):
             elif "video.upload" not in item["granted"]:
                 reasons.append("需要重新連結以取得上傳權限")
             result[platform] = {"ready": not reasons, "reasons": reasons}
+            continue
+        if platform == "x":
+            needed = x_oauth.PUBLISH_SCOPES
+            if not item["linked"]:
+                reasons.append("未連結")
+            elif item["state"] == "failed" or not item["verified"]:
+                reasons.append(
+                    "授權已過期，請重新連結帳號" if item["expired"] else "授權無效，請重新連結帳號"
+                )
+            elif not needed <= set(item["granted"]):
+                reasons.append("需要重新連結以取得發文權限")
+            result[platform] = {
+                "ready": not reasons,
+                "reasons": reasons,
+                # 快到期時仍可發佈，只提示。
+                **(
+                    {"hint": "授權即將到期，請重新連結"}
+                    if item["expiring"] and not reasons
+                    else {}
+                ),
+            }
             continue
         if platform == "youtube":
             # 授權不過期（refresh token 自動換發）；上傳權限缺少時只提示重新連結。
@@ -906,21 +960,25 @@ def maintenance_due(factory, now):
         return any(
             not row.maintenance_at or now - row.maintenance_at >= timedelta(days=1)
             for row in session.scalars(select(OAuthConnection).where(
-                OAuthConnection.platform.in_(["meta", "threads", "tiktok"])))
+                OAuthConnection.platform.in_(["meta", "threads", "tiktok", "x"])))
         )
 
 
 def maintain(factory, settings, now=None):
     now = now or utc_now()
-    with factory.begin() as session:
-        row = connection(session, "tiktok")
-        tiktok_due = bool(
-            row and (not row.maintenance_at or now - row.maintenance_at >= timedelta(days=1))
-        )
-        if tiktok_due:
-            row.maintenance_at = now
-    if tiktok_due:
-        tiktok_oauth.maintain(factory, settings, now)
+    for platform, module in (
+        ("tiktok", tiktok_oauth),
+        ("x", x_oauth),
+    ):
+        with factory.begin() as session:
+            row = connection(session, platform)
+            due = bool(
+                row and (not row.maintenance_at or now - row.maintenance_at >= timedelta(days=1))
+            )
+            if due:
+                row.maintenance_at = now
+        if due:
+            module.maintain(factory, settings, now)
     for platform in ("meta", "threads"):
         with factory.begin() as session:
             row = connection(session, platform)

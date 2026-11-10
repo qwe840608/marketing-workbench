@@ -28,7 +28,7 @@
 - 每小時抓取自家貼文留言；送給雲端模型前先遮蔽個資。
 - 從選定貼文的留言整理證據，產生 15 個內容主題，附觀眾原話。
 - 依主題撰寫腳本，檢查品牌禁語，可匯出。
-- 排程或立即發佈到 FB／IG／Threads／YouTube，送出前兩段式確認；TikTok 只能送到 App 收件匣草稿。
+- 排程或立即發佈到 FB／IG／Threads／YouTube／X，送出前兩段式確認；TikTok 只能送到 App 收件匣草稿。
 - 內建 MCP 端點（Streamable HTTP），可接 Claude Code plugin、Claude 桌面版擴充與 Codex。
 - 成員與角色權限（管理員／行銷人員／檢視者）、稽核紀錄、管理員一次性復原碼。
 - 介面支援繁體中文、简体中文、English、日本語，支援 390px 手機寬度。
@@ -38,12 +38,13 @@
 
 ## 自架前必讀
 
-自架這個工作檯，你就是自己那組 Meta、Google、TikTok 應用程式的開發者，平台條款的義務在你身上。
+自架這個工作檯，你就是自己那組 Meta、Google、TikTok、X 應用程式的開發者，平台條款的義務在你身上。
 
 - **只給自己或自有品牌使用**（單一品牌）。不要拿來代操客戶帳號或開放他人註冊，這需要各平台審核，TikTok 明確不接受。
-- **帳號類型**：Facebook 需要粉絲專頁；Instagram 需要專業帳號並連結該粉專；Threads、YouTube、TikTok 用個人帳號即可。
+- **帳號類型**：Facebook 需要粉絲專頁；Instagram 需要專業帳號並連結該粉專；Threads、YouTube、TikTok、X 用個人帳號即可。
 - **隱私權政策與服務條款要自己寫**，放在自己的網站再填進各平台後台，範本在 [`docs/zh-tw/templates/`](docs/zh-tw/templates/)。
 - **TikTok 只能送到收件匣草稿**，文案要在 TikTok App 內貼上。
+- **X API 按次收費**：要先在 X 開發者後台儲值點數，每發一篇都會扣點；目前只支援發文，不同步 X 的數據與回覆。
 - **Google 同意畫面要設成正式版**，否則 YouTube 授權每 7 天失效。
 
 細節見 [`docs/zh-tw/合規須知.md`](docs/zh-tw/合規須知.md)，每條規定的官方出處見 [`docs/zh-tw/平台政策.md`](docs/zh-tw/平台政策.md)。
@@ -169,7 +170,7 @@ npm run dev
 | `NOTIFY_LINE_*` | LINE 通知用的 Messaging API 憑證與群組 |
 | `BACKUP_LOCAL_ROOT`／`BACKUP_DRIVE_ROOT`／`BACKUP_PASSWORD`／`SEVEN_ZIP_PATH` | 加密備份位置、密碼與 7-Zip 路徑 |
 
-各平台（Meta、Threads、YouTube、TikTok）的應用程式金鑰建議在介面的平台連線卡片填寫，會加密存入資料庫；權杖由連結流程寫入，不需要手動填。金鑰、權杖、密碼不要提交到 git。
+各平台（Meta、Threads、YouTube、TikTok、X）的應用程式金鑰建議在介面的平台連線卡片填寫，會加密存入資料庫；權杖由連結流程寫入，不需要手動填。金鑰、權杖、密碼不要提交到 git。
 
 ## 貢獻指南
 

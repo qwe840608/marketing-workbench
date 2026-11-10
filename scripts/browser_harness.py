@@ -2,6 +2,7 @@
 
 from runtime_tmp import (
     launch_chromium,
+    VIEWPORT_ENV,
     cleanup,
     output_dir,
     runtime_check,
@@ -62,7 +63,10 @@ def launch_server(folder, origin, *, script=__file__, args=()):
             return server
         except OSError:
             if server.poll() is not None:
-                raise RuntimeError("Isolated server failed") from None
+                # 暫存資料夾會被清掉，把子程序輸出帶進錯誤訊息才查得到原因。
+                log.flush()
+                tail = (folder / "server.log").read_text(encoding="utf-8", errors="replace")[-2000:]
+                raise RuntimeError(f"Isolated server failed:\n{tail}") from None
             time.sleep(0.1)
     raise RuntimeError("Isolated server not ready")
 
@@ -134,6 +138,16 @@ def serve():
     run_uvicorn(create_app(settings), os.environ["BATCH4_PORT"])
 
 
+def viewports():
+    sizes = [(1440, 900), (390, 844)]
+    only = os.environ.get(VIEWPORT_ENV)
+    if not only:
+        return sizes
+    chosen = [size for size in sizes if str(size[0]) == only]
+    assert chosen, f"{VIEWPORT_ENV}={only} 不是可用的寬度"
+    return chosen
+
+
 @runtime_check
 def main(polish=False, exercise=None):
     from alembic import command
@@ -189,7 +203,9 @@ def main(polish=False, exercise=None):
         }
     )
     settings = Settings(_env_file=None)
-    command.upgrade(Config(str(REPO / "backend/alembic.ini")), "head")
+    alembic_cfg = Config(str(REPO / "backend/alembic.ini"))
+    alembic_cfg.attributes["settings"] = Settings(_env_file=None)
+    command.upgrade(alembic_cfg, "head")
     engine = build_engine(settings)
     cleanup(engine.dispose)
     factory = session_factory(engine)
@@ -262,7 +278,7 @@ def main(polish=False, exercise=None):
     try:
         with sync_playwright() as pw:
             browser = launch_chromium(pw)
-            for width, height in [(1440, 900), (390, 844)]:
+            for width, height in viewports():
                 context = browser.new_context(viewport={"width": width, "height": height})
 
                 def guard(route):

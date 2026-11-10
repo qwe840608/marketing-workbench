@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { platformGuides, resolveGuideValue, facebookPermissions, instagramPermissions, threadsPermissions, youtubeScopes, tiktokScopes, tiktokCommentNotice, guideLinkHosts } from '../src/platformGuides.ts';
+import { platformGuides, resolveGuideValue, facebookPermissions, instagramPermissions, threadsPermissions, youtubeScopes, tiktokScopes, xScopes, tiktokCommentNotice, guideLinkHosts } from '../src/platformGuides.ts';
 
 const stepsOf = guide => guide.sections.flatMap(section => section.steps);
 
 test('IG／FB、Threads、YouTube、LINE、jev、Webhook、TikTok 都有教學、預估時間、開始前需要與常見問題，且沒有空步驟', () => {
-  assert.deepEqual(Object.keys(platformGuides).sort(), ['jev', 'meta', 'notify', 'threads', 'tiktok', 'webhook', 'youtube']);
+  assert.deepEqual(Object.keys(platformGuides).sort(), ['jev', 'meta', 'notify', 'threads', 'tiktok', 'webhook', 'x', 'youtube']);
   for (const [id, guide] of Object.entries(platformGuides)) {
     assert.equal(guide.id, id);
     assert.ok(guide.title.trim(), id);
@@ -89,8 +89,10 @@ test('每份教學都有確認點；除 TikTok 外最後一步回到工作檯，
     if (id === 'notify' || id === 'jev') assert.ok(last.includes('測試連線') && last.includes('連線成功'), id);
     else if (id === 'webhook') assert.ok(last.includes('測試連線') && last.includes('權限檢查完成'), id);
     else {
-      const button = { meta: '連結 Meta 帳號', threads: '連結 Threads 帳號', youtube: '連結 YouTube 帳號' }[id];
-      assert.ok(last.includes('「' + button + '」') && last.includes('「已連結」') && last.includes('每小時'), id + ' 已連結／每小時');
+      const button = { meta: '連結 Meta 帳號', threads: '連結 Threads 帳號', youtube: '連結 YouTube 帳號', x: '連結 X 帳號' }[id];
+      // X 目前只發文、不同步貼文，所以沒有每小時同步。
+      const synced = id !== 'x';
+      assert.ok(last.includes('「' + button + '」') && last.includes('「已連結」') && (!synced || last.includes('每小時')), id + ' 已連結／每小時');
     }
   }
   // 各平台最容易卡關的地方都要有對應說明。
@@ -129,4 +131,15 @@ test('權限一個一列各自可複製（Meta 沒有一次全部新增），LIN
   assert.ok(!JSON.stringify(platformGuides.notify).includes('Get bot info'));
   assert.ok(JSON.stringify(platformGuides.notify).includes('自動填入'));
   assert.deepEqual(stepsOf(platformGuides.webhook).flatMap(step => step.values || []).map(v => v.kind === 'webhook' && v.path), ['/webhook/meta-inbound']);
+});
+
+test('X 教學：回呼網址、權限與計費', () => {
+  for (const [id, scopes] of [['x', xScopes]]) {
+    const values = platformGuides[id].sections.flatMap(section => section.steps).flatMap(step => step.values || []);
+    assert.deepEqual(values.filter(v => v.kind === 'callback').map(v => v.platform), [id]);
+    assert.deepEqual(values.filter(v => v.kind === 'text').map(v => v.value), scopes);
+  }
+  assert.deepEqual(xScopes, ['tweet.read', 'tweet.write', 'users.read', 'media.write', 'offline.access']);
+  const x = platformGuides.x.needs.join('') + platformGuides.x.faq.join('');
+  for (const word of ['$0.015', '$0.20', '140 秒']) assert.ok(x.includes(word), word);
 });

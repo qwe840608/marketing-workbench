@@ -12,6 +12,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const envPath = join(root, '.env');
 const backendUrl = 'http://127.0.0.1:8000';
 const agentUrl = 'http://127.0.0.1:4040';
+// cloudflared 的本機狀態埠（/ready 只在至少一條連線接上 Cloudflare 時回 200）。
+const cloudflaredMetrics = '127.0.0.1:20241';
 const probePath = '/webhook/mwb-gateway-probe';
 const children = new Set();
 
@@ -34,14 +36,41 @@ export function saveSettings(values) {
   writeFileSync(envPath, content, { mode: 0o600 });
 }
 
-export function fixedUrl(value) {
+// 公開閘道：ngrok（預設，不需要自有網域）或 Cloudflare Tunnel（需要網域在 Cloudflare）。
+export function gatewayKind(settings = {}) {
+  const kind = (settings.WEBHOOK_GATEWAY || 'ngrok').trim().toLowerCase();
+  if (!['ngrok', 'cloudflare'].includes(kind)) throw new Error('WEBHOOK_GATEWAY 只能是 ngrok 或 cloudflare。');
+  return kind;
+}
+
+// 閘道程序的本機狀態網址；start-all 與看門狗用它判斷閘道是否已連上。
+export function gatewayAgent(settings = {}) {
+  return gatewayKind(settings) === 'cloudflare'
+    ? { name: 'cloudflared', port: Number(cloudflaredMetrics.split(':')[1]), url: `http://${cloudflaredMetrics}/ready` }
+    : { name: 'ngrok', port: 4040, url: `${agentUrl}/api/tunnels` };
+}
+
+export function fixedUrl(value, kind = 'ngrok') {
   const url = new URL(value);
-  if (url.protocol !== 'https:' || url.username || url.password || url.port ||
-      url.pathname !== '/' || url.search || url.hash ||
-      !/^[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev)$/.test(url.hostname)) {
+  const plain = url.protocol === 'https:' && !url.username && !url.password && !url.port &&
+    url.pathname === '/' && !url.search && !url.hash;
+  if (kind === 'cloudflare') {
+    // 自有網域：只接受一般主機名稱，不接受 IP、本機或 ngrok／Tailscale 網址，避免探測金鑰送錯地方。
+    const host = url.hostname;
+    if (!plain || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host) ||
+        /(?:^|\.)(?:localhost|ts\.net)$|\.ngrok(?:-free)?\.(?:app|dev|io)$/.test(host)) {
+      throw new Error('WEBHOOK_PUBLIC_URL 必須是 Cloudflare Tunnel 公開主機名稱的 HTTPS 網址，例如 https://mwb.example.com。');
+    }
+    return url.origin;
+  }
+  if (!plain || !/^[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev)$/.test(url.hostname)) {
     throw new Error('WEBHOOK_PUBLIC_URL 必須是 ngrok 的固定 HTTPS 網址。');
   }
   return url.origin;
+}
+
+export function publicUrl(settings) {
+  return fixedUrl(settings.WEBHOOK_PUBLIC_URL, gatewayKind(settings));
 }
 
 function prepare() {
@@ -60,7 +89,10 @@ function prepare() {
 
 export function gatewayEnvironment(settings, environment = process.env) {
   const keep = ['PATH','Path','SystemRoot','WINDIR','TEMP','TMP','LOCALAPPDATA','USERPROFILE','HOME'];
-  return { ...Object.fromEntries(keep.filter(k => environment[k]).map(k => [k,environment[k]])), NGROK_AUTHTOKEN: settings.NGROK_AUTHTOKEN };
+  const base = Object.fromEntries(keep.filter(k => environment[k]).map(k => [k,environment[k]]));
+  // 金鑰只經環境變數交給閘道，不放在命令列（其他程序看得到命令列）。
+  if (gatewayKind(settings) === 'cloudflare') return { ...base, TUNNEL_TOKEN: settings.CLOUDFLARE_TUNNEL_TOKEN };
+  return { ...base, NGROK_AUTHTOKEN: settings.NGROK_AUTHTOKEN };
 }
 export function backendAddress(settings = {}) {
   const base = settings.BACKEND_INTERNAL_URL || backendUrl;
@@ -124,6 +156,25 @@ export function resolveNgrok(settings, environment = process.env, exists = exist
   return found;
 }
 
+export function resolveCloudflared(settings, environment = process.env, exists = existsSync) {
+  const path = environment.PATH || environment.Path || '';
+  const exe = process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared';
+  const candidates = path.split(delimiter).filter(Boolean).map(p => join(p.replace(/^"|"$/g, ''), exe));
+  if (settings.CLOUDFLARED_PATH && isAbsolute(settings.CLOUDFLARED_PATH)) candidates.push(settings.CLOUDFLARED_PATH);
+  for (const base of [environment['ProgramFiles(x86)'], environment.ProgramFiles]) if (base) candidates.push(join(base, 'cloudflared', exe));
+  const found = candidates.find(exists);
+  if (!found) throw new Error('找不到 cloudflared 執行檔：已依序檢查 PATH、.env 的 CLOUDFLARED_PATH、Program Files\\cloudflared。可用 winget install --id Cloudflare.cloudflared 安裝；CLOUDFLARED_PATH 須填完整路徑。');
+  return found;
+}
+
+// Cloudflare 後台「安裝連接器」指令裡的 token：base64 JSON，含 a（帳號）、t（Tunnel ID）、s（密鑰）。
+export function tunnelTokenValid(token = '') {
+  try {
+    const data = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+    return typeof data.a === 'string' && typeof data.t === 'string' && typeof data.s === 'string';
+  } catch { return false; }
+}
+
 export function startupFailure(name, diagnostic = '', launchCode = '') {
   const code = diagnostic.match(/ERR_NGROK_\d+/)?.[0] || launchCode || diagnostic.match(/\b(?:SQLITE_[A-Z_]+|EADDRINUSE|EACCES|EPERM|MODULE_NOT_FOUND|ERR_[A-Z_]+)\b/)?.[0];
   let reason = code || '程序提早結束或未提供錯誤代碼';
@@ -131,6 +182,7 @@ export function startupFailure(name, diagnostic = '', launchCode = '') {
   else if (['EACCES', 'EPERM'].includes(code)) reason = '執行權限不足';
   else if (/ERR_NGROK_(?:105|106|107|108|4018)\b/.test(code || '') || /invalid authtoken|authentication failed/i.test(diagnostic)) reason = 'authtoken 無效、驗證失敗或帳號連線數已達上限（' + (code || 'authentication') + '）';
   else if (/ERR_NGROK_334\b/.test(code || '') || /already online|already.*session/i.test(diagnostic)) reason = '固定網址被其他 session 佔用（' + (code || 'endpoint_in_use') + '）';
+  else if (name === 'cloudflared' && /Unauthorized|invalid tunnel secret|Provided Tunnel token is not valid/i.test(diagnostic)) reason = 'Tunnel token 無效或 Tunnel 已刪除（unauthorized）';
   return new Error(`${name} 啟動失敗：${reason}；已停止公開連線。`);
 }
 
@@ -213,6 +265,15 @@ export async function checkBackend(settings, base = backendAddress(settings), ru
   console.log('PASS 後端排程器運作及內部 API 權限。');
 }
 
+export function accessLogin(res) {
+  if (![302, 303].includes(res.status)) return false;
+  let target;
+  try { target = new URL(res.headers?.location || ''); } catch { return false; }
+  return target.protocol === 'https:' && target.port === ''
+    && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.cloudflareaccess\.com$/.test(target.hostname)
+    && target.pathname.startsWith('/cdn-cgi/access/login/');
+}
+
 export async function checkEndpoint(base, secret, external = true) {
   const headers = { 'ngrok-skip-browser-warning': '1', 'User-Agent': 'marketing-workbench-acceptance/1' };
   let count = 0;
@@ -226,7 +287,8 @@ export async function checkEndpoint(base, secret, external = true) {
       '/webhook/../rest/settings', '/webhook/%2e%2e/rest/settings',
       '/webhook/%252e%252e/rest/settings', '/webhook/test%2f..%2f..%2frest/settings']) {
       const res = await request(base, path, { headers });
-      if (![403, 404].includes(res.status)) throw new Error(`公開路徑未被拒絕：${path}（${res.status}）。`);
+      // 開了 Cloudflare Access 後，非公開路徑在邊緣就被導去 Access 登入頁，請求根本沒進後端，也算拒絕。
+      if (![403, 404].includes(res.status) && !accessLogin(res)) throw new Error(`公開路徑未被拒絕：${path}（${res.status}）。`);
       console.log(`PASS ${path} → ${res.status}`);
       count++;
     }
@@ -274,8 +336,21 @@ async function startNgrok(settings) {
   return { child, address: fixedUrl(address) };
 }
 
-async function ensurePortsFree() {
-  for (const base of [agentUrl]) {
+async function startCloudflared(settings) {
+  if (!tunnelTokenValid(settings.CLOUDFLARE_TUNNEL_TOKEN)) throw new Error('請先在 .env 設定 CLOUDFLARE_TUNNEL_TOKEN（Cloudflare Zero Trust → Networks → Tunnels → 安裝連接器指令裡 --token 後面那串）。');
+  // 路由（公開主機名稱與路徑限制）由 Cloudflare 後台管理；這裡只負責連線，token 經 TUNNEL_TOKEN 環境變數傳入。
+  const args = ['tunnel', '--no-autoupdate', '--metrics', cloudflaredMetrics, '--loglevel', 'info', 'run'];
+  const child = childProcess('cloudflared', resolveCloudflared(settings), args, gatewayEnvironment(settings));
+  await waitReady(child, `http://${cloudflaredMetrics}`, '/ready', (res) => {
+    if (res.status !== 200) return false;
+    try { return JSON.parse(res.body).readyConnections > 0; } catch { return false; }
+  });
+  // Tunnel 本身沒有回報公開網址；以 .env 保存的主機名稱為準，下一步用簽章探測驗證確實通到本機後端。
+  return { child, address: publicUrl(settings) };
+}
+
+async function ensurePortsFree(settings) {
+  for (const base of [`http://127.0.0.1:${gatewayAgent(settings).port}`]) {
     let occupied = false;
     try { await request(base, '/'); occupied = true; } catch { /* 沒有服務才允許本次啟動。 */ }
     if (occupied) throw new Error(`${base} 已有服務，請先停止該服務，避免改到其他執行中的環境。`);
@@ -286,7 +361,13 @@ async function main() {
   const started = performance.now(), command = process.argv[2] || 'check';
   if (command === 'prepare') return prepare();
   const settings = readSettings();
-  if (command === 'resolve-ngrok') {
+  if (command === 'resolve-gateway' && gatewayKind(settings) === 'cloudflare') {
+    resolveCloudflared(settings);
+    if (!tunnelTokenValid(settings.CLOUDFLARE_TUNNEL_TOKEN)) throw new Error('請先在 .env 設定 CLOUDFLARE_TUNNEL_TOKEN（Cloudflare Zero Trust → Networks → Tunnels 複製）。');
+    publicUrl(settings);
+    console.log('cloudflared 執行檔、Tunnel token 與公開網址已就緒。'); return;
+  }
+  if (command === 'resolve-ngrok' || command === 'resolve-gateway') {
     resolveNgrok(settings);
     // 在建置與啟動後端前就擋下：沒有 authtoken 時閘道一定起不來，晚一步失敗還會把剛啟動的後端停掉。
     if (!settings.NGROK_AUTHTOKEN) throw new Error('請先在 .env 設定 NGROK_AUTHTOKEN（ngrok 後台 Your Authtoken 頁面複製）。');
@@ -294,16 +375,20 @@ async function main() {
   }
   if (command === 'check') {
     await checkBackend(settings);
-    await checkEndpoint(fixedUrl(settings.WEBHOOK_PUBLIC_URL), settings.WEBHOOK_PROBE_SECRET);
+    await checkEndpoint(publicUrl(settings), settings.WEBHOOK_PROBE_SECRET);
     return;
   }
-  if (command !== 'up') throw new Error('用法：node scripts/webhooks.mjs prepare|up|check');
-  await ensurePortsFree();
+  if (command !== 'up') throw new Error('用法：node scripts/webhooks.mjs prepare|resolve-gateway|up|check');
+  const kind = gatewayKind(settings);
+  if (kind === 'cloudflare') publicUrl(settings);
+  await ensurePortsFree(settings);
   await checkBackend(settings);
   await checkEndpoint(backendAddress(settings), settings.WEBHOOK_PROBE_SECRET, false);
-  const tunnel = await startNgrok(settings);
-  if (settings.WEBHOOK_PUBLIC_URL && fixedUrl(settings.WEBHOOK_PUBLIC_URL) !== tunnel.address) throw new Error('ngrok 網址與已保存固定網址不符。');
-  if (!settings.WEBHOOK_PUBLIC_URL) saveSettings({ WEBHOOK_PUBLIC_URL:tunnel.address });
+  const tunnel = kind === 'cloudflare' ? await startCloudflared(settings) : await startNgrok(settings);
+  if (kind === 'ngrok') {
+    if (settings.WEBHOOK_PUBLIC_URL && fixedUrl(settings.WEBHOOK_PUBLIC_URL) !== tunnel.address) throw new Error('ngrok 網址與已保存固定網址不符。');
+    if (!settings.WEBHOOK_PUBLIC_URL) saveSettings({ WEBHOOK_PUBLIC_URL:tunnel.address });
+  }
   await checkEndpoint(tunnel.address, settings.WEBHOOK_PROBE_SECRET);
   console.log('固定網址驗收通過：' + tunnel.address);
   recordStartup('gateway-ready', started);

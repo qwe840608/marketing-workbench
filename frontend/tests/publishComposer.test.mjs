@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vectors from '../../shared/publish_threads_vectors.json' with { type: 'json' };
-import { overflowAt, overLimitReason, textLength, textBytes, youtubeTitle, defaultPlatformOptions, loadedPlatformOptions, checkComposer, IG_COVER_PNG_WARNING, IG_COVER_RATIO_WARNING, FB_COVER_RATIO_WARNING, foldCaption, previewRatio, hashtags, mentions } from '../src/publishComposer.ts';
+import { overflowAt, overflowStart, overLimitReason, textLength, textBytes, youtubeTitle, defaultPlatformOptions, loadedPlatformOptions, checkComposer, IG_COVER_PNG_WARNING, IG_COVER_RATIO_WARNING, FB_COVER_RATIO_WARNING, foldCaption, previewRatio, hashtags, mentions, X_CAPTION_LABEL, xUnits } from '../src/publishComposer.ts';
 
 for (const c of vectors.cases) test('共用 Threads 向量：' + c.name, () => {
   assert.equal(textLength(c.text), c.length);
@@ -87,7 +87,7 @@ test('限動不帶文字、平台／10則／3–60秒／JPEG與比例提示', ()
 });
 
 
-const youtubeRule = { title: 100, caption: 5000, video_seconds: 43200, hashtag_effective: 15, long_video_seconds: 900, shorts_seconds: 180, shorts_thumbnail: false, thumbnail_bytes: 2 * 1024 ** 2, thumbnail_min_width: 640, thumbnail_mimes: ['image/jpeg', 'image/png'] };
+const youtubeRule = { title: 100, caption: 5000, video_seconds: 43200, hashtag_effective: 15, long_video_seconds: 900, shorts_seconds: 180, thumbnail_bytes: 50 * 1024 ** 2, thumbnail_min_width: 640, thumbnail_mimes: ['image/jpeg', 'image/png'] };
 const youtubeRules = { ...rules, youtube: youtubeRule };
 const landscape = { mime: 'video/mp4', width: 1920, height: 1080, duration: 12, size: 1000 };
 const thumbnail = { mime: 'image/jpeg', width: 1280, height: 720, duration: null, size: 1000 };
@@ -111,15 +111,16 @@ test('YouTube 標題 100 字與說明 5000 位元組邊界', () => {
   assert.deepEqual(checkComposer('youtube', 'video', '字'.repeat(1666) + 'ab', [landscape], withYoutube({ title: '標題' }), youtubeRules).errors, []);
   assert(checkComposer('youtube', 'video', '', [landscape], withYoutube({}), youtubeRules).errors.includes('標題必填'));
 });
-test('YouTube Shorts 提示與縮圖：Shorts 不支援，非 16:9 只提示', () => {
+test('YouTube Shorts 提示與縮圖：Shorts 可用縮圖但只提醒處理後才套用，非 16:9 只提示', () => {
   const short = { ...landscape, width: 1080, height: 1920 };
   assert(checkComposer('youtube', 'video', '標題', [short], withYoutube({}), youtubeRules).warnings.some(w => w.includes('Shorts')));
   assert(!checkComposer('youtube', 'video', '標題', [{ ...short, duration: 181 }], withYoutube({}), youtubeRules).warnings.some(w => w.includes('Shorts')));
-  assert(checkComposer('youtube', 'video', '標題', [short], withYoutube({}), youtubeRules, false, thumbnail).errors.some(e => e.includes('Shorts 不支援自訂縮圖')));
+  const shortThumb = checkComposer('youtube', 'video', '標題', [short], withYoutube({}), youtubeRules, false, thumbnail);
+  assert.deepEqual(shortThumb.errors, []); assert(shortThumb.warnings.includes('Shorts 的自訂縮圖要等 YouTube 處理完影片才會套用'));
   const square = checkComposer('youtube', 'video', '標題', [landscape], withYoutube({}), youtubeRules, false, { ...thumbnail, width: 1000, height: 1000 });
   assert.deepEqual(square.errors, []); assert(square.warnings.some(w => w.includes('16:9')));
-  assert(checkComposer('youtube', 'video', '標題', [landscape], withYoutube({}), youtubeRules, false, { ...thumbnail, size: 2 * 1024 ** 2 + 1 }).errors.some(e => e.includes('2 MB')));
-  assert.deepEqual(checkComposer('youtube', 'video', '標題', [landscape], withYoutube({}), youtubeRules, false, { ...thumbnail, size: 2 * 1024 ** 2 }).errors, []);
+  assert(checkComposer('youtube', 'video', '標題', [landscape], withYoutube({}), youtubeRules, false, { ...thumbnail, size: 50 * 1024 ** 2 + 1 }).errors.some(e => e.includes('50 MB')));
+  assert.deepEqual(checkComposer('youtube', 'video', '標題', [landscape], withYoutube({}), youtubeRules, false, { ...thumbnail, size: 50 * 1024 ** 2 }).errors, []);
   assert(checkComposer('youtube', 'video', '標題', [landscape], withYoutube({}), youtubeRules, false, { ...thumbnail, mime: 'image/gif' }).errors.some(e => e.includes('JPG／PNG')));
 });
 test('YouTube 超過 15 分鐘與 15 個 hashtag 只提示', () => {
@@ -145,7 +146,7 @@ test('Instagram Reels 封面：只收 JPG／PNG、8 MB 內，非 9:16 與 PNG �
   assert.deepEqual(checkComposer('instagram', 'video', '文案', [reel], o, igRules, false, null, { ...cover, mime: 'image/png' }).warnings, [IG_COVER_PNG_WARNING]);
   assert(checkComposer('instagram', 'video', '文案', [reel], o, igRules, false, null, { ...cover, size: 8 * 1024 ** 2 + 1 }).errors.some(e => e.includes('8 MB')));
   assert(checkComposer('instagram', 'video', '文案', [reel], o, igRules, false, null, { ...cover, mime: 'image/gif' }).errors.includes('封面只支援 JPG／PNG'));
-  assert.deepEqual(loadedPlatformOptions({ ...o, instagram: { share_to_feed: false, cover_media_id: 3 } }).instagram, { share_to_feed: false });
+  assert.deepEqual(loadedPlatformOptions({ ...o, instagram: { share_to_feed: false, cover_media_id: 3 } }).instagram, { share_to_feed: false, comments: [] });
 });
 test('Facebook 影片封面：只收 JPG／PNG、8 MB 內，比例與影片不同只提示，封面編號不進表單', () => {
   const fbRules = { ...rules, facebook: { ...rules.facebook, cover_bytes: 8 * 1024 ** 2, cover_mimes: ['image/jpeg', 'image/png'] } };
@@ -157,17 +158,29 @@ test('Facebook 影片封面：只收 JPG／PNG、8 MB 內，比例與影片不�
   assert.deepEqual(checkComposer('facebook', 'video', '文案', [reel], o, fbRules, false, null, { ...cover, height: 1080 }).warnings, [FB_COVER_RATIO_WARNING]);
   assert(checkComposer('facebook', 'video', '文案', [reel], o, fbRules, false, null, { ...cover, size: 8 * 1024 ** 2 + 1 }).errors.some(e => e.includes('8 MB')));
   assert(checkComposer('facebook', 'video', '文案', [reel], o, fbRules, false, null, { ...cover, mime: 'image/gif' }).errors.includes('封面只支援 JPG／PNG'));
-  assert.deepEqual(loadedPlatformOptions({ ...o, facebook: { video_format: 'reels', cover_media_id: 4 } }).facebook, { video_format: 'reels' });
+  assert.deepEqual(loadedPlatformOptions({ ...o, facebook: { video_format: 'reels', cover_media_id: 4 } }).facebook, { video_format: 'reels', comments: [], comment_media: [] });
 });
 
-test('超過 Threads 上限時指出從第幾個字開始超出（與後端相同文字），不自動拆段', () => {
+test('Facebook 評論：附圖可以不寫字，附圖編號與評論對齊', () => {
+  const o = defaultPlatformOptions();
+  const options = { ...o, facebook: { ...o.facebook, comments: ['一', ' ', ''], comment_media: [null, 7, null] } };
+  assert.deepEqual(checkComposer('facebook', 'text', '文案', [], options, rules, false).errors, ['評論 3 不可空白']);
+  assert.deepEqual(loadedPlatformOptions({ facebook: { comments: ['一', '二'], comment_media: [5] } }).facebook.comment_media, [5, null]);
+});
+
+test('超過 Threads 上限時只說超過上限（與後端相同文字），輸入框從開始超出的位置標紅，不自動拆段', () => {
   assert.equal(overflowAt('甲'.repeat(500), 500), null);
   assert.deepEqual(overflowAt('甲'.repeat(500) + '乙丙', 500), { position: 501, snippet: '乙丙' });
   assert.deepEqual(overflowAt('😀'.repeat(126), 500), { position: 126, snippet: '😀' });
   assert.deepEqual(overflowAt('甲'.repeat(499) + '😀尾', 500), { position: 500, snippet: '😀尾' });
-  assert.equal(overLimitReason('Threads 文案', '甲'.repeat(500) + '乙丙丁', 500), 'Threads 文案超過 500 字上限：共 503 字，從第 501 個字「乙丙丁」開始超出');
+  assert.equal(overLimitReason('Threads 文案', '甲'.repeat(500) + '乙丙丁', 500), 'Threads 文案超過 500 字上限');
+  // 標紅位置以原稿（含 Markdown）計：**粗體** 的星號不算字數，所以原稿前 504 個 UTF-16 位置（含星號）都沒超出。
+  const over = text => !!overflowAt(text.replaceAll('**', ''), 500);
+  assert.equal(overflowStart('甲'.repeat(500), over), null);
+  assert.equal(overflowStart('**' + '甲'.repeat(498) + '**乙丙丁', over), 504);
+  assert.equal(overflowStart('😀'.repeat(126), text => !!overflowAt(text, 500)), 250);
   const result = checkComposer('threads', 'text', '', [], { ...defaultPlatformOptions(), threads: { segments: ['短', '丙'.repeat(501)], segments_custom: true } }, rules);
-  assert.ok(result.errors.includes('回覆 1超過 500 字上限：共 501 字，從第 501 個字「丙」開始超出'), result.errors.join());
+  assert.ok(result.errors.includes('回覆 1超過 500 字上限'), result.errors.join());
 });
 
 test('Instagram 一般貼文 PNG 為警告（輪播只列一次），其他格式為錯誤', () => {
@@ -184,4 +197,31 @@ test('平台文案空白時沿用共用文案，與後端 platform_caption 一�
   assert.equal(platformCaption({ facebook: ' \n' }, '共用', 'facebook'), '共用');
   assert.equal(platformCaption({}, '共用', 'threads'), '共用');
   assert.equal(platformCaption({ facebook: 'FB 專用' }, '共用', 'facebook'), 'FB 專用');
+});
+
+const xRules = { x: { caption: 280, carousel: 4, image_bytes: 5 * 1024 ** 2, video_seconds_min: 0.5, video_seconds: 1200, standard_video_seconds: 140, video_ratio: [1 / 3, 3], video_side_max: [1280, 1024], post_cost_usd: 0.015, url_post_cost_usd: 0.2 } };
+test('X 加權計字與後端 x_weight 一致（中文字與 emoji 算 2、網址 23）', () => {
+  assert.equal(textLength('a'.repeat(280), 'x'), 280);
+  assert.equal(textLength('中'.repeat(140), 'x'), 280);
+  assert.equal(textLength('看 https://example.com/' + 'a'.repeat(80) + ' 好', 'x'), 2 + 1 + 23 + 1 + 2);
+  assert.equal(textLength('👍🏽', 'x'), 2);
+  assert.equal(textLength('hello', 'x'), 5);
+  assert.deepEqual(overflowAt('中'.repeat(141), 280, 'x'), { position: 141, snippet: '中' });
+  assert.equal(xUnits('a https://x.com/b c').find(u => u.text.startsWith('http')).size, 23);
+});
+test('X 規則：超過加權上限、網址費用提醒、140 秒與尺寸提醒、限時動態不支援', () => {
+  const o = defaultPlatformOptions();
+  assert.deepEqual(checkComposer('x', 'text', '中'.repeat(141), [], o, xRules).errors, [X_CAPTION_LABEL + '超過 280 字上限']);
+  const url = checkComposer('x', 'text', '看這裡 https://example.com', [], o, xRules);
+  assert.deepEqual(url.errors, []);
+  assert.ok(url.warnings.some(w => w.includes('$0.20') && w.includes('$0.015')));
+  const long = checkComposer('x', 'video', '', [{ mime: 'video/mp4', width: 1920, height: 1080, duration: 200 }], o, xRules);
+  assert.deepEqual(long.errors, []);
+  assert.equal(long.warnings.length, 2);
+  assert.deepEqual(checkComposer('x', 'carousel', '', [1, 2, 3, 4, 5].map(() => ({ mime: 'image/jpeg', width: 1, height: 1, duration: null })), o, xRules).errors, ['多圖需 2–4 張圖片']);
+  assert.ok(checkComposer('x', 'story', '', [], o, xRules).errors.length);
+});
+test('X 選項是空物件', () => {
+  assert.deepEqual(defaultPlatformOptions().x, {});
+  assert.deepEqual(loadedPlatformOptions(undefined).x, {});
 });

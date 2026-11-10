@@ -3,7 +3,7 @@ from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
-Platform = Literal["facebook", "instagram", "threads", "youtube", "tiktok"]
+Platform = Literal["facebook", "instagram", "threads", "youtube", "tiktok", "x"]
 # 網頁與 MCP 共用的平台數上限，跟著平台清單變：曾因加平台時只改網頁版，MCP 存草稿被舊上限擋下。
 MAX_PLATFORMS = len(get_args(Platform))
 
@@ -11,11 +11,31 @@ MAX_PLATFORMS = len(get_args(Platform))
 class FacebookOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
     video_format: Literal["feed", "reels"] | None = None
+    # 發文成功後由粉專依序留的評論；則數與字數由發佈規則檢查（草稿可先存），這裡只限制資料量。
+    comments: list[str] | None = Field(default=None, max_length=256)
+    # 與 comments 同序的評論附圖（role=fb_comment 的素材編號，沒附圖為 null）；存檔時驗證歸屬。
+    comment_media: list[int | None] | None = Field(default=None, max_length=256)
+
+    @field_validator("comments")
+    @classmethod
+    def bounded_comments(cls, value):
+        if value is not None and sum(len(text) for text in value) > 63206:
+            raise ValueError("Facebook 評論總文案過長")
+        return value
 
 
 class InstagramOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
     share_to_feed: StrictBool | None = None
+    # 發文成功後依序留的評論（只有文字）；則數與字數由發佈規則檢查，這裡只限制資料量。
+    comments: list[str] | None = Field(default=None, max_length=256)
+
+    @field_validator("comments")
+    @classmethod
+    def bounded_comments(cls, value):
+        if value is not None and sum(len(text) for text in value) > 63206:
+            raise ValueError("Instagram 評論總文案過長")
+        return value
 
 
 class ThreadsOptions(BaseModel):
@@ -45,6 +65,11 @@ class TiktokOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class EmptyOptions(BaseModel):
+    # X 第一版沒有平台專屬選項；只接受空物件。
+    model_config = ConfigDict(extra="forbid")
+
+
 class PlatformOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
     facebook: FacebookOptions | None = None
@@ -52,6 +77,7 @@ class PlatformOptions(BaseModel):
     threads: ThreadsOptions | None = None
     youtube: YoutubeOptions | None = None
     tiktok: TiktokOptions | None = None
+    x: EmptyOptions | None = None
 
 
 class IdeaDraftInput(BaseModel):
@@ -95,6 +121,7 @@ class PostInput(BaseModel):
             or "threads" in self.platforms
             or "youtube" in self.platforms
             or "tiktok" in self.platforms
+            or "x" in self.platforms
             or len(self.media_ids) > 10
             or self.platform_options is not None
         ):

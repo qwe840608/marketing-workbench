@@ -20,7 +20,7 @@
 - 所有 AI 執行均使用官方 API 金鑰。送雲端模型的文字先經 `redact.py`。
 - AI 與 Agent 產出不得捏造價格、承諾或數據；品牌禁止承諾一律不能強制送出。
 - 不得擅自修改實機 `send_enabled`、`publishing.enabled`，或送出任何平台內容。發佈到平台只能透過「發佈」功能，在總開關開啟並經確認視窗後由使用者操作送出；開發與驗收一律用 HTTP mock，不得呼叫平台 API。送出需後端權限與完整確認。
-- Webhook 必須驗原始位元組簽章。公開入口只允許驗簽 Webhook 與限時媒體權杖路徑（`/media/<權杖>`）；UI/API 限本機及 Tailscale。
+- Webhook 必須驗原始位元組簽章。公開入口只允許驗簽 Webhook 與限時媒體權杖路徑（`/media/<權杖>`）；UI/API 限本機、Tailscale 及 Cloudflare Access。
 - 外部事件以平台 ID 冪等。LINE 只用於通知（品牌通知群組與收訊健康警示），Push 需確認額度。
 - 未明確授權時不讀寫外部知識庫或第三方助理設定。MCP 寫入只能透過 `docs/zh-tw/MCP規範.md` 規範、`agent_tools` 註冊的工具，並由後端重驗權限；對外動作須兩段式確認（prepare／confirm），破壞性動作須先取得使用者同意；不將原始留言或個資寫入外部知識庫。
 - `data/` 存放正式資料（資料庫、匯出、日誌），已被 git 忽略。**禁止執行會刪除被忽略檔案的指令**（例如 `git clean -x`、`git clean -X`、`git clean -fdx`），也不得刪除、搬移或覆寫 `data/` 內容；需要乾淨環境時改用 `.runtime/` 或另建副本。

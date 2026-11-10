@@ -39,6 +39,7 @@ GROUPS = {
         "TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET", "TIKTOK_OPEN_ID",
         "TIKTOK_ACCESS_TOKEN", "TIKTOK_REFRESH_TOKEN",
     ),
+    "x": ("X_CLIENT_ID", "X_CLIENT_SECRET", "X_USER_ID", "X_ACCESS_TOKEN", "X_REFRESH_TOKEN"),
     "jev": ("JEV_API_KEY", "JEV_API_BASE_URL"),
 }
 NAMES = tuple(name for names in GROUPS.values() for name in names)

@@ -89,8 +89,11 @@
 .publish-composer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr); align-items: start; gap: 24px; }
 .publish-composer-fields,.publish-composer-panel { min-width: 0; }
 .publish-caption-heading,.publish-segment-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; }
-.publish-caption-heading > span:first-child { color: var(--text-subtle); font-size: var(--ui-font-help); }
+/* 帳號名稱與「沿用主文案」說明各自加底色，和「未開啟」標籤分開。 */
+.publish-caption-heading > span:first-child, .publish-caption-heading > .publish-caption-hint { padding: 4px 10px; border-radius: var(--ui-radius-control); background: var(--bg-subtle); color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-caption-heading > span:first-child:empty { display: none; }
 .publish-caption-heading > button { margin-left: auto; }
+.publish-caption-hint { color: var(--text-subtle); font-size: var(--ui-font-help); }
 .publish-composer-fields textarea { width: 100%; resize: vertical; }
 .publish-platform-options { margin-top: 16px; }
 .publish-segments { display: grid; gap: 16px; margin-top: 16px; }
@@ -101,22 +104,44 @@
 .publish-disconnected p { margin: 0; color: var(--text-subtle); }
 .publish-disconnected a { display: inline-flex; align-items: center; text-decoration: none; }
 .publish-preview { --publish-preview-media-height: 480px; min-width: 0; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-card); background: var(--bg-surface); padding: var(--ui-panel-padding); }
-.publish-preview-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-:root body .publish-preview-tabs button[aria-pressed=true] { border-color: var(--brand-primary); color: var(--brand-primary); font-weight: 600; }
 .publish-preview-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .publish-preview-avatar { display: grid; place-items: center; flex: 0 0 32px; height: 32px; background: var(--bg-subtle); color: var(--text-subtle); border-radius: var(--ui-radius-control); }
 .publish-preview-identity strong { min-width: 0; overflow-wrap: anywhere; }
 .publish-preview-identity > span:last-child { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-preview-identity > .publish-preview-platform { width: 16px; height: 16px; flex: 0 0 16px; color: var(--text-subtle); }
+/* 平台不支援目前格式時，提示放在帳號列右邊。 */
+.publish-preview-identity > .publish-preview-alert { margin-left: auto; color: var(--state-danger); font-size: var(--ui-font-help); }
 .publish-preview-caption { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; color: var(--text-main); font-size: var(--ui-font-body); }
 .publish-preview-highlight,.publish-preview-topic { color: var(--link-color); }
 .publish-preview-topic { display: block; margin-top: 8px; font-size: var(--ui-font-help); overflow-wrap: anywhere; }
 .publish-preview-media { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 8px; margin-top: 12px; }
 .publish-preview-media > div { max-width: 100%; overflow: hidden; border-radius: var(--ui-radius-control); background: var(--bg-subtle); }
 .publish-preview-media img,.publish-preview-media video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.publish-preview-media > div { position: relative; }
+/* 右上角叉叉移除素材；觸控裝置沒有 hover，所以一直顯示。 */
+:root body .publish-preview-media button.publish-preview-remove { position: absolute; top: 6px; right: 6px; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: rgb(0 0 0 / 0.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
+:root body .publish-preview-media button.publish-preview-remove:hover,:root body .publish-preview-media button.publish-preview-remove:focus-visible { background: rgb(0 0 0 / 0.8); }
+:root body .publish-preview-media button.publish-preview-remove:disabled { opacity: 0.4; cursor: default; }
+.publish-preview-media > div[draggable=true] { cursor: grab; }
+/* Facebook 多圖拼貼：2 張左右並排；3 張一大兩小；4 張一大三小；5 張以上上 2 下 3，第 5 格疊 +N。 */
+.publish-preview-media.is-facebook-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; justify-items: stretch; margin-inline: calc(var(--ui-panel-padding) * -1); }
+.publish-preview-media.is-facebook-grid > div { grid-column: span 2; aspect-ratio: 1 / 1; border-radius: 0; }
+.is-facebook-grid[data-count="2"] > div,.is-facebook-grid[data-count="5"] > div:nth-child(-n+2) { grid-column: span 3; }
+.is-facebook-grid[data-count="3"] > div:first-child { grid-column: span 6; aspect-ratio: 2 / 1; }
+.is-facebook-grid[data-count="3"] > div:not(:first-child) { grid-column: span 3; }
+.is-facebook-grid[data-count="4"] > div:first-child { grid-column: span 6; aspect-ratio: 3 / 2; }
+:root body .publish-preview-media button.publish-preview-more-media { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; border: 0; border-radius: 0; background: rgb(0 0 0 / 0.45); color: #fff; font-size: 28px; font-weight: 600; cursor: pointer; }
+/* Instagram 輪播一次一張，下方圓點與左右切換。 */
+.publish-preview-slides { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 8px; }
+.publish-preview-dots { display: flex; gap: 4px; }
+.publish-preview-dots > span { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong, var(--text-subtle)); opacity: 0.4; }
+.publish-preview-dots > span.is-current { background: var(--brand-primary); opacity: 1; }
+/* Threads 多張素材橫向排成一列，可左右捲動。 */
+.publish-preview-media.is-row { display: flex; justify-content: flex-start; overflow-x: auto; overscroll-behavior-x: contain; }
+.publish-preview-media.is-row > div { flex: 0 0 auto; height: 240px; width: auto; }
 /* 影片送出的是原檔，平台不裁切：直式框（Reels、TikTok）裡的橫式影片要完整顯示並補邊，裁切會讓人誤以為發出去是直式。 */
 .publish-preview-media video { object-fit: contain; background: var(--media-letterbox); }
 .publish-preview-post + .publish-preview-post { border-top: 1px solid var(--border-subtle); margin-top: 16px; padding-top: 16px; }
-.publish-preview-thread.is-thread .publish-preview-post + .publish-preview-post { border-left: 2px solid var(--border-subtle); padding-left: 16px; }
 .publish-preview-empty { margin: 0; color: var(--text-subtle); }
 @media (max-width: 767px) {
   .publish-composer-grid { grid-template-columns: minmax(0, 1fr); }
@@ -165,7 +190,25 @@
 .publish-preview-actions.is-facebook .publish-preview-icon { width: 18px; height: 18px; }
 .is-instagram .publish-preview-caption { margin-top: 8px; }
 .is-instagram .publish-preview-media > div { border-radius: 0; }
-.is-threads .publish-preview-post > :not(.publish-preview-identity) { margin-left: 40px; }
+.is-threads .publish-preview-post.is-reply > :not(.publish-preview-identity) { margin-left: 40px; }
+/* FB／IG 預覽的評論：FB 灰色泡泡＋「剛剛 讚 回覆」，IG 在文案下方「帳號 內容」＋「剛剛 回覆」。 */
+.publish-preview-comments { display: grid; gap: 12px; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--border-subtle); list-style: none; }
+.is-instagram .publish-preview-comments { margin-top: 4px; padding-top: 0; border-top: 0; }
+.publish-preview-comment { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.publish-preview-comment > .publish-preview-avatar { flex-basis: 28px; height: 28px; font-size: var(--ui-font-help); }
+.publish-preview-comment > div { display: grid; justify-items: start; gap: 4px; min-width: 0; }
+.publish-preview-comment p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-main); }
+.publish-preview-bubble { display: grid; gap: 2px; max-width: 100%; padding: 8px 12px; border-radius: 16px; background: var(--bg-subtle); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-main); }
+.publish-preview-comment img { max-width: min(100%, 200px); border-radius: 12px; }
+.publish-preview-comment-meta { display: flex; gap: 12px; color: var(--text-subtle); font-size: var(--ui-font-help); }
+/* YouTube 標題：和說明卡片同樣的白框，上方各有欄名；沒有移動按鈕，空欄拿掉讓左右留白一樣。 */
+.publish-youtube-stack { display: grid; gap: 6px; }
+.publish-youtube-stack > .publish-post-card + .publish-youtube-label { margin-top: 4px; }
+.publish-youtube-stack .publish-post-moves.is-empty { display: none; }
+.publish-youtube-label { padding-left: 5px; color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-youtube-title .publish-post-box { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.publish-youtube-title input { min-width: 0; padding: 10px; border: 0; background: transparent; color: var(--text-main); font: inherit; outline: none; }
+.publish-youtube-title .publish-post-count { padding: 0 12px; }
 /* YouTube：縮圖欄位與預覽（影片 → 標題 → 頻道 → 互動列 → 說明） */
 .publish-thumbnail { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
 .publish-thumbnail > img { width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--ui-radius-control); background: var(--bg-subtle); }
@@ -202,10 +245,67 @@
 }
 /* 「新貼文／新限時動態」與平台分頁同列：桌機按鈕在分頁右側，手機在分頁上方。 */
 .publish-editor-top { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; margin-bottom: 24px; }
-.publish-editor-top > .publish-composer-tabs { flex: 1 1 auto; margin: 0; }
+/* 基準寬度 0：平台變多時分頁在自己的區塊內換行，按鈕仍留在第一列右側。 */
+.publish-editor-top > .publish-composer-tabs { flex: 1 1 0; min-width: 0; margin: 0; }
 .publish-editor-top > .publish-editor-heading { order: 2; margin: 0 0 0 auto; }
 @media (max-width: 767px) { .publish-editor-top > .publish-editor-heading { order: 0; flex-basis: 100%; } }
-.publish-format-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.publish-format-button { display: inline-flex; align-items: center; justify-content: center; width: 40px; min-width: 40px; padding: 0; }
-.publish-format-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* 貼文卡片：灰底面板裡的白色卡片，框底是工具列，右側一欄上移／下移／刪除；「+ 串文」接的回覆往右縮排、左側綠線串起來。 */
+.publish-chain { display: grid; gap: 12px; padding: 16px; border-radius: var(--ui-radius-card); background: var(--bg-subtle); }
+.publish-chain .publish-segments { position: relative; display: grid; gap: 12px; margin: 0; padding-left: 28px; }
+.publish-chain .publish-segments::before { content: ""; position: absolute; left: 10px; top: -12px; bottom: 28px; width: 12px; border-left: 2px solid var(--brand-primary); border-bottom: 2px solid var(--brand-primary); border-bottom-left-radius: 8px; }
+.publish-chain-add { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.publish-chain.has-replies .publish-chain-add { padding-left: 28px; }
+.publish-chain-add small { color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-comment-image { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 8px; }
+.publish-comment-image img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-subtle); }
+.publish-comment-image small { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--text-subtle); font-size: var(--ui-font-help); }
+.publish-post-card { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.publish-post-body { flex: 1 1 auto; min-width: 0; }
+.publish-post-box { position: relative; display: grid; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-card); background: var(--bg-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 8%); }
+.publish-post-box:focus-within { border-color: var(--brand-primary); }
+:root body .publish-post-box textarea { min-height: 96px; padding: 10px; border: 0; border-radius: var(--ui-radius-card) var(--ui-radius-card) 0 0; background: transparent; box-shadow: none; resize: vertical; }
+:root body .publish-post-box textarea:focus { outline: none; box-shadow: none; }
+.publish-post-count { justify-self: end; padding: 0 12px 6px; color: var(--text-subtle); font-size: var(--ui-font-help); white-space: nowrap; }
+.publish-post-count.publish-reasons { margin: 0; }
+.publish-format-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 8px; border-top: 1px solid var(--border-subtle); }
+:root body .publish-post-card .publish-format-bar .secondary { border-color: transparent; background: var(--state-success-bg); color: var(--state-success); }
+:root body .publish-post-card .publish-format-bar .secondary:not(:disabled):hover { border-color: var(--state-success); }
+:root body .publish-post-card .publish-format-bar .secondary:disabled { background: var(--bg-subtle); color: var(--text-subtle); }
+.publish-format-button { display: inline-flex; align-items: center; justify-content: center; width: 36px; min-width: 36px; padding: 0; }
+:root body .publish-post-card .publish-format-button { padding: 0; }
+.publish-format-bar svg,.publish-post-moves svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .publish-format-button.is-bold svg { stroke-width: 2.4; }
+:root body .publish-post-card .publish-media-pill { gap: 6px; padding: 0 10px; }
+.publish-format-sep { width: 1px; height: 20px; margin: 0 4px; background: var(--border-subtle); }
+.publish-emoji { position: relative; display: inline-flex; }
+.publish-emoji-menu { position: absolute; z-index: 5; bottom: calc(100% + 6px); left: 0; display: grid; gap: 8px; width: 304px; padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--ui-radius-card); background: var(--bg-surface); box-shadow: 0 4px 16px rgb(0 0 0 / 12%); }
+.publish-emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, 32px); gap: 2px; height: 216px; overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+.publish-emoji-grid.is-wide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.publish-emoji-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle); }
+:root body .publish-emoji-tabs button { width: auto; height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--ui-radius-control); background: transparent; color: var(--text-muted); font-size: var(--ui-font-help); cursor: pointer; }
+:root body .publish-emoji-tabs button[aria-pressed=true] { border-color: var(--brand-primary); color: var(--brand-primary); font-weight: 600; }
+.publish-emoji-grid button { width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--ui-radius-control); background: transparent; font-size: 18px; line-height: 1; cursor: pointer; }
+.publish-emoji-grid.is-wide button { width: 100%; padding: 0 6px; overflow: hidden; font-size: var(--ui-font-help); white-space: nowrap; text-overflow: ellipsis; }
+.publish-emoji-menu button:hover,.publish-emoji-menu button:focus-visible { background: var(--bg-subtle); }
+.publish-post-alert { display: grid; place-items: center; width: 22px; height: 22px; margin-left: auto; border-radius: 50%; background: var(--state-danger); color: var(--bg-surface); font-size: var(--ui-font-help); font-weight: 700; }
+.publish-post-moves { display: grid; gap: 4px; flex: 0 0 auto; }
+.publish-post-moves.is-empty { width: 36px; }
+.publish-post-move-gap { display: block; width: 36px; height: 36px; }
+/* 超限標紅：鏡像在 textarea 底下顯示文字，textarea 文字透明、只留游標與選取。 */
+.publish-post-mirror { position: absolute; z-index: 0; box-sizing: border-box; overflow: hidden; margin: 0; border: 0; color: var(--text-main); white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; pointer-events: none; }
+.publish-post-overflow { color: var(--state-danger); background: var(--state-danger-bg, transparent); }
+:root body .publish-post-box textarea.is-marking { position: relative; z-index: 1; color: transparent; caret-color: var(--text-main); }
+/* 停用的「媒體」按鈕不接滑鼠，滑鼠落在外層 span 上才會顯示停用原因。 */
+.publish-media-wrap { display: inline-flex; }
+.publish-media-wrap > button:disabled { pointer-events: none; }
+:root body .publish-post-card .publish-post-move { width: 36px; min-width: 36px; padding: 0; border-color: transparent; background: transparent; }
+:root body .publish-post-card .publish-post-move:not(:disabled) { color: var(--state-success); }
+:root body .publish-post-card .publish-post-move:not(:disabled):hover { background: var(--bg-surface); }
+:root body .publish-post-card .publish-post-move.is-remove:not(:disabled) { color: var(--state-danger); }
+@media (max-width: 767px) {
+  .publish-chain { padding: 12px; }
+  .publish-chain .publish-segments,.publish-chain.has-replies .publish-chain-add { padding-left: 20px; }
+  .publish-chain .publish-segments::before { left: 6px; width: 8px; }
+  .publish-post-card { gap: 4px; }
+  .publish-emoji-menu { width: 248px; left: auto; right: -80px; }
+}

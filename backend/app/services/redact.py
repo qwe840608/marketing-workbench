@@ -52,6 +52,10 @@ def redact(text: str) -> Redacted:
     value = value.translate(str.maketrans({v: k for k, v in protected.items()}))
     counts = {}
     for name, pattern in PATTERNS:
+        # EMAIL 的 [\w.+-]+ 在長串中文（\w）上會從每個位置重掃到底，兩萬字要將近一秒；
+        # 沒有 @ 就不可能命中，直接略過，結果完全相同。
+        if name == "EMAIL" and "@" not in value:
+            continue
         value, count = pattern.subn(f"[REDACTED_{name}]", value)
         if count:
             counts[name.lower()] = count

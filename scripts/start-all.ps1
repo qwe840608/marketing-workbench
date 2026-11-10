@@ -65,7 +65,8 @@ try {
     $node = (Get-Command node.exe -ErrorAction Stop).Source
     $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
     $uv = (Get-Command uv.exe -ErrorAction Stop).Source
-    Invoke-Step $node @('scripts/webhooks.mjs', 'resolve-ngrok') $projectRoot '確認 ngrok 執行檔（PATH、NGROK_PATH、LOCALAPPDATA）與 NGROK_AUTHTOKEN'
+    Invoke-Step $node @('scripts/webhooks.mjs', 'resolve-gateway') $projectRoot '確認 Webhook 閘道（ngrok 或 cloudflared）執行檔與金鑰'
+    $gatewayAgent = Get-MwbGatewayAgent -Root $projectRoot -Node $node
     Invoke-Step $node @('scripts/webhooks.mjs', 'prepare') $projectRoot '初始化 Webhook 簽章設定'
     Push-Location $projectRoot
     try {
@@ -116,7 +117,7 @@ try {
         Write-Host "已改用 $localUrl（.env 的 BACKEND_INTERNAL_URL 與 APP_ORIGIN 已更新）。"
     }
     if (-not $backend) { Assert-MwbPortFree -Port $port }
-    if (-not $gateway) { Assert-MwbPortFree -Port 4040 }
+    if (-not $gateway) { Assert-MwbPortFree -Port ([int]$gatewayAgent.port) }
     if (-not $backend) {
         Invoke-Step $uv @('sync', '--frozen') (Join-Path $projectRoot 'backend') '同步後端套件'
         # migration 前要先備份並在副本演練（docs/zh-tw/部署與維運.md）；一鍵啟動與開機自動啟動不能繞過這些檢查。
@@ -152,27 +153,16 @@ try {
     Push-Location $projectRoot
     try {
         $gatewaySeconds = & $node --input-type=module -e "import {readSettings,gatewayStartupSeconds} from './scripts/webhooks.mjs'; console.log(gatewayStartupSeconds(readSettings()))"
-        if ($LASTEXITCODE -ne 0) { throw 'ngrok 等待時間設定不合法。' }
+        if ($LASTEXITCODE -ne 0) { throw 'Webhook 閘道等待時間設定不合法。' }
     } finally { Pop-Location }
     $gatewayReadyTimer = [Diagnostics.Stopwatch]::StartNew()
     $gatewayReused = [bool]$gateway
-    if (-not $gateway) {
-        $servicePid = Start-MwbDetached -FilePath $node -ArgumentList @((Join-Path $projectRoot 'scripts/webhooks.mjs'), 'up') -WorkingDirectory $projectRoot -StdoutPath (Join-Path $runtime 'gateway.stdout.log') -StderrPath (Join-Path $runtime 'gateway.stderr.log')
-        Set-Content -LiteralPath (Join-Path $runtime 'gateway.pid') -Value $servicePid -Encoding ASCII
+    if ($gateway) { Wait-MwbHealth -Url $gatewayAgent.url -Name gateway -Root $projectRoot -Seconds ([int]$gatewaySeconds) }
+    else {
+        # 失敗時 Start-MwbGateway 會自行停止剛啟動的閘道，所以成功後才列入 $started。
+        Start-MwbGateway -Root $projectRoot -Node $node -Seconds ([int]$gatewaySeconds)
         $started.Add('gateway')
     }
-    Wait-MwbHealth -Url 'http://127.0.0.1:4040/api/tunnels' -Name gateway -Root $projectRoot -Seconds ([int]$gatewaySeconds)
-    # up 會驗證既有固定網址；等它完成後才宣告整體就緒。
-    $deadline = [DateTime]::UtcNow.AddSeconds([int]$gatewaySeconds)
-    do {
-        if (-not (Get-MwbProcess -Name gateway -Root $projectRoot)) { throw 'Webhook 服務啟動失敗。' }
-        $ready = Test-Path -LiteralPath (Join-Path $runtime 'gateway.stdout.log')
-        if ($ready) { $ready = [bool](Select-String -LiteralPath (Join-Path $runtime 'gateway.stdout.log') -Pattern '固定網址驗收通過' -Quiet) }
-        if ($gateway -or $ready) { break }
-        if ([DateTime]::UtcNow.Second % 10 -eq 0) { Write-Host '等待固定網址驗收完成；進度見 .runtime/gateway.stdout.log。' }
-        Start-Sleep -Seconds 1
-    } while ([DateTime]::UtcNow -lt $deadline)
-    if (-not $gateway -and -not $ready) { throw 'Webhook 固定網址驗收逾時；請檢查 .runtime/gateway.stdout.log、gateway.stderr.log 及 gateway-startup-tail.log 最後 12 行。' }
     $gatewayReadyTimer.Stop()
     # 公開邊界的關卡：重試後仍失敗就停止剛啟動的服務。
     if (-not (Invoke-StepWithRetry $node @('scripts/webhooks.mjs', 'check') $projectRoot '驗證 Webhook 路徑限制及 後端排程器')) {
@@ -193,7 +183,7 @@ try {
     Set-Content -LiteralPath $fingerprintPath -Value $hashes -Encoding ASCII
     $timing = [ordered]@{ utc=[DateTime]::UtcNow.ToString('o'); phase='start-all-ready'; seconds=[Math]::Round($gatewayReadyTimer.Elapsed.TotalSeconds, 3); reused=$gatewayReused }
     Add-Content -LiteralPath (Join-Path $runtime 'gateway-startup-times.jsonl') -Value ($timing | ConvertTo-Json -Compress) -Encoding UTF8
-    $timingLabel = if ($gatewayReused) { '既有服務就緒檢查' } else { 'ngrok 就緒（含固定網址驗收）' }
+    $timingLabel = if ($gatewayReused) { '既有服務就緒檢查' } else { "$($gatewayAgent.name) 就緒（含固定網址驗收）" }
     Write-Host "$timingLabel 耗時 $($timing.seconds) 秒；趨勢紀錄：.runtime/gateway-startup-times.jsonl"
     Write-Host "啟動完成：$localUrl （關閉此視窗不會停止服務）"
 } catch {

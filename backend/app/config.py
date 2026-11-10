@@ -1,6 +1,7 @@
 import logging
 from decimal import Decimal
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
@@ -54,6 +55,12 @@ class Settings(BaseSettings):
     receive_health_worker_enabled: bool = True
     receive_health_alerts_enabled: bool = True
     webhook_public_url: str = ""
+    # 公開閘道：ngrok（預設）或 cloudflare（Cloudflare Tunnel，需要自有網域）。
+    webhook_gateway: Literal["ngrok", "cloudflare"] = "ngrok"
+    # Cloudflare Access：三項都填才啟用；經 Tunnel 的連線帶有效 JWT 才當成內部（見 cf_access.py）。
+    cf_access_team_domain: str = ""
+    cf_access_aud: str = ""
+    cf_access_emails: str = ""
     line_channel_secret: SecretStr | None = None
     meta_page_id: str = ""
     meta_app_id: str = ""
@@ -68,6 +75,12 @@ class Settings(BaseSettings):
     tiktok_open_id: str = ""
     tiktok_access_token: SecretStr | None = None
     tiktok_refresh_token: SecretStr | None = None
+
+    x_client_id: str = ""
+    x_client_secret: SecretStr | None = None
+    x_user_id: str = ""
+    x_access_token: SecretStr | None = None
+    x_refresh_token: SecretStr | None = None
     threads_app_id: str = ""
     threads_app_secret: SecretStr | None = None
     threads_user_id: str = ""
@@ -156,6 +169,31 @@ class Settings(BaseSettings):
         if not value or any("*" in host or "/" in host for host in value):
             raise ValueError("ALLOWED_HOSTS 必須明列內部主機名稱")
         return value
+
+    @model_validator(mode="after")
+    def complete_cf_access(self):
+        from app.services.cf_access import AUDIENCE, TEAM_DOMAIN
+
+        values = (self.cf_access_team_domain, self.cf_access_aud, self.cf_access_emails)
+        if not any(values):
+            return self
+        emails = [e.strip() for e in self.cf_access_emails.split(",") if e.strip()]
+        if (
+            not TEAM_DOMAIN.fullmatch(self.cf_access_team_domain)
+            or not AUDIENCE.fullmatch(self.cf_access_aud)
+            or not emails
+            or any("@" not in e for e in emails)
+        ):
+            raise ValueError(
+                "Cloudflare Access 設定不完整："
+                "CF_ACCESS_TEAM_DOMAIN 須為 <團隊>.cloudflareaccess.com、"
+                "CF_ACCESS_AUD 須為 64 字元的 AUD 標籤、CF_ACCESS_EMAILS 至少一個信箱"
+            )
+        if self.webhook_gateway != "cloudflare":
+            raise ValueError("Cloudflare Access 只能搭配 WEBHOOK_GATEWAY=cloudflare")
+        if not self.backoffice_origin.startswith("https://"):
+            raise ValueError("Cloudflare Access 需要 APP_ORIGIN 含 Tunnel 的 HTTPS 網址")
+        return self
 
     @model_validator(mode="after")
     def secure_https_cookie(self):

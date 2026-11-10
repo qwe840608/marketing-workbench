@@ -4,7 +4,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
@@ -38,8 +38,8 @@ function json(res, message, result) {
   res.end(JSON.stringify({ jsonrpc: '2.0', id: message.id, result }));
 }
 
-async function desktop(t, url, messages, { timeout = 10000, extraEnv = {} } = {}) {
-  const child = spawn(process.execPath, [entry], { cwd: root,
+async function desktop(t, url, messages, { timeout = 10000, extraEnv = {}, nodeArgs = [] } = {}) {
+  const child = spawn(process.execPath, [...nodeArgs, entry], { cwd: root,
     env: { ...process.env, MWB_WORKBENCH_URL: url, MWB_TOKEN: token, ...extraEnv },
     stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
   t.after(() => { if (child.exitCode === null) child.kill(); });
@@ -186,14 +186,22 @@ test('401 and refusal are Chinese RPC errors and the process can continue', asyn
   assert.match((await desktop(t, url, [rpc(1, 'ping')])).rows[0].error.message, /無法連上工作檯.*下一步/);
 });
 
-test('default deadline is 30 seconds, handles hanging response body and does not crash', { timeout: 40000 }, async t => {
+test('default deadline is 30 seconds, handles hanging response body and does not crash', async t => {
   const fake = await endpoint(t, (req, res, message) => {
     if (message.id === 1) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.write('{'); }
     else json(res, message, {});
   });
+  // 真的等 30 秒會拖慢整輪驗收：子行程預先載入的替身把 10 秒以上的計時器縮成百分之一。
+  // 期限仍是程式預設的 30000 ms，由錯誤訊息裡的「30 秒」（依實際期限產生）確認。
+  const fast = path.join(await files(t), 'fast-timers.mjs');
+  await fs.writeFile(fast, [
+    'const original = globalThis.setTimeout;',
+    'globalThis.setTimeout = (fn, ms, ...args) => original(fn, ms >= 10000 ? ms / 100 : ms, ...args);',
+  ].join('\n'));
   const start = Date.now();
-  const result = await desktop(t, fake.url, [rpc(1, 'ping'), rpc(2, 'ping')], { timeout: 38000 });
-  assert.ok(Date.now() - start >= 29500 && Date.now() - start < 36000);
+  const result = await desktop(t, fake.url, [rpc(1, 'ping'), rpc(2, 'ping')],
+    { nodeArgs: ['--import', pathToFileURL(fast).href] });
+  assert.ok(Date.now() - start >= 250, 'must wait for the deadline, not fail immediately');
   assert.match(result.rows[0].error.message, /逾時（30 秒）.*下一步/);
   assert.deepEqual(result.rows[1], { jsonrpc: '2.0', id: 2, result: {} });
 });

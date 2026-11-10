@@ -20,6 +20,8 @@ from app.models import (
     Post,
     PriceItem,
     PriceItemHistory,
+    PublishFlow,
+    PublishFlowRun,
     PublishPost,
     RawEvent,
     Staff,
@@ -49,6 +51,8 @@ class BrandAccess:
             RawEvent,
             AuditLog,
             PublishPost,
+            PublishFlow,
+            PublishFlowRun,
         ):
             brand_column = model.brand_id
         elif model in (Post, AdMetricDaily):

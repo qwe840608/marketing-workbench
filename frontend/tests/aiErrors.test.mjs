@@ -5,7 +5,7 @@ import { aiErrorMessage } from '../src/aiErrors.ts';
 test('自動啟動錯誤使用繁體中文，隱藏原始錯誤內容', () => {
   const cases = {
     autostart_unsupported: '僅支援 Windows',
-    autostart_conflict: '同名排程的設定不同，請在工作排程器確認 MWB-AutoStart',
+    autostart_conflict: '同名排程的設定不同，請在工作排程器確認 MWB-AutoStart 與 MWB-GatewayWatchdog',
     autostart_timeout: '設定逾時，請確認工作排程器狀態後再試',
     autostart_failed: '無法更新或取得自動啟動狀態，請確認 Windows 工作排程器與帳號權限',
   };

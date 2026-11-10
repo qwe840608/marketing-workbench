@@ -47,6 +47,16 @@ test('粗體：選取的文字包上 **，空白留在外面；再按一次移�
   assert.equal(run('甲\n\n乙', 'bold').text, '**甲**\n\n**乙**');
 });
 
+test('底線：選取的文字包上 <u></u>，再按一次移除；沒選取時整行', () => {
+  const once = run('新品 Sale', 'underline', 3, 7);
+  assert.equal(once.text, '新品 <u>Sale</u>');
+  assert.equal(once.text.slice(once.start, once.end), 'Sale');
+  assert.equal(run(once.text, 'underline', once.start, once.end).text, '新品 Sale');
+  assert.equal(run('- 重點', 'underline', 3, 3).text, '- <u>重點</u>');
+  assert.equal(run('<u>重點</u>', 'underline').text, '重點');
+  assert.equal(toPlatformText(run('AB', 'underline').text), 'A' + String.fromCodePoint(0x332) + 'B' + String.fromCodePoint(0x332));
+});
+
 test('按鈕產生的 Markdown 發佈時轉成平台顯示得出的格式', () => {
   const text = run(run('Hi 新品', 'bold').text, 'h1').text;
   assert.equal(text, '# **Hi 新品**');

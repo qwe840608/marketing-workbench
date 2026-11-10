@@ -1,7 +1,7 @@
 """文案框裡的 Markdown 在發佈時轉成平台顯示得出來的純文字。
 
 社群平台都不支援 Markdown：# 大標題 → █ 大標題、## 小標題 → ▍小標題（英數粗體）、
-**粗體**／*斜體* → Unicode 數學無襯線字形
+**粗體**／*斜體* → Unicode 數學無襯線字形、<u>底線</u> → 每個字後面加組合底線（U+0332）
 （只有英文字母與數字有字形，中文只去掉符號）、行首 - ／* ／+ 項目 → •、[文字](網址) → 文字 網址、
 `程式碼` → 程式碼；1. 編號維持原樣。規則與前端 markdownText.toPlatformText 相同，
 共用 shared/caption_markdown_vectors.json。
@@ -19,6 +19,8 @@ BOLD = re.compile(r"\*\*([^*\n]+)\*\*|__([^_\n]+)__")
 # JS 的 (?<![\p{L}\p{N}*]) 與 (?<![\p{L}\p{N}_])：[^\W_] 是字母與數字。
 ITALIC = re.compile(r"(?<![^\W_])(?<!\*)\*([^*\s][^*\n]*)\*(?!\*)|(?<!\w)_([^_\s][^_\n]*)_(?!_)")
 LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
+# 平台沒有底線樣式：每個字後面接組合用底線字元，中英文都畫得出來。
+UNDERLINE = re.compile(r"<u>([^<\n]+)</u>")
 CODE = re.compile(r"`([^`\n]+)`")
 
 
@@ -38,7 +40,12 @@ def styled(text, style):
     return "".join(convert(ch) for ch in text)
 
 
+def underlined(text):
+    return "".join(ch + chr(0x332) for ch in text)
+
+
 def inline(text):
+    text = UNDERLINE.sub(lambda m: underlined(m.group(1)), text)
     text = BOLD.sub(lambda m: styled(m.group(1) or m.group(2) or "", "bold"), text)
     text = ITALIC.sub(lambda m: styled(m.group(1) or m.group(2) or "", "italic"), text)
     text = LINK.sub(r"\1 \2", text)

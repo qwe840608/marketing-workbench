@@ -7,7 +7,7 @@ export function aiErrorMessage(raw: string, provider = '', retryAt: string | nul
   const autostartCode = raw.match(/autostart_unsupported|autostart_conflict|autostart_timeout|autostart_failed/)?.[0];
   if (autostartCode) return ({
     autostart_unsupported: t('僅支援 Windows'),
-    autostart_conflict: t('同名排程的設定不同，請在工作排程器確認 MWB-AutoStart'),
+    autostart_conflict: t('同名排程的設定不同，請在工作排程器確認 MWB-AutoStart 與 MWB-GatewayWatchdog'),
     autostart_timeout: t('設定逾時，請確認工作排程器狀態後再試'),
     autostart_failed: t('無法更新或取得自動啟動狀態，請確認 Windows 工作排程器與帳號權限'),
   } as Record<string, string>)[autostartCode];

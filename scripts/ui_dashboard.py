@@ -84,8 +84,15 @@ def check_trends(page):
     expect(card.get_by_role("radio", name="7 天", exact=True)).to_have_attribute("aria-checked", "true")
     card.scroll_into_view_if_needed()
     page.screenshot(path=str(output / "dashboard-7-1440x900.png"))
-    with page.expect_request("**/api/dashboard/trends?*"):
-        page.get_by_role("combobox", name="目前品牌", exact=True).select_option("1")
+    # 網址已帶 brand_id=1，再選 1 不會觸發 change，只能等 15 秒輪詢；先切到全部品牌再切回來，
+    # 並限定 5 秒內送出，確認是切換品牌本身觸發重新讀取。
+    picker = page.get_by_role("combobox", name="目前品牌", exact=True)
+    with page.expect_request("**/api/dashboard/trends?*", timeout=5000):
+        picker.select_option("")
+    expect(card.locator(".trend-day")).to_have_count(7)
+    assert "brand_id" not in requests[-1]
+    with page.expect_request("**/api/dashboard/trends?*", timeout=5000):
+        picker.select_option("1")
     expect(card.locator(".trend-day")).to_have_count(7)
     assert requests[-1]["brand_id"] == ["1"]
     state["failed"] = True

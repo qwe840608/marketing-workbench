@@ -15,6 +15,7 @@ from functools import wraps
 from pathlib import Path
 
 RUNTIME = Path(__file__).resolve().parents[1] / ".runtime"
+VIEWPORT_ENV = "MWB_CHECK_VIEWPORT"
 
 try:
     # 完整驗收會平行跑多支檢查，畫面載入較慢；把等待上限放寬到 15 秒，斷言內容不變。
@@ -78,6 +79,9 @@ def runtime_tmp(prefix="check"):
 
 def output_path(script=None):
     name = Path(script or sys.argv[0]).stem
+    # verify_all 依螢幕寬度把同一支檢查拆成多個行程平行跑，各寬度各用一個輸出資料夾，互不覆蓋。
+    if width := os.environ.get(VIEWPORT_ENV):
+        name += f"-{width}"
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", name):
         raise ValueError("Invalid check name")
     return RUNTIME / "check-output" / name

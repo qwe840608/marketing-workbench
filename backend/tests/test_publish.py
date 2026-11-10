@@ -1764,8 +1764,17 @@ def update_options(ready, post, options=None, **changes):
 def test_composer_options_defaults_merge_and_schema(ready):
     client, _, _ = ready
     post = create(ready, "video", ["facebook"])
-    assert post["platform_options"]["facebook"] == {"video_format": "reels", "cover_media_id": None}
-    assert post["platform_options"]["instagram"] == {"share_to_feed": True, "cover_media_id": None}
+    assert post["platform_options"]["facebook"] == {
+        "video_format": "reels",
+        "cover_media_id": None,
+        "comments": [],
+        "comment_media": [],
+    }
+    assert post["platform_options"]["instagram"] == {
+        "share_to_feed": True,
+        "cover_media_id": None,
+        "comments": [],
+    }
     post = update_options(
         ready, post, {"instagram": {"share_to_feed": False}, "facebook": {"video_format": "feed"}}
     ).json()
@@ -1775,9 +1784,14 @@ def test_composer_options_defaults_merge_and_schema(ready):
     assert post["platform_options"]["threads"]["segments_custom"] is True
     post = update_options(ready, post, caption="新的主文案").json()
     assert post["platform_options"] == {
-        "facebook": {"video_format": "feed", "cover_media_id": None},
+        "facebook": {
+            "video_format": "feed",
+            "cover_media_id": None,
+            "comments": [],
+            "comment_media": [],
+        },
         # 封面編號由伺服端維護，未上傳封面時為 None。
-        "instagram": {"share_to_feed": False, "cover_media_id": None},
+        "instagram": {"share_to_feed": False, "cover_media_id": None, "comments": []},
         "threads": {"segments": ["手動第一段", "手動第二段"], "segments_custom": True},
         # 新增 YouTube 後，既有草稿也帶預設的 YouTube 選項（公開、非兒童內容、無縮圖）。
         "youtube": {
@@ -1788,6 +1802,7 @@ def test_composer_options_defaults_merge_and_schema(ready):
         },
         # TikTok 沒有可設定的選項（隱私、音樂、文案都在 App 內完成）。
         "tiktok": {},
+        "x": {},
     }
     for options in (
         {"facebook": {"video_format": "story"}},
@@ -1798,6 +1813,8 @@ def test_composer_options_defaults_merge_and_schema(ready):
         {"threads": {"segments_custom": 1}},
         {"other": {}},
         {"facebook": {"unknown": True}},
+        {"facebook": {"comments": [1]}},
+        {"facebook": {"comments": "一則"}},
     ):
         assert update_options(ready, post, options).status_code == 422
     assert (
@@ -1829,8 +1846,8 @@ def test_threads_over_limit_reason_names_post_and_position():
         "threads", "text", "", [], {"segments": ["甲" * 500 + "乙丙丁", "回覆", "丙" * 501]}
     )
     reasons = " ".join(result["reasons"])
-    assert "Threads 文案超過 500 字上限：共 503 字，從第 501 個字「乙丙丁」開始超出" in reasons
-    assert "回覆 2超過 500 字上限：共 501 字，從第 501 個字「丙」開始超出" in reasons
+    assert "Threads 文案超過 500 字上限" in reasons
+    assert "回覆 2超過 500 字上限" in reasons
     assert "回覆 1" not in reasons
 
 

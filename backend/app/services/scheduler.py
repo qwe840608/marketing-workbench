@@ -122,9 +122,11 @@ class Scheduler:
         workers = Workers(self.factory, self.settings)
         try:
             if name == "publish":
-                from app.services import publish
+                from app.services import flows, publish
 
                 result = publish.tick(self.factory, self.settings)
+                # 流程只建立草稿與排程貼文，送出仍由上面的 publish.tick 負責。
+                result["flows"] = flows.tick(self.factory, settings=self.settings)
             elif name in ("classify", "ideation"):
                 value = dispatch(name, self.factory, self.settings)
                 result = {

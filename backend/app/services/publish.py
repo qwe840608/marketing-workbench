@@ -35,6 +35,7 @@ from app.services import (
     roles,
     settings_store,
     tiktok_oauth,
+    x_oauth,
     youtube_oauth,
 )
 from app.services.publish_media import create_link, path_for, remove_files
@@ -46,6 +47,7 @@ ID_KEYS = {
     "threads": "THREADS_USER_ID",
     "youtube": "YOUTUBE_CHANNEL_ID",
     "tiktok": "TIKTOK_OPEN_ID",
+    "x": "X_USER_ID",
 }
 TOKEN_KEYS = {
     "facebook": "META_PAGE_ACCESS_TOKEN",
@@ -53,6 +55,7 @@ TOKEN_KEYS = {
     "threads": "THREADS_ACCESS_TOKEN",
     "youtube": "YOUTUBE_ACCESS_TOKEN",
     "tiktok": "TIKTOK_ACCESS_TOKEN",
+    "x": "X_ACCESS_TOKEN",
 }
 STATUS = {"done": "發佈成功", "partial": "部分成功", "failed": "發佈失敗", "missed": "已錯過"}
 # 排程到期的貼文在這裡發佈，不佔用排程執行緒：一篇大型上傳（YouTube、IG 等待容器）
@@ -95,6 +98,24 @@ def media_rows(session, identity):
             .order_by(PublishMedia.position, PublishMedia.id)
         )
     )
+
+
+def comment_rows(session, identity):
+    return list(
+        session.scalars(
+            select(PublishMedia).where(
+                PublishMedia.post_id == identity,
+                PublishMedia.deleted_at.is_(None),
+                PublishMedia.role == "fb_comment",
+            )
+        )
+    )
+
+
+def comment_media(session, post):
+    """與 facebook_comments 同序的評論附圖素材列；沒附圖或圖已移除為 None。"""
+    rows = {row.id: row for row in comment_rows(session, post.id)}
+    return [rows.get(identity) for identity in publish_rules.facebook_comment_media(post)]
 
 
 def bound_row(session, post, platform, key, role):
@@ -222,7 +243,10 @@ def view(session, post):
         "warnings": [],
         "status": post.status,
         "source": post.source,
-        "agent_source": {"agent": post.source_json.get("agent")} if post.source_json else None,
+        # 流程建立的貼文也有 source_json（flow_id），只有 Agent 來源才顯示 Agent 標記。
+        "agent_source": (
+            {"agent": post.source_json["agent"]} if post.source_json.get("agent") else None
+        ),
         "publish_via": post.agent_publish_json.get("via"),
         "report_id": post.report_id,
         "idea_index": post.idea_index,
@@ -246,6 +270,9 @@ def view(session, post):
         "thumbnail": image_view(thumbnail_row(session, post)),
         "cover": image_view(cover_row(session, post)),
         "facebook_cover": image_view(facebook_cover_row(session, post)),
+        # 這篇上傳過、還沒移除的評論附圖；
+        # 哪則評論用哪張由 platform_options.facebook.comment_media 決定。
+        "facebook_comment_media": [image_view(row) for row in comment_rows(session, post.id)],
         "targets": [
             {
                 "platform": t.platform,
@@ -393,10 +420,21 @@ def save(access, body, identity=None, *, agent_source=None):
     if not threads["segments_custom"]:
         # 未手動指定回覆：Threads 文案原樣當第一則，超過上限由發佈規則提示，不自動拆段。
         threads["segments"] = [captions.get("threads", body.caption)]
+    facebook = options["facebook"]
+    images = list(facebook.get("comment_media") or [])[: len(facebook["comments"])]
+    facebook["comment_media"] = images + [None] * (len(facebook["comments"]) - len(images))
+    attached = [identity for identity in facebook["comment_media"] if identity is not None]
+    if attached:
+        # 只能引用這篇貼文自己上傳、還沒移除的評論附圖，且一張圖只附在一則評論。
+        live = {row.id for row in comment_rows(session, post.id)}
+        if len(set(attached)) != len(attached) or not set(attached) <= live:
+            raise HTTPException(422, "評論圖片不存在或重複")
     for target in targets(session, post.id):
         # 影片已在 YouTube 建立（video_id）但目標失敗：選項不能再改，否則重試不會套用到那支影片。
         sent = target.status in {"succeeded", "publishing"} or bool(
-            target.detail_json.get("segment_ids") or target.detail_json.get("video_id")
+            target.detail_json.get("segment_ids")
+            or target.detail_json.get("video_id")
+            or target.detail_json.get("post_id")
         )
         if sent and options[target.platform] != previous_options[target.platform]:
             raise HTTPException(
@@ -501,10 +539,19 @@ def from_idea(access, settings, body, *, caption=None, agent_source=None):
     return {"post": view(session, post), "created": True}
 
 
-def rule_check(post, platform, media, thumbnail, cover=None):
+def rule_check(post, platform, media, thumbnail, cover=None, comment_images=None):
     platform_options = publish_rules.platform_options(post)[platform]
     if platform == "threads":
         platform_options["segments"] = publish_rules.threads_segments(post)
+    if platform in {"facebook", "instagram"}:
+        platform_options["comments"] = [
+            publish_rules.to_platform_text(text) for text in platform_options["comments"]
+        ]
+    if platform == "facebook":
+        # 規則只看附圖是否還在：已移除的圖不能讓空白評論通過。
+        platform_options["comment_media"] = [
+            row.id if row else None for row in (comment_images or [])
+        ]
     return publish_rules.check(
         platform,
         post.format,
@@ -527,10 +574,17 @@ def checks(access, settings, identity, *, include_drafts=False):
         "facebook": facebook_cover_row(access.session, post),
     }
     result = {}
+    images = comment_media(access.session, post)
     for p in ID_KEYS:
-        item = rule_check(post, p, media, thumbnail, covers.get(p))
+        item = rule_check(post, p, media, thumbnail, covers.get(p), images)
         item["ready"] = opts["platforms"][p]["ready"]
         item["reasons"] += opts["platforms"][p]["reasons"]
+        if p == "facebook" and opts["platforms"][p].get("cover_hint") and (
+            publish_rules.facebook_comments(post)
+        ):
+            # 粉專留言和自訂封面一樣需要 pages_manage_engagement；缺少時不讓貼文發了才失敗。
+            item["reasons"].append("留評論需要 pages_manage_engagement 權限，請重新連結 Meta")
+            item["ok"] = False
         item["ok"] = item["ok"] and item["ready"]
         result[p] = item
     return result
@@ -548,7 +602,22 @@ def remove_media(access, settings, identity, media_id):
         raise HTTPException(404, "找不到媒體")
     if media.role == "cover" and instagram_sent(access.session, post):
         raise HTTPException(409, "Instagram 已發佈，不可變更封面")
+    if media.role == "fb_comment" and any(
+        t.platform == "facebook"
+        and (t.status in {"succeeded", "publishing"} or t.detail_json.get("post_id"))
+        for t in targets(access.session, identity)
+    ):
+        raise HTTPException(409, "Facebook 已發佈，不可變更評論圖片")
     media.deleted_at = utc_now()
+    if media.role == "fb_comment":
+        options = deepcopy(post.platform_options_json or {})
+        values = dict(options.get("facebook", {}))
+        values["comment_media"] = [
+            None if identity == media.id else identity
+            for identity in values.get("comment_media") or []
+        ]
+        options["facebook"] = values
+        post.platform_options_json = options
     bound = {"cover": "instagram", "fb_cover": "facebook"}.get(media.role)
     if bound:
         options = deepcopy(post.platform_options_json or {})
@@ -700,7 +769,9 @@ def validate_prepare(access, settings, identity, body, *, retry=False):
     rows = accounts(session, settings, post.brand_id)
     for target in previous:
         if target.platform in selected and (
-            target.detail_json.get("segment_ids") or target.detail_json.get("stories")
+            target.detail_json.get("segment_ids")
+            or target.detail_json.get("stories")
+            or target.detail_json.get("post_id")
         ):
             if not rows[target.platform] or rows[target.platform].id != target.account_id:
                 raise HTTPException(409, "已部分發佈，不可更換帳號")
@@ -742,7 +813,10 @@ def prepare(access, settings, identity, body, *, retry=False, via=None):
 def finish(session, post):
     rows = targets(session, post.id)
     successful = sum(t.status == "succeeded" for t in rows)
-    partial = successful or any(t.detail_json.get("stories") for t in rows)
+    # FB 貼文已發出、只有評論沒留完（post_id）也算部分成功。
+    partial = successful or any(
+        t.detail_json.get("stories") or t.detail_json.get("post_id") for t in rows
+    )
     post.status = "done" if successful == len(rows) else "partial" if partial else "failed"
     if post.status == "done":
         post.completed_at = utc_now()
@@ -835,7 +909,12 @@ def execute_target(factory, settings, identity, target_id):
                 if target.platform in {"instagram", "facebook"} and post.format == "video"
                 else None
             )
-            if not rule_check(post, target.platform, media, thumbnail, cover)["ok"]:
+            comment_images = (
+                comment_media(session, post) if target.platform == "facebook" else None
+            )
+            if not rule_check(post, target.platform, media, thumbnail, cover, comment_images)[
+                "ok"
+            ]:
                 target.status, target.error_code = "failed", "rules_failed"
                 return
             token = credentials.raw(
@@ -844,7 +923,8 @@ def execute_target(factory, settings, identity, target_id):
             urls, cover_url = [], None
             category = youtube_oauth.category(session) if target.platform == "youtube" else None
             if (
-                target.platform not in {"facebook", "youtube", "tiktok"}
+                # X 由工作檯直接上傳檔案，不需要公開下載連結。
+                target.platform not in {"facebook", "youtube", "tiktok", "x"}
                 and post.format != "story"
                 and not target.detail_json.get("segment_ids")
             ):
@@ -925,6 +1005,12 @@ def execute_target(factory, settings, identity, target_id):
                 token = tiktok_oauth.access_token(factory, settings)
             except oauth.ProviderFailure:
                 raise publish_platforms.PlatformFailure("token_invalid") from None
+        if target.platform == "x":
+            # X 的 access token 只有 2 小時，送出前自動換發。
+            try:
+                token = x_oauth.access_token(factory, settings)
+            except oauth.ProviderFailure:
+                raise publish_platforms.PlatformFailure("token_invalid") from None
         result = publish_platforms.publish(
             settings,
             target.platform,
@@ -939,6 +1025,7 @@ def execute_target(factory, settings, identity, target_id):
             story_url=story_url,
             thumbnail=thumbnail,
             cover_url=cover_url,
+            comment_images=comment_images,
             category=category,
             quota=lambda kind: publish_youtube.reserve(factory, kind),
         )
@@ -994,8 +1081,16 @@ def reapply_thumbnail(access, factory, settings, identity):
     session.commit()
     try:
         token = youtube_oauth.access_token(factory, settings)
-        publish_youtube.reserve(factory, "thumbnail")
-        outcome = publish_youtube.apply_thumbnail(settings, token, video, thumbnail)
+        media = media_rows(session, post.id)
+        if len(media) == 1 and publish_rules.is_short(media[0]):
+            # 手動重新套用只查一次處理狀態，不在請求裡等待。
+            outcome = publish_youtube.short_thumbnail(
+                settings, token, video, thumbnail,
+                lambda kind: publish_youtube.reserve(factory, kind), waits=(0,),
+            )
+        else:
+            publish_youtube.reserve(factory, "thumbnail")
+            outcome = publish_youtube.apply_thumbnail(settings, token, video, thumbnail)
     except oauth.ProviderFailure:
         outcome = {"status": "failed", "code": "token_invalid"}
     except publish_platforms.PlatformFailure as failure:

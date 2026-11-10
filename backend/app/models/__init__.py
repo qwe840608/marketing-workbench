@@ -28,6 +28,7 @@ from app.models.domain import (
     StaffBrand,
     Thread,
 )
+from app.models.flows import PublishFlow, PublishFlowRun
 from app.models.followers import FollowerSnapshot
 from app.models.meta import CommentBackfill, CommentPoll, DmBackfill, MetaApiCall
 from app.models.oauth import OAuthConnection, OAuthState
@@ -44,6 +45,8 @@ from app.models.thumbnails import PostThumbnail
 
 __all__ = [
     "AudienceInsight",
+    "PublishFlow",
+    "PublishFlowRun",
     "PublishLink",
     "PublishMedia",
     "PublishPost",

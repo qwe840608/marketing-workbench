@@ -664,7 +664,7 @@ def action(audit, scope, button_name, endpoint, result, message=None, method="PO
 
 
 def workspace_actions(audit):
-    from check_csv_ui import exercise_csv
+    from ui_csv import exercise_csv
 
     page = audit.page
     workspace(page)
@@ -1080,17 +1080,9 @@ def helper_operations(page, origin, checks):
     from ui_dashboard import check_trends
     from check_ideation_fixes import check_idea_actions
 
-    extra = page.context.new_page()
-    audit = Audit(extra)
-    extra.goto(origin + f'/?view=ideation&report_id={SEED[2]}')
-    expect(extra.locator('.ideation-card')).to_have_count(1)
-    extra.clock.install()
-    check_idea_actions(extra, origin, SEED[2], extra.viewport_size['width'], extra.viewport_size['height'])
-    audit.measure('idea-actions')
-    audit.finish()
-    extra.close()
-
-    # The follower fixture fixes the context clock; keep it last.
+    # 瀏覽器時鐘是整個 context 共用：主題發想的 clock.install() 會讓後面各頁的 setInterval
+    # 改由 Playwright 時鐘接管，check_polish_frontend 的 __polishTick 失效，只能等真的輪詢間隔。
+    # 追蹤者的替身固定時鐘，兩者都排在最後。
     for helper in (
         check_comments,
         check_backfill,
@@ -1110,6 +1102,16 @@ def helper_operations(page, origin, checks):
         audit.measure(helper.__name__)
         audit.finish()
         extra.close()
+
+    extra = page.context.new_page()
+    audit = Audit(extra)
+    extra.goto(origin + f'/?view=ideation&report_id={SEED[2]}')
+    expect(extra.locator('.ideation-card')).to_have_count(1)
+    extra.clock.install()
+    check_idea_actions(extra, origin, SEED[2], extra.viewport_size['width'], extra.viewport_size['height'])
+    audit.measure('idea-actions')
+    audit.finish()
+    extra.close()
 
 
 def external_links(page):
@@ -1153,6 +1155,11 @@ def platform_connections(audit):
             for hidden in ('TIKTOK_OPEN_ID', 'TIKTOK_ACCESS_TOKEN', 'TIKTOK_REFRESH_TOKEN'):
                 expect(page.get_by_role('form', name=hidden, exact=True)).to_have_count(0)
             names = ('TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET')
+        if group == 'x':
+            # 同 YouTube：帳號 ID 與權杖只由授權流程寫入，設定頁只開放用戶端 ID／密鑰。
+            for hidden in [n for n in names if not n.endswith(('_CLIENT_ID', '_CLIENT_SECRET'))]:
+                expect(page.get_by_role('form', name=hidden, exact=True)).to_have_count(0)
+            names = tuple(n for n in names if n.endswith(('_CLIENT_ID', '_CLIENT_SECRET')))
         for name in names:
             if group in {'meta', 'threads'}:
                 card.locator('.oauth-manual').evaluate('e => e.open = true')
@@ -1201,22 +1208,22 @@ def platform_connections(audit):
             expect(form.locator('.key-source')).to_have_text(source)
         # YouTube、TikTok 與 Meta／Threads 同為 OAuth 平台：測試連線走授權狀態檢查。
         requests = []
-        endpoint = '/api/oauth/status?force=true' if group in {'meta', 'threads', 'youtube', 'tiktok'} else '/api/credentials/' + group + '/test'
+        endpoint = '/api/oauth/status?force=true' if group in {'meta', 'threads', 'youtube', 'tiktok', 'x'} else '/api/credentials/' + group + '/test'
 
         def probe(route):
             requests.append((route.request.method, route.request.post_data_json
                 if route.request.method == 'POST' else route.request.post_data))
-            if group in {'meta', 'threads', 'youtube', 'tiktok'}:
+            if group in {'meta', 'threads', 'youtube', 'tiktok', 'x'}:
                 route.fulfill(json={'backoffice_origin': 'https://office.example.test', 'callbacks': {}, 'platforms': {}, 'pages': []})
             else:
                 route.fulfill(json={'ok': True})
 
         page.route('**' + endpoint, probe)
         card.get_by_role('button', name='測試連線', exact=True).click()
-        expect(card.get_by_role('status')).to_have_text('權限檢查完成' if group in {'meta', 'threads', 'youtube', 'tiktok'} else '連線成功')
-        assert requests == [('GET', None)] if group in {'meta', 'threads', 'youtube', 'tiktok'} else requests == [('POST', {})]
+        expect(card.get_by_role('status')).to_have_text('權限檢查完成' if group in {'meta', 'threads', 'youtube', 'tiktok', 'x'} else '連線成功')
+        assert requests == [('GET', None)] if group in {'meta', 'threads', 'youtube', 'tiktok', 'x'} else requests == [('POST', {})]
         page.unroute('**' + endpoint)
-        audit.allow('GET' if group in {'meta', 'threads', 'youtube', 'tiktok'} else 'POST', endpoint.split('?')[0], 422, '平台連線失敗替身')
+        audit.allow('GET' if group in {'meta', 'threads', 'youtube', 'tiktok', 'x'} else 'POST', endpoint.split('?')[0], 422, '平台連線失敗替身')
         page.route('**' + endpoint, lambda r: r.fulfill(status=422, json={'detail': '連線測試失敗'}))
         card.get_by_role('button', name='測試連線', exact=True).click()
         expect(card.get_by_role('alert')).to_have_text('連線測試失敗')

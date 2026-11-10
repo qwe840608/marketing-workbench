@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, UTCDateTime, Versioned, utc_now
 
-PLATFORMS = ("line", "facebook", "instagram", "youtube", "tiktok", "threads")
+PLATFORMS = ("line", "facebook", "instagram", "youtube", "tiktok", "threads", "x")
 
 
 def choices(name: str, *values: str) -> Enum:

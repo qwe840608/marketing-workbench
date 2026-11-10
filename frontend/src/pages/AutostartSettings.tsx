@@ -37,7 +37,7 @@ export function AutostartSettings({ canManage }: { canManage: boolean }) {
       disabled={!canManage || busy || !state?.supported || !!state.code}
       onChange={e => void toggle(e.target.checked)} />{t('登入 Windows 後自動啟動工作檯')}</label>
       <span className="muted" role="status">{busy ? t('處理中…') : state && !state.supported ? t('僅支援 Windows') : !state ? t('狀態尚未取得') : ''}</span></div>
-    <p className="muted">{t('電腦重新開機後不用手動啟動；需要先登入 Windows 帳號')}</p>
+    <p className="muted">{t('電腦重新開機後不用手動啟動，收訊閘道（ngrok）中斷時也會在 5 分鐘內自動重新連線；需要先登入 Windows 帳號')}</p>
     {error && <p className="error" role="alert">{aiErrorMessage(error)}</p>}
   </section>;
 }

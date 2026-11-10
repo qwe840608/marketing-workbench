@@ -52,7 +52,9 @@ def main():
         "SETUP_CHECK_PORT": str(port),
     })
     # 全新安裝：只有資料表結構，沒有任何帳號或品牌。
-    command.upgrade(Config(str(REPO / "backend/alembic.ini")), "head")
+    alembic_cfg = Config(str(REPO / "backend/alembic.ini"))
+    alembic_cfg.attributes["settings"] = Settings(_env_file=None)
+    command.upgrade(alembic_cfg, "head")
     launch_server(folder, origin, script=__file__)
     password = secrets.token_urlsafe(18)
     with sync_playwright() as playwright:

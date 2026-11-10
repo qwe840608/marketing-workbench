@@ -5,18 +5,18 @@ import { t } from './i18n.ts';
 
 export type GuideValue =
   | { kind: 'text'; value: string }
-  | { kind: 'callback'; platform: 'meta' | 'threads' | 'youtube' | 'tiktok' }
+  | { kind: 'callback'; platform: 'meta' | 'threads' | 'youtube' | 'tiktok' | 'x' }
   | { kind: 'webhook'; path: string };
 // links：直達平台後台的超連結（新分頁開啟）；check：做完這步會看到什麼。
 export type GuideLink = { label: string; url: string };
 export type GuideStep = { text: string; links?: GuideLink[]; values?: GuideValue[]; check?: string };
 export type GuideSection = { heading?: string; steps: GuideStep[] };
 export type PlatformGuide = { id: GuideId; title: string; minutes: number; needs: string[]; faq: string[]; sections: GuideSection[] };
-export type GuideId = 'meta' | 'threads' | 'youtube' | 'notify' | 'jev' | 'webhook' | 'tiktok';
+export type GuideId = 'meta' | 'threads' | 'youtube' | 'notify' | 'jev' | 'webhook' | 'tiktok' | 'x';
 export type GuideContext = { callbacks?: Record<string, string>; webhookUrl?: string };
 
 const text = (value: string): GuideValue => ({ kind: 'text', value });
-const callback = (platform: 'meta' | 'threads' | 'youtube' | 'tiktok'): GuideValue => ({ kind: 'callback', platform });
+const callback = (platform: 'meta' | 'threads' | 'youtube' | 'tiktok' | 'x'): GuideValue => ({ kind: 'callback', platform });
 const link = (label: string, url: string): GuideLink => ({ label, url });
 
 export const facebookPermissions = ['pages_show_list', 'pages_read_engagement', 'pages_read_user_content', 'pages_manage_metadata', 'pages_manage_posts', 'read_insights'];
@@ -25,10 +25,12 @@ export const threadsPermissions = ['threads_basic', 'threads_content_publish', '
 export const tiktokScopes = ['user.info.basic', 'user.info.stats', 'video.list', 'video.upload'];
 // 留言只有 TikTok API for Business 提供，而它只收公司身分的開發者；教學、卡片與貼文數據共用同一句。
 export const tiktokCommentNotice = t('讀取 TikTok 留言需要以公司身分申請 TikTok API for Business（個人開發者無法申請）');
+// 與後端 x_oauth.SCOPES 相同。
+export const xScopes = ['tweet.read', 'tweet.write', 'users.read', 'media.write', 'offline.access'];
 export const youtubeScopes = ['https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/yt-analytics.readonly', 'https://www.googleapis.com/auth/youtube.upload'];
 
 // 教學裡允許出現的外部網域；測試會檢查每個連結都在清單內且是 https。
-export const guideLinkHosts = ['developers.facebook.com', 'console.cloud.google.com', 'manager.line.biz', 'developers.line.biz', 'developers.tiktok.com', 'console.typesafe.ai', 'dashboard.ngrok.com'];
+export const guideLinkHosts = ['developers.facebook.com', 'console.cloud.google.com', 'manager.line.biz', 'developers.line.biz', 'developers.tiktok.com', 'console.x.com', 'console.typesafe.ai', 'dashboard.ngrok.com'];
 
 const metaApps = link(t('開啟 Meta 開發者後台'), 'https://developers.facebook.com/apps/');
 const internalHttps = t('用內部 https 網址（網址開頭是 https://）開啟本工作檯');
@@ -225,6 +227,40 @@ export const platformGuides: Record<GuideId, PlatformGuide> = {
         heading: t('讀取留言（需要公司身分）'),
         steps: [
           { text: t('{notice}。申請要登記文件上的公司全名、公司網域信箱與公司網站，個人可略過。', { notice: tiktokCommentNotice }) },
+        ],
+      },
+    ],
+  },
+  x: {
+    id: 'x',
+    title: t('X 設定教學'),
+    minutes: 15,
+    needs: [
+      t('之後要發文的 X 帳號'),
+      t('可儲值 API 點數的付款方式（X API 按次計費，沒有免費發文額度）'),
+      t('{instruction}（回呼網址才會顯示）', { instruction: internalHttps }),
+    ],
+    faq: [
+      t('費用：一般貼文每則約 $0.015、內含網址的貼文約 $0.20，讀取自己的貼文每則約 $0.001；點數用完或達到花費上限時，發佈會失敗並提示到後台儲值。'),
+      t('影片超過 140 秒：只有 X Premium 帳號能發，一般帳號會被拒絕。'),
+      t('回呼網址顯示「尚未設定」：{instruction}後再打開這份教學。', { instruction: internalHttps }),
+      t('授權畫面顯示錯誤：確認 App permissions 是「Read and write」、Type of App 是「Web App, Automated App or Bot」，回呼網址一字不差。'),
+    ],
+    sections: [
+      {
+        heading: t('建立應用程式'),
+        steps: [
+          { text: t('登入 X Developer Console，左側「Apps」已有自動建立的應用程式就直接用；沒有的話按「Create App」，名稱用品牌名。'), links: [link(t('開啟 X Developer Console'), 'https://console.x.com/')] },
+          { text: t('左側選單「Billing」→「Credits」按「Purchase credits」儲值；再到「Billing Cycle Cap」按「Manage Spend Cap」設定每期花費上限，避免超支。'), check: t('「Remaining balance」顯示儲值後的餘額，「Billing Cycle Cap」不再是「Unlimited」。') },
+          { text: t('應用程式「Keys & Tokens」頁的「User authentication settings」按「Set up」：權限選「Read and write」，類型選「Web App, Automated App or Bot」。') },
+          { text: t('「Callback URI / Redirect URL」貼上回呼網址，「Website URL」填你的網站，其他欄位可留空，按「Save Changes」。'), values: [callback('x')], check: t('儲存後顯示 OAuth 2.0 的 Client ID 與 Client Secret。') },
+        ],
+      },
+      {
+        heading: t('連結帳號'),
+        steps: [
+          { text: t('把 OAuth 2.0 的 Client ID 與 Client Secret 分別貼到工作檯 X 卡片並儲存（像帳號密碼，不要給別人）。'), check: t('兩個欄位改顯示遮蔽過的內容。') },
+          { text: t('回到工作檯「平台連線」，在 X 卡片按「連結 X 帳號」，登入要發文的帳號並同意授權，看到「已連結」就完成。'), values: xScopes.map(text), check: t('卡片顯示「已連結」與「存取權杖自動換發」。') },
         ],
       },
     ],

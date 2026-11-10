@@ -40,8 +40,8 @@ def check_refresh(page, open_thread, shot, checks):
         if page.locator('.publish-editor').count():
             expect(page.locator('.publish-editor')).to_have_attribute('aria-busy', 'false')
             expect(page.get_by_role('tablist', name='文案平台').get_by_role('tab')).to_have_count(6)
-            expect(page.locator('.publish-platform-toggle input')).to_have_count(5)
-            expect(page.get_by_role('tab', name='共用', exact=True)).to_have_attribute('aria-selected', 'true')
+            expect(page.locator('.publish-platform-toggle input')).to_have_count(6)
+            expect(page.get_by_role('tablist', name='文案平台').locator('[aria-selected=true]')).to_have_count(1)
             if parse_qs(urlsplit(page.url).query).get('publish_post_id'):
                 # 已存草稿等 debounced check 回應，量測使用新分頁與錯誤原因。
                 expect(page.locator('.publish-editor')).to_have_attribute('data-check-state', 'checked')
@@ -107,20 +107,20 @@ def check_refresh(page, open_thread, shot, checks):
     if mobile:
         bar = page.locator('.mobile-bottom-nav')
         expect(bar).to_be_visible()
-        expect(bar.locator('button')).to_have_count(5)
+        expect(bar.locator('button')).to_have_count(6)
         expect(page.locator('.inbox-nav-toggle')).to_have_count(0)
         current('儀表板')
-        expect(bar.locator('button')).to_have_text(['儀表板', '貼文數據', '主題發想', '發佈', '設定'])
+        expect(bar.locator('button')).to_have_text(['儀表板', '貼文數據', '主題發想', '發佈', '流程', '設定'])
         expect(page.locator('.mobile-more')).to_have_count(0)
         open_settings(page)
         # uiorder：只有一個品牌時手機沒有品牌選單（多品牌行為見 check_brand_scope），仍有登出。
         expect(page.locator('.mobile-brand-picker')).to_have_count(0)
         expect(page.locator('.mobile-logout')).to_be_visible()
         capture('settings')
-        checks.append('mobile-five-navigation-settings-brand-logout')
+        checks.append('mobile-six-navigation-settings-brand-logout')
     else:
         expect(page.locator('.mobile-bottom-nav,.mobile-more')).to_have_count(0)
-        expect(page.locator('.workspace-nav button')).to_have_count(5)
+        expect(page.locator('.workspace-nav button')).to_have_count(6)
         assert page.locator('.sidebar').bounding_box()['width'] == 220
         checks.append('desktop-sidebar-unchanged-no-mobile-dom')
 

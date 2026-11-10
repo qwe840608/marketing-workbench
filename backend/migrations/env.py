@@ -25,7 +25,9 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    engine = build_engine(Settings())
+    # 隔離驗收傳入不讀 .env 的設定，避免正式 .env 的 Access 設定和本機 APP_ORIGIN 衝突。
+    settings = context.config.attributes.get("settings") or Settings()
+    engine = build_engine(settings)
     try:
         with engine.connect() as connection:
             # SQLite 重建被外鍵引用的表時需暫停此連線的檢查；提交前驗證全部關係。

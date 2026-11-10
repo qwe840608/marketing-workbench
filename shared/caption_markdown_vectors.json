@@ -14,6 +14,8 @@
     { "name": "算式與檔名不變", "text": "2*3*4 snake_case_name https://a.com/x_y_z", "expected": "2*3*4 snake_case_name https://a.com/x_y_z" },
     { "name": "減號與全形符號不變", "text": "價格 -50% ＜限定＞\n-不是清單", "expected": "價格 -50% ＜限定＞\n-不是清單" },
     { "name": "粗體不跨行", "text": "**甲\n乙**", "expected": "**甲\n乙**" },
+    { "name": "底線", "text": "<u>重點</u> A", "expected": "重̲點̲ A" },
+    { "name": "底線不跨行", "text": "<u>甲\n乙</u>", "expected": "<u>甲\n乙</u>" },
     { "name": "空白文案", "text": "", "expected": "" }
   ]
 }

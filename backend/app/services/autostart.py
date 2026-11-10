@@ -1,4 +1,8 @@
-"""Fixed, per-user Windows logon task; never persist a second enabled flag."""
+"""Fixed, per-user Windows logon task plus the gateway watchdog task.
+
+Never persist a second enabled flag: the logon task alone decides `enabled`,
+and the watchdog is created and removed with it.
+"""
 
 import base64
 import os
@@ -64,6 +68,31 @@ function Matches($task) {
         $s.MultipleInstances -eq 'IgnoreNew' -and
         [Xml.XmlConvert]::ToTimeSpan($s.ExecutionTimeLimit).TotalMinutes -eq 30)
 }
+# 同一個開關也管理 Webhook 閘道看門狗：每 5 分鐘執行 watchdog.ps1，閘道不見時只重啟閘道。
+# conhost --headless：每 5 分鐘一次，-WindowStyle Hidden 仍會閃一下視窗。
+$watchName = 'MWB-GatewayWatchdog'
+$watchExe = Join-Path $env:SystemRoot 'System32\conhost.exe'
+$watchArguments = '--headless "' + $exe + '" -NoProfile -NonInteractive -WindowStyle Hidden '
+$watchArguments += '-ExecutionPolicy Bypass -File "'
+$watchArguments += (Join-Path $root 'scripts\watchdog.ps1') + '"'
+function ReadWatch {
+    return Get-ScheduledTask | Where-Object { $_.TaskName -eq $watchName }
+}
+function WatchMatches($task) {
+    if (@($task).Count -ne 1 -or $task.TaskPath -ne '\') { return $false }
+    $actions = @($task.Actions)
+    $triggers = @($task.Triggers)
+    if ($actions.Count -ne 1 -or $triggers.Count -ne 1) { return $false }
+    $a = $actions[0]; $t = $triggers[0]; $p = $task.Principal; $s = $task.Settings
+    return ($a.CimClass.CimClassName -eq 'MSFT_TaskExecAction' -and
+        $a.Execute -eq $watchExe -and $a.Arguments -ceq $watchArguments -and
+        $a.WorkingDirectory -eq $root -and
+        $t.CimClass.CimClassName -eq 'MSFT_TaskTimeTrigger' -and $t.Enabled -and
+        [Xml.XmlConvert]::ToTimeSpan($t.Repetition.Interval).TotalMinutes -eq 5 -and
+        (SameUser $p.UserId) -and $p.LogonType -eq 'Interactive' -and
+        $p.RunLevel -eq 'Limited' -and $s.Enabled -and $s.MultipleInstances -eq 'IgnoreNew' -and
+        [Xml.XmlConvert]::ToTimeSpan($s.ExecutionTimeLimit).TotalMinutes -eq 10)
+}
 $mutex = [Threading.Mutex]::new($false, 'Local\MWB-AutoStart')
 $locked = $false
 try {
@@ -72,6 +101,25 @@ try {
     if (-not $locked) { exit 21 }
     $task = ReadTask
     if ($task -and -not (Matches $task)) { exit 20 }
+    $watch = ReadWatch
+    if ($watch -and -not (WatchMatches $watch)) { exit 20 }
+    if ($mode -eq 'enable' -and -not $watch) {
+        $principal = New-ScheduledTaskPrincipal -UserId $identity.Name `
+            -LogonType Interactive -RunLevel Limited
+        $action = New-ScheduledTaskAction -Execute $watchExe -Argument $watchArguments `
+            -WorkingDirectory $root
+        $trigger = New-ScheduledTaskTrigger -Once -At ([DateTime]::Now.AddMinutes(1)) `
+            -RepetitionInterval (New-TimeSpan -Minutes 5)
+        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries `
+            -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew `
+            -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
+        Register-ScheduledTask -TaskName $watchName -TaskPath '\' -Action $action `
+            -Trigger $trigger -Principal $principal -Settings $settings | Out-Null
+    } elseif ($mode -eq 'disable' -and $watch) {
+        Unregister-ScheduledTask -TaskName $watchName -TaskPath '\' -Confirm:$false
+    }
+    $watch = ReadWatch
+    if ($watch -and -not (WatchMatches $watch)) { exit 20 }
     if ($mode -eq 'enable' -and -not $task) {
         $principal = New-ScheduledTaskPrincipal -UserId $identity.Name `
             -LogonType Interactive -RunLevel Limited

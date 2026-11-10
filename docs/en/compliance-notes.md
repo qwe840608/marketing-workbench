@@ -2,7 +2,7 @@
 
 > **Language / 語言 / 语言 / 言語**: [繁體中文](../zh-tw/合規須知.md) | [简体中文](../cn/合规须知.md) | English | [日本語](../jp/コンプライアンスの注意事項.md)
 
-When you self-host this workbench, you are the **developer** of your own Meta, Google and TikTok apps. The obligations under each platform's terms fall on you, not on this project. This checklist covers what you must do yourself before and after self-hosting; the source and verification date of each rule are in [`platform-policies.md`](platform-policies.md) (platform policies).
+When you self-host this workbench, you are the **developer** of your own Meta, Google, TikTok and X apps. The obligations under each platform's terms fall on you, not on this project. This checklist covers what you must do yourself before and after self-hosting; the source and verification date of each rule are in [`platform-policies.md`](platform-policies.md) (platform policies).
 
 > This document summarizes platform rules and how the workbench handles them; it is not legal advice. Terms change; the latest official documents win.
 
@@ -53,6 +53,12 @@ The policy must truthfully reflect your setup and include at least:
 - TikTok officially positions Sandbox as a test environment (up to 10 target accounts). Long-term real use isn't explicitly allowed; it is a gray area, so judge for yourself.
 - Without review, Direct Post (`video.publish`) can only post as "Only you", and the posting account must be private; review doesn't accept tools for managing your own accounts. Reading comments requires applying for TikTok API for Business as a company, so the workbench doesn't read TikTok comments.
 - When introducing the tool, describe its features (for example "sends to TikTok drafts through the official API"); don't present it as partnered with or approved by TikTok.
+
+### X
+
+- **Pay per use, no free tier**: a regular post costs about $0.015 and one containing a URL about $0.20. Buy credits in the developer console first and set a monthly spend cap; posts fail once credits run out.
+- The workbench only publishes for now; it doesn't read X replies, mentions or analytics (those reads are billed separately).
+- This project has not checked the full X Developer Agreement clause by clause; read it yourself. The workbench only posts content you have confirmed and doesn't collect other people's data.
 
 ### LINE
 

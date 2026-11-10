@@ -20,10 +20,11 @@ from ports import browser_port
 
 
 def serve():
-    # 與原本 `python -m uvicorn app.main:app` 相同：使用模組層級的 app（讀 backend/.env，再由環境變數覆寫）。
-    from app.main import app
+    # 只吃環境變數，不讀正式 .env，避免正式的 Access 設定混進隔離驗收。
+    from app.config import Settings
+    from app.main import create_app
 
-    run_uvicorn(app, sys.argv[2])
+    run_uvicorn(create_app(Settings(_env_file=None)), sys.argv[2])
 
 
 @runtime_check
@@ -69,7 +70,9 @@ def main():
     env_path.write_text("\n".join(f"{k}='{v}'" for k, v in env.items()), encoding="utf-8")
     os.environ.update(env)
     settings = Settings(_env_file=env_path)
-    command.upgrade(Config(str(REPO / "backend/alembic.ini")), "head")
+    alembic_cfg = Config(str(REPO / "backend/alembic.ini"))
+    alembic_cfg.attributes["settings"] = Settings(_env_file=None)
+    command.upgrade(alembic_cfg, "head")
     engine = build_engine(settings)
     cleanup(engine.dispose)
     factory = session_factory(engine)

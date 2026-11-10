@@ -26,8 +26,8 @@ BANNER = "收訊通道中斷：新留言可能無法收到"
 REASONS = {
     "scheduler": "後端排程器未運作",
     "probe_secret_missing": "未設定公開探測密鑰（WEBHOOK_PROBE_SECRET）",
-    "probe_url_invalid": "公開網址不是 ngrok 網址，無法探測",
-    "probe_unreachable": "公開網址連不上，請確認 ngrok 已啟動",
+    "probe_url_invalid": "公開網址不是 ngrok 或 Cloudflare Tunnel 的網址，無法探測",
+    "probe_unreachable": "公開網址連不上，請確認 Webhook 閘道（ngrok 或 cloudflared）已啟動",
     "signature_surge": "驗簽失敗暴增",
 }
 logger = logging.getLogger("mwb.receive_health")
@@ -57,6 +57,21 @@ def signed_probe(http, base, secret, now):
     }
 
 
+NGROK_URL = re.compile(r"https://[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev)")
+# Cloudflare Tunnel 用自有網域：只接受一般主機名稱；
+# 不接受 IP、埠號、路徑、本機或 Tailscale／ngrok 網址。
+CLOUDFLARE_URL = re.compile(
+    r"https://(?=[a-z0-9.-]{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}"
+)
+NOT_CLOUDFLARE = re.compile(r".*(?:[./]localhost|\.ts\.net|\.ngrok(?:-free)?\.(?:app|dev|io))")
+
+
+def probe_url_allowed(settings, url):
+    if getattr(settings, "webhook_gateway", "ngrok") == "cloudflare":
+        return bool(CLOUDFLARE_URL.fullmatch(url)) and not NOT_CLOUDFLARE.fullmatch(url)
+    return bool(NGROK_URL.fullmatch(url))
+
+
 def probe(settings, now):
     from app.services.scheduler import scheduler_for
 
@@ -71,7 +86,7 @@ def probe(settings, now):
         settings.webhook_probe_secret.get_secret_value() if settings.webhook_probe_secret else ""
     )
     # Never send probe credentials to arbitrary URLs or follow redirects.
-    if not re.fullmatch(r"https://[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev)", url):
+    if not probe_url_allowed(settings, url):
         checks["probe_issue"] = "probe_url_invalid"
     elif not secret:
         checks["probe_issue"] = "probe_secret_missing"

@@ -13,7 +13,6 @@ from ui_navigation import navigate
 def check_editor_layout(page, scheduled=False, reason=False):
     """uiorder：排程設定與送出按鈕同在底部動作列；「新貼文／新限時動態」在標題列右側。"""
     import re
-
     editor = page.locator('.publish-editor')
     footer = editor.locator('.publish-footer')
     expect(footer).to_have_count(1)
@@ -143,11 +142,11 @@ def check_idea_drafts(page, settings, checks):
         expect(caption).to_have_value('[隔離驗收] 自行編輯主題\n\n先確認需求與現場。\n\n#客製方案服務評估')
         expect(caption).not_to_contain_text('隔離腳本結尾')
         expect(page.locator('.notice.success')).to_have_text('已從主題建立草稿，請上傳影片並確認平台')
-        expect(page.get_by_role('radio', name='影片', exact=True)).to_be_checked()
-        expect(page.get_by_role('button', name='拖曳或點選上傳')).to_be_enabled()
+        expect(page.get_by_role('radio', name='影片', exact=True)).to_have_count(0)
+        expect(page.locator('.publish-media-pill').first).to_be_enabled()
         expect(page.locator('.publish-platform input').first).to_be_enabled()
         no_ai_interface()
-        capture('draft-created', '.publish-step:has(textarea[aria-label="主文案"])')
+        capture('draft-created', '.publish-post-card:has(textarea[aria-label="主文案"])')
         post_id = int(parse_qs(urlsplit(page.url).query)['publish_post_id'][0])
         # 舊資料：資料庫裡仍有 AI 文案任務（排隊中與已完成）時，發佈頁與草稿列表都不顯示 AI 狀態。
         with factory.begin() as session:
@@ -248,7 +247,6 @@ def check_idea_drafts(page, settings, checks):
 def check_presence(page, settings, checks):
     """偵測平台已刪除：檢查列、實心按鈕、結果提示、已刪除膠囊與連結隱藏、部分刪除。"""
     import re
-
     from app.db import build_engine, session_factory
     from app.models import Brand, PublishPost, PublishTarget, Setting, Staff
     from app.models.base import utc_now
@@ -421,7 +419,7 @@ def check_unpublished(page, settings, checks):
     # FB 草稿選項在 Facebook 分頁；平台未開啟仍可編輯，關閉 Facebook 仍重置選項。
     page.get_by_role('tab', name='新增貼文', exact=True).click()
     page.get_by_role('button', name='新貼文', exact=True).click()
-    page.get_by_role('radio', name='純文字', exact=True).click()
+    page.get_by_role('tab', name='Threads', exact=True).click()
     caption.fill(title)
     expect(option).to_have_count(0)
     platform('Threads').check()
@@ -449,7 +447,9 @@ def check_unpublished(page, settings, checks):
     expect(caption).to_have_value(title)
     page.get_by_role('tab', name='Facebook', exact=True).click()
     expect(option).to_be_checked()
-    expect(page.locator('#publish-panel-new .primary')).to_have_count(1)
+    # 「+ 評論」是卡片鏈的新增按鈕（與「+ 串文」相同），不算在動作列的主要按鈕裡。
+    expect(page.locator('#publish-panel-new .publish-chain-add .primary')).to_have_text('+ 評論')
+    expect(page.locator('#publish-panel-new .primary:not(.publish-chain-add *)')).to_have_count(1)
     capture('editor', '.publish-unpublished')
     publish_button = page.locator('.publish-actions').get_by_role('button', name='發佈', exact=True)
     expect(publish_button).to_be_enabled()
@@ -539,6 +539,15 @@ def check_unpublished(page, settings, checks):
 def check_composer(page, settings, checks):
     """新編輯器所有操作皆在隔離後端／假 HTTP，包含兩個尺寸的改版後截圖。"""
     from urllib.parse import urlsplit
+    import io
+
+    from PIL import Image
+
+    def jpeg(w, h):
+        buffer = io.BytesIO()
+        Image.new('RGB', (w, h), (40, 90, 160)).save(buffer, 'JPEG')
+        return buffer.getvalue()
+
 
     origin = urlsplit(page.url)._replace(path='', query='', fragment='').geturl()
     size = page.viewport_size
@@ -590,45 +599,95 @@ def check_composer(page, settings, checks):
     expect(page.locator('.dashboard-kpis .kpi')).to_have_count(2)
     navigate(page, '發佈')
     page.get_by_role('button', name='新貼文', exact=True).click()
-    expect(page.get_by_role('tablist', name='文案平台').get_by_role('tab')).to_have_text(['共用', 'Facebook', 'Instagram', 'Threads', 'YouTube', 'TikTok'])
+    expect(page.get_by_role('tablist', name='文案平台').get_by_role('tab')).to_have_text(['Facebook', 'Instagram', 'Threads', 'YouTube', 'TikTok', 'X'])
     for name in ('Facebook', 'Instagram', 'Threads'):
         expect(switch(name)).to_be_enabled()
         expect(switch(name)).not_to_be_checked()
         switch(name).check()
-    for name in ('YouTube', 'TikTok'):
+    for name in ('YouTube', 'TikTok', 'X'):
         expect(switch(name)).to_be_disabled()
         expect(page.locator('.publish-composer-tab.off').filter(has_text=name)).to_have_count(1)
-    # 影片格式還沒有素材：錯誤只在動作列上方顯示一次（分頁裡不再另列）。
-    page.get_by_role('radio', name='影片', exact=True).click()
+    # 沒有格式選擇：格式依素材判斷，還沒有素材＝純文字。先傳圖片再刪掉，驗證格式跟著素材切換。
+    expect(page.get_by_role('radio', name='影片', exact=True)).to_have_count(0)
+    expect(page.get_by_role('button', name='拖曳或點選上傳', exact=True)).to_have_count(0)
+    page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'auto-format.jpg', 'mimeType': 'image/jpeg', 'buffer': jpeg(1080, 1080)})
+    expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(1)
+    page.get_by_role('button', name='移除 auto-format.jpg', exact=True).click()
+    expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(0)
+    checks.append('format-follows-media')
+    # 多張圖片依平台排版：FB 拼貼最多 5 格、第 5 格疊 +N；IG 一次一張可切換；Threads 橫向一列。
+    tiles = page.locator('.publish-preview .publish-preview-media > div')
+    page.get_by_label('上傳媒體', exact=True).set_input_files([{'name': f'grid-{n}.jpg', 'mimeType': 'image/jpeg', 'buffer': jpeg(1080, 1080)} for n in range(1, 7)])
+    expect(tiles).to_have_count(5)
+    tab('Facebook')
+    grid = page.locator('.publish-preview-media.is-facebook-grid')
+    expect(grid).to_have_attribute('data-count', '5')
+    page.locator('.publish-preview').screenshot(path=str(folder / f'facebook-grid-{size["width"]}x{size["height"]}.png'))
+    boxes = [tiles.nth(n).bounding_box() for n in range(5)]
+    # 上排兩格同高並排、下排三格同高並排。
+    assert abs(boxes[0]['y'] - boxes[1]['y']) < 1 and abs(boxes[2]['y'] - boxes[4]['y']) < 1 and boxes[2]['y'] > boxes[0]['y'], boxes
+    assert boxes[0]['width'] > boxes[2]['width'], boxes
+    more = page.get_by_role('button', name='顯示全部 6 個素材', exact=True)
+    expect(more).to_have_text('+1')
+    more.click()
+    expect(tiles).to_have_count(6)
+    expect(grid).to_have_attribute('data-count', 'all')
+    tab('Instagram')
+    expect(page.locator('.publish-preview-media.is-slides > div')).to_have_count(1)
+    expect(page.locator('.publish-preview-dots > span')).to_have_count(6)
+    page.get_by_role('button', name='下一張', exact=True).click()
+    expect(page.get_by_role('button', name='移除 grid-2.jpg', exact=True)).to_have_count(1)
+    tab('Threads')
+    expect(page.locator('.publish-preview-media.is-row > div')).to_have_count(6)
+    for n in range(6, 0, -1):
+        page.get_by_role('button', name=f'移除 grid-{n}.jpg', exact=True).click()
+        expect(tiles).to_have_count(n - 1)
+        expect(page.locator('.publish-editor')).to_have_attribute('aria-busy', 'false')
+        if n == 4:
+            tab('Facebook')
+            expect(grid).to_have_attribute('data-count', '3')
+            boxes = [tiles.nth(k).bounding_box() for k in range(3)]
+            # 3 張：一大兩小。
+            assert boxes[0]['width'] > boxes[1]['width'] and abs(boxes[1]['y'] - boxes[2]['y']) < 1, boxes
+            tab('Threads')
+    tab('Facebook')
+    checks.append('preview-multi-media-layout')
+    # 沒有素材時錯誤只在動作列上方顯示一次（分頁裡不再另列）。
+    main = page.get_by_label('主文案', exact=True)
+    main.fill('')
     for name in ('Instagram', 'Threads'):
         switch(name).uncheck()
     reason = page.locator('#publish-disabled-reason')
-    expect(reason).to_contain_text('Facebook：此格式需 1 個媒體檔')
+    expect(reason).to_contain_text('Facebook：純文字須有文案且不能包含媒體')
     tab('Facebook')
     expect(page.locator('#composer-panel-facebook .publish-reasons')).to_have_count(0)
-    expect(reason).to_have_text('Facebook：此格式需 1 個媒體檔')
-    # 單一平台分頁只列該平台的錯誤；共用分頁才列出全部已開啟平台。
+    expect(reason).to_have_text('Facebook：純文字須有文案且不能包含媒體')
+    # 每個平台分頁只列該平台的錯誤，其他平台由分頁紅點提示。
     switch('Instagram').check()
-    expect(reason).to_have_text('Facebook：此格式需 1 個媒體檔')
-    tab('共用')
-    expect(reason).to_have_text('Facebook：此格式需 1 個媒體檔；Instagram：此格式需 1 個媒體檔')
+    expect(reason).to_have_text('Facebook：純文字須有文案且不能包含媒體')
+    expect(page.locator('#composer-tab-instagram .publish-tab-error')).to_have_count(1)
+    tab('Instagram')
+    expect(reason).to_contain_text('Instagram：純文字須有文案且不能包含媒體')
     # TikTok 分頁：後端與前端同一條原因只列一次，不重複平台名稱，也不列其他平台。
     tab('TikTok')
-    expect(reason).to_contain_text('TikTok：此格式需 1 個媒體檔')
-    assert reason.inner_text().count('此格式需 1 個媒體檔') == 1, reason.inner_text()
+    expect(reason).to_contain_text('TikTok：僅支援影片發布，圖文需從APP上傳')
+    assert reason.inner_text().count('僅支援影片發布') == 1, reason.inner_text()
     expect(reason).not_to_contain_text('TikTok：TikTok')
     expect(reason).not_to_contain_text('Facebook')
     tab('Facebook')
     switch('Facebook').uncheck()
     switch('Instagram').uncheck()
-    expect(reason).to_have_text('請開啟要發佈的平台；Facebook：此格式需 1 個媒體檔')
+    expect(reason).to_have_text('請開啟要發佈的平台；Facebook：純文字須有文案且不能包含媒體')
     switch('Facebook').check()
     switch('Instagram').check()
     switch('Threads').check()
-    tab('共用')
+    tab('Facebook')
+    # 「共用」分頁與格式選擇都已移除，沒另寫的平台卡片就是主文案。
+    expect(page.get_by_role('tab', name='共用', exact=True)).to_have_count(0)
+    expect(page.locator('.publish-shared-fields')).to_have_count(0)
     checks.append('publish-reason-not-repeated-under-button')
     page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'composer2-isolated.mp4', 'mimeType': 'video/mp4', 'buffer': video_bytes()})
-    expect(page.locator('.publish-media-row')).to_contain_text('12.0 秒')
+    expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(1)
     main = page.get_by_label('主文案', exact=True)
     main.fill('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。\n\n#結尾標籤 #第二個')
     expect(page.locator('.publish-preview')).to_contain_text('共用文案可預覽')
@@ -640,17 +699,18 @@ def check_composer(page, settings, checks):
     def preview_order():
         return page.locator('.publish-preview-post').first.evaluate(
             "e => [...e.children].map(c => c.className.baseVal ?? c.className).filter(n => /publish-preview-(media|caption|actions)/.test(n)).map(n => n.split(' ')[0])")
-    preview_group = page.get_by_role('group', name='預覽平台')
+    expect(page.get_by_role('group', name='預覽平台')).to_have_count(0)
     for name, expected_order in (('Facebook', ['publish-preview-caption', 'publish-preview-media', 'publish-preview-actions']),
                                  ('Threads', ['publish-preview-caption', 'publish-preview-media', 'publish-preview-actions']),
                                  ('Instagram', ['publish-preview-media', 'publish-preview-actions', 'publish-preview-caption'])):
-        preview_group.get_by_role('button', name=name, exact=True).click()
+        tab(name)
+        expect(page.locator('.publish-preview-thread.is-' + name.lower())).to_have_count(1)
         assert preview_order() == expected_order, (name, preview_order())
         capture('preview-' + name.lower())
     expect(page.locator('.publish-preview-caption .publish-preview-author')).to_have_count(1)
     page.locator('.publish-preview-more').click()
     expect(page.locator('.publish-preview-caption')).to_contain_text('#結尾標籤 #第二個')
-    preview_group.get_by_role('button', name='Facebook', exact=True).click()
+    tab('Facebook')
     expect(page.locator('.publish-preview-actions.is-facebook')).to_contain_text('讚')
     # 直式影片預覽高度：桌面 480px、手機 320px（寬度受限時依比例縮小）。
     media_box = page.locator('.publish-preview-media > div').first.bounding_box()
@@ -692,46 +752,81 @@ def check_composer(page, settings, checks):
         const wait = () => done() ? resolve() : requestAnimationFrame(wait);
         wait();
     })''')
-    assert toolbar.locator('button svg').count() == 5 and toolbar.locator('button').first.inner_text() == ''
+    # 框底工具列：媒體、大標題、小標題、粗體、底線、項目清單、編號清單、表情符號（格式按鈕只有圖示）。
+    assert toolbar.locator('.publish-format-button').count() == 7 and toolbar.locator('.publish-format-button').first.inner_text() == ''
+    expect(toolbar.locator('.publish-media-pill')).to_have_text('媒體')
     main.fill('New 新品')
     main.evaluate('e => e.setSelectionRange(0, 3)')
     toolbar.get_by_role('button', name='粗體', exact=True).click()
     expect(main).to_have_value('**New** 新品')
     expect(page.locator('.publish-preview-caption')).to_have_text('𝗡𝗲𝘄 新品')
+    # 粗體按鈕在下一個畫格才把選取範圍設回 New，等它套用後再選「新品」。
+    main.evaluate('''e => new Promise(resolve => {
+        const wait = () => e.selectionStart === 2 && e.selectionEnd === 5 ? resolve() : requestAnimationFrame(wait);
+        wait();
+    })''')
+    main.evaluate('e => e.setSelectionRange(8, 10)')
+    toolbar.get_by_role('button', name='底線', exact=True).click()
+    expect(main).to_have_value('**New** <u>新品</u>')
+    expect(page.locator('.publish-preview-caption')).to_have_text('𝗡𝗲𝘄 新' + chr(0x332) + '品' + chr(0x332))
+    main.evaluate('''e => new Promise(resolve => {
+        const wait = () => e.selectionStart === 11 && e.selectionEnd === 13 ? resolve() : requestAnimationFrame(wait);
+        wait();
+    })''')
+    main.evaluate('e => e.setSelectionRange(e.value.length, e.value.length)')
+    toolbar.get_by_role('button', name='表情符號', exact=True).click()
+    page.get_by_role('group', name='表情符號').get_by_role('button', name='🔥', exact=True).click()
+    expect(main).to_have_value('**New** <u>新品</u>🔥')
+    expect(page.get_by_role('group', name='表情符號')).to_have_count(0)
+    # 表情選單分頁：十個分類，切到顏文字後只顯示顏文字，點選即插入。
+    toolbar.get_by_role('button', name='表情符號', exact=True).click()
+    menu = page.get_by_role('group', name='表情符號')
+    expect(menu.get_by_role('group', name='表情分類').get_by_role('button')).to_have_count(10)
+    menu.get_by_role('button', name='顏文字', exact=True).click()
+    expect(menu.get_by_role('button', name='顏文字', exact=True)).to_have_attribute('aria-pressed', 'true')
+    expect(menu.get_by_role('button', name='🔥', exact=True)).to_have_count(0)
+    menu.get_by_role('button', name='(≧▽≦)', exact=True).click()
+    expect(main).to_have_value('**New** <u>新品</u>🔥(≧▽≦)')
+    main.fill('**New** <u>新品</u>🔥')
     capture('caption-format')
+    checks.append('post-card-toolbar-underline-emoji')
     main.fill('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。')
     for name in ('Instagram', 'Threads', 'Facebook'):
-        page.get_by_role('group', name='預覽平台').get_by_role('button', name=name, exact=True).click()
-        expect(page.get_by_role('group', name='預覽平台').get_by_role('button', name=name, exact=True)).to_have_attribute('aria-pressed', 'true')
-        assert page.get_by_role('group', name='預覽平台').get_by_role('button', name=name, exact=True).evaluate('e => getComputedStyle(e).fontWeight') == '600'
+        tab(name)
+        expect(main).to_have_value('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。')
         assert page.locator('.publish-preview-avatar').first.evaluate(r"e => /^[\p{L}\p{N}]$/u.test(e.textContent)"), 'avatar must skip punctuation'
     capture('shared')
-    # 平台文案預設共用；一改即專屬，還原後即時跟隨。
+    # 平台卡片預設就是主文案；按「此平台另寫」才變專屬，「改回主文案」後即時跟隨。
     tab('Facebook')
+    expect(page.locator('#composer-panel-facebook .publish-caption-hint')).to_have_text('沿用主文案，修改會同步到其他沒有另寫的平台')
+    expect(page.get_by_label('Facebook 文案', exact=True)).to_have_count(0)
+    page.get_by_role('button', name='此平台另寫', exact=True).click()
     fb = page.get_by_label('Facebook 文案', exact=True)
     expect(fb).to_have_value('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。')
     expect(page.get_by_role('radio', name='Reels', exact=True)).to_be_checked()
     expect(page.locator('#composer-panel-facebook .notice.warning')).to_contain_text('Facebook 發文無法標註')
     fb.fill('隔離 Facebook 專屬 @帳號')
-    expect(page.get_by_role('button', name='還原為共用文案')).to_be_visible()
+    expect(page.get_by_role('button', name='改回主文案')).to_be_visible()
     expect(page.locator('.publish-preview')).to_contain_text('Facebook 專屬')
-    page.get_by_role('button', name='還原為共用文案').click()
-    expect(fb).to_have_value('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。')
-    expect(page.get_by_role('button', name='還原為共用文案')).to_have_count(0)
+    tab('Instagram')
+    expect(main).to_have_value('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。')
+    tab('Facebook')
+    page.get_by_role('button', name='改回主文案').click()
+    expect(main).to_have_value('隔離新發佈畫面 @帳號 #主題\n\n共用文案可預覽。')
+    expect(page.get_by_role('button', name='改回主文案')).to_have_count(0)
+    checks.append('no-shared-tab-platform-card-is-main-caption')
+    # 每個平台分頁的文案卡片都放在同一個灰底面板裡（不只 FB／Threads）。
+    for name in ('Facebook', 'Instagram', 'Threads'):
+        tab(name)
+        expect(page.locator('#composer-panel-' + name.lower() + ' .publish-chain .publish-post-card').first).to_be_visible()
+    tab('Facebook')
+    checks.append('every-platform-card-in-gray-panel')
     page.get_by_role('radio', name='影片貼文', exact=True).click()
     expect(page.get_by_role('radio', name='影片貼文', exact=True)).to_be_checked()
     page.get_by_role('radio', name='Reels', exact=True).click()
     capture('facebook-reels')
     # Facebook 影片封面：上傳後預覽；缺 pages_manage_engagement 時提示重新連結（不影響發佈）。
-    import io
     import re
-
-    from PIL import Image
-
-    def jpeg(w, h):
-        buffer = io.BytesIO()
-        Image.new('RGB', (w, h), (40, 90, 160)).save(buffer, 'JPEG')
-        return buffer.getvalue()
 
     fb_cover = page.locator('#composer-panel-facebook .publish-facebook-cover')
     expect(fb_cover).to_contain_text('JPG／PNG · 8 MB 內 · 建議與影片同比例 · 未上傳則由 Facebook 自動選')
@@ -743,13 +838,86 @@ def check_composer(page, settings, checks):
     expect(page.locator('.publish-preview video').first).to_have_attribute('poster', re.compile(r'/media/\d+$'))
     capture('facebook-cover')
     checks.append('facebook-cover-upload-hint-preview')
+    # 「+ 評論」卡片：可上下移、媒體按鈕可附一張圖片（只收圖片），刪除卡片連圖片一起移除。
+    comments_panel = page.locator('#publish-panel-new .publish-segments')
+    add_comment = page.locator('#publish-panel-new .publish-chain-add').get_by_role('button', name='+ 評論', exact=True)
+    add_comment.click()
+    add_comment.click()
+    page.locator('#facebook-comment-0').fill('評論甲')
+    page.locator('#facebook-comment-1').fill('評論乙')
+    # 預覽照 FB 排版顯示評論：灰色泡泡（帳號名稱＋內容）與「剛剛 讚 回覆」。
+    expect(page.locator('.publish-preview .publish-preview-bubble')).to_have_count(2)
+    expect(page.locator('.publish-preview .publish-preview-bubble').first).to_contain_text('評論甲')
+    # 評論卡片字數也是「已用／上限」。
+    expect(comments_panel.locator('.publish-post-count').first).to_have_text('3／63,206')
+    expect(page.locator('.publish-preview .publish-preview-comment-meta').first).to_have_text('剛剛讚回覆')
+    cards = comments_panel.locator('.publish-post-card')
+    expect(cards.nth(0).get_by_role('button', name='上移', exact=True)).to_have_count(0)
+    expect(cards.nth(1).get_by_role('button', name='下移', exact=True)).to_have_count(0)
+    cards.nth(0).get_by_role('button', name='下移', exact=True).click()
+    expect(page.locator('#facebook-comment-0')).to_have_value('評論乙')
+    expect(page.locator('#facebook-comment-1')).to_have_value('評論甲')
+    with page.expect_file_chooser() as chooser:
+        cards.nth(1).get_by_role('button', name='媒體').click()
+    chooser.value.set_files({'name': 'comment.jpg', 'mimeType': 'image/jpeg', 'buffer': jpeg(800, 600)})
+    expect(cards.nth(1).locator('.publish-comment-image')).to_contain_text('comment.jpg')
+    expect(cards.nth(1).locator('.publish-comment-image img')).to_be_visible()
+    expect(page.locator('.publish-preview .publish-preview-comment img')).to_have_count(1)
+    # 圖片跟著評論移動。
+    cards.nth(1).get_by_role('button', name='上移', exact=True).click()
+    expect(cards.nth(0).locator('.publish-comment-image')).to_contain_text('comment.jpg')
+    expect(page.locator('#facebook-comment-0')).to_have_value('評論甲')
+    capture('facebook-comments')
+    cards.nth(0).get_by_role('button', name='刪除這則', exact=True).click()
+    expect(comments_panel.locator('.publish-comment-image')).to_have_count(0)
+    cards.nth(0).get_by_role('button', name='刪除這則', exact=True).click()
+    expect(comments_panel).to_have_count(0)
+    checks.append('facebook-comments-reorder-image-remove')
+    # Instagram 的「+ 評論」：只能放文字（媒體按鈕停用），可上下移，和 Facebook 的評論分開存。
     tab('Instagram')
+    page.locator('#publish-panel-new .publish-chain-add').get_by_role('button', name='+ 評論', exact=True).click()
+    page.locator('#publish-panel-new .publish-chain-add').get_by_role('button', name='+ 評論', exact=True).click()
+    # 空白評論顯示灰字「請輸入文案」，不再另外列「評論 N 不可空白」。
+    expect(page.locator('#instagram-comment-0')).to_have_attribute('placeholder', '請輸入文案')
+    expect(page.get_by_text('評論 1 不可空白')).to_have_count(0)
+    expect(page.get_by_text('評論 2 不可空白')).to_have_count(0)
+    page.locator('#instagram-comment-0').fill('IG 評論甲')
+    page.locator('#instagram-comment-1').fill('IG 評論乙')
+    # 預覽照 IG 排版：評論接在文案下方，「帳號 內容」一行，沒有泡泡。
+    expect(page.locator('.publish-preview .publish-preview-comment')).to_have_count(2)
+    expect(page.locator('.publish-preview .publish-preview-bubble')).to_have_count(0)
+    expect(page.locator('.publish-preview .publish-preview-comment p').first).to_contain_text('IG 評論甲')
+    expect(comments_panel.locator('.publish-post-count').first).to_have_text('6／2,200')
+    ig_cards = comments_panel.locator('.publish-post-card')
+    expect(ig_cards).to_have_count(2)
+    expect(ig_cards.nth(0).get_by_role('button', name='媒體')).to_be_disabled()
+    expect(ig_cards.nth(0).get_by_role('button', name='媒體')).to_have_attribute('title', 'Instagram 評論只能放文字：IG 的評論 API 不支援附圖或影片')
+    # 停用按鈕不接滑鼠：外層 span 帶同樣說明，滑鼠停留時仍會顯示原因。
+    expect(ig_cards.nth(0).locator('.publish-media-wrap')).to_have_attribute('title', 'Instagram 評論只能放文字：IG 的評論 API 不支援附圖或影片')
+    # 評論超過 2,200 字也顯示紅色驚嘆號。
+    page.locator('#instagram-comment-1').fill('字' * 2201)
+    expect(ig_cards.nth(1).locator('.publish-post-alert')).to_have_count(1)
+    page.locator('#instagram-comment-1').fill('IG 評論乙')
+    expect(ig_cards.nth(1).locator('.publish-post-alert')).to_have_count(0)
+    expect(page.locator('#publish-panel-new .publish-chain-add small')).to_have_text('評論會在 Instagram 發文成功後依序留言')
+    ig_cards.nth(0).get_by_role('button', name='下移', exact=True).click()
+    expect(page.locator('#instagram-comment-0')).to_have_value('IG 評論乙')
+    capture('instagram-comments')
+    tab('Facebook')
+    expect(comments_panel).to_have_count(0)
+    tab('Instagram')
+    expect(page.locator('#instagram-comment-1')).to_have_value('IG 評論甲')
+    for _ in range(2):
+        ig_cards.nth(0).get_by_role('button', name='刪除這則', exact=True).click()
+    expect(comments_panel).to_have_count(0)
+    checks.append('instagram-comments-text-only-reorder-remove')
     feed = page.get_by_role('switch', name='同時顯示在動態', exact=True)
     expect(feed).to_be_checked()
     feed.uncheck()
     expect(feed).not_to_be_checked()
     switch('Instagram').uncheck()
     expect(page.locator('#composer-panel-instagram')).to_contain_text('未開啟')
+    page.get_by_role('button', name='此平台另寫', exact=True).click()
     ig = page.get_by_label('Instagram 文案', exact=True)
     expect(ig).to_be_enabled()
     ig.fill('隔離 Instagram 專屬')
@@ -770,14 +938,14 @@ def check_composer(page, settings, checks):
     expect(cover_box).to_contain_text('JPG／PNG · 8 MB 內 · 建議 9:16 · 未上傳則用影片第一格')
     expect(page.get_by_role('button', name='上傳封面', exact=True)).to_have_class('secondary')
     expect(page.get_by_role('button', name='移除封面', exact=True)).to_have_count(0)
-    media_count = page.locator('.publish-media-row').count()
+    media_count = page.locator('.publish-preview .publish-preview-media > div').count()
     page.get_by_label('上傳 Reels 封面', exact=True).set_input_files({'name': 'square.jpg', 'mimeType': 'image/jpeg', 'buffer': jpeg(1080, 1080)})
     expect(cover_box.locator('img')).to_be_visible()
     expect(cover_box).to_contain_text('square.jpg')
     idle_state = page.locator('.publish-editor')
     expect(idle_state).to_have_attribute('data-check-state', 'checked')
     expect(page.locator('#composer-panel-instagram .notice.warning')).to_contain_text('Reels 封面建議 9:16')
-    assert page.locator('.publish-media-row').count() == media_count
+    assert page.locator('.publish-preview .publish-preview-media > div').count() == media_count
     page.get_by_label('上傳 Reels 封面', exact=True).set_input_files({'name': 'cover.jpg', 'mimeType': 'image/jpeg', 'buffer': jpeg(1080, 1920)})
     expect(cover_box).to_contain_text('cover.jpg')
     expect(page.get_by_role('button', name='更換封面', exact=True)).to_have_class('secondary')
@@ -800,16 +968,16 @@ def check_composer(page, settings, checks):
     expect(page.locator('#publish-disabled-reason')).to_contain_text('@ 超過 1')
     expect(page.locator('#composer-tab-instagram .publish-tab-error')).to_have_count(1)
     expect(page.locator('.publish-actions .primary')).to_be_disabled()
-    page.get_by_role('button', name='還原為共用文案').click()
+    page.get_by_role('button', name='改回主文案').click()
     # Threads 串文：Threads 文案是第一則、下面是各則回覆；各則獨立、互不同步，不自動分段，超過 500 字只標紅。
     # 用鍵盤逐字輸入，模擬實際打字。
     def type_into(locator, text):
         locator.click()
         page.keyboard.press('Control+End')
         page.keyboard.type(text)
-    tab('共用')
-    main.fill('隔離串文主文案 #主題 #第二')
     tab('Threads')
+    main.fill('隔離串文主文案 #主題 #第二')
+    page.get_by_role('button', name='此平台另寫', exact=True).click()
     threads_caption = page.get_by_label('Threads 文案', exact=True)
     expect(threads_caption).to_have_value('隔離串文主文案 #主題 #第二')
     expect(page.locator('.publish-segment')).to_have_count(0)
@@ -822,51 +990,79 @@ def check_composer(page, settings, checks):
     expect(page.locator('.publish-segment')).to_have_count(0)
     expect(page.locator('.publish-preview-caption')).to_have_text(['隔離串文主文案 #主題 #第二，補充'])
     # 新增回覆後各則獨立：輸入回覆不改 Threads 文案、不改主文案、不改前面的回覆。
-    page.get_by_role('button', name='新增回覆', exact=True).click()
+    page.get_by_role('button', name='+ 串文', exact=True).click()
     type_into(page.get_by_label('Threads 回覆 1', exact=True), '隔離回覆一')
-    page.get_by_role('button', name='新增回覆', exact=True).click()
+    page.get_by_role('button', name='+ 串文', exact=True).click()
     type_into(page.get_by_label('Threads 回覆 2', exact=True), '隔離回覆二')
     expect(threads_caption).to_have_value('隔離串文主文案 #主題 #第二，補充')
     expect(page.get_by_label('Threads 回覆 1', exact=True)).to_have_value('隔離回覆一')
     expect(page.locator('.publish-preview-caption')).to_have_text(['隔離串文主文案 #主題 #第二，補充', '隔離回覆一', '隔離回覆二'])
+    # Threads 串文照貼文頁排版：主貼文內文與帳號列同寬，回覆內文縮排在頭像右邊並標「作者」，每則都有互動列。
+    posts = page.locator('.publish-preview-post')
+    expect(posts.nth(1)).to_have_class(re.compile(r'\bis-reply\b'))
+    expect(posts.nth(1).locator('.publish-preview-identity')).to_contain_text('作者')
+    expect(page.locator('.publish-preview-post .publish-preview-actions')).to_have_count(3)
+    head, first_text, reply_text = posts.nth(0).locator('.publish-preview-identity').bounding_box(), posts.nth(0).locator('.publish-preview-caption').bounding_box(), posts.nth(1).locator('.publish-preview-caption').bounding_box()
+    assert abs(first_text['x'] - head['x']) < 2 and reply_text['x'] - head['x'] > 30, (head, first_text, reply_text)
     type_into(threads_caption, '再改')
     expect(page.get_by_label('Threads 回覆 1', exact=True)).to_have_value('隔離回覆一')
     expect(page.get_by_label('Threads 回覆 2', exact=True)).to_have_value('隔離回覆二')
-    tab('共用')
+    tab('Facebook')
     expect(main).to_have_value('隔離串文主文案 #主題 #第二')
     tab('Threads')
-    # 超過 500 字只標紅並停用發佈，不自動拆；輸入框下方指出從第幾個字開始超出（鍵盤打到第 501 個字）。
+    # 超過 500 字只標紅並停用發佈，不自動拆；輸入框裡超出的字標成紅色，下方只說超過上限（鍵盤打到第 501 個字）。
     threads_caption.fill('超' * 499)
     expect(page.locator('.publish-over-limit')).to_have_count(0)
     type_into(threads_caption, '過限')
-    expect(page.locator('#composer-panel-threads label small.publish-reasons')).to_have_text('501 字／500')
-    expect(page.locator('.publish-over-limit')).to_have_text(['Threads 文案超過 500 字上限：共 501 字，從第 501 個字「限」開始超出'])
+    expect(page.locator('#composer-panel-threads .publish-post-count.publish-reasons')).to_have_text('501／500')
+    expect(page.locator('#composer-panel-threads .publish-post-alert')).to_have_count(1)
+    expect(page.locator('.publish-over-limit')).to_have_text(['Threads 文案超過 500 字上限'])
+    mirror = page.locator('#composer-panel-threads .publish-post-card').first.locator('.publish-post-mirror')
+    expect(mirror.locator('.publish-post-overflow')).to_have_text('限')
+    expect(threads_caption).to_have_class('is-marking')
+    # 鏡像與輸入框同位置同寬，超出的字是紅色。
+    box, shadow = threads_caption.bounding_box(), mirror.bounding_box()
+    assert abs(box['x'] - shadow['x']) < 2 and abs(box['y'] - shadow['y']) < 2, (box, shadow)
+    color = mirror.locator('.publish-post-overflow').evaluate('e => getComputedStyle(e).color')
+    danger = page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--state-danger')")
+    assert color != mirror.evaluate('e => getComputedStyle(e).color'), (color, danger)
     # 前端即時檢查與後端理由同一句時只出現一次（輸入框下方已顯示的不再列進分頁錯誤清單）。
-    expect(page.locator('#composer-panel-threads').get_by_text('開始超出')).to_have_count(1)
+    expect(page.locator('#composer-panel-threads').get_by_text('Threads 文案超過 500 字上限')).to_have_count(1)
     expect(page.locator('.publish-segment')).to_have_count(2)
     type_into(page.get_by_label('Threads 回覆 2', exact=True), '丙' * 500)
-    expect(page.locator('.publish-over-limit').last).to_have_text('回覆 2超過 500 字上限：共 505 字，從第 501 個字「丙丙丙丙丙」開始超出')
+    expect(page.locator('.publish-over-limit').last).to_have_text('回覆 2超過 500 字上限')
+    expect(page.locator('.publish-segment').last.locator('.publish-post-overflow')).to_have_text('丙丙丙丙丙')
     expect(page.locator('#composer-panel-threads').get_by_text('回覆 2超過 500 字上限').first).to_be_visible()
     page.get_by_label('Threads 回覆 2', exact=True).fill('隔離回覆二')
     expect(page.locator('#composer-tab-threads .publish-tab-error')).to_have_count(1)
     expect(page.locator('.publish-actions .primary')).to_be_disabled()
     capture('threads-over-limit')
-    # 刪除回覆、還原為共用文案只影響第一則；存回重開後保留。
-    page.locator('.publish-segment').last.get_by_role('button', name='刪除回覆').click()
-    expect(page.locator('.publish-segment')).to_have_count(1)
-    page.get_by_role('button', name='還原為共用文案').click()
-    expect(threads_caption).to_have_value('隔離串文主文案 #主題 #第二')
+    # 刪除回覆、改回主文案只影響第一則；存回重開後保留。
+    # 回覆卡片右側可上移／下移；第一則（Threads 文案）不能移動或刪除，所以沒有這三個按鈕。
+    first_card = page.locator('#composer-panel-threads .publish-post-card').first
+    expect(first_card.get_by_role('button', name='刪除這則')).to_have_count(0)
+    expect(first_card.get_by_role('button', name='上移')).to_have_count(0)
+    # 第一則回覆沒有上移、最後一則沒有下移（位置保留，刪除鈕對齊）。
+    expect(page.locator('.publish-segment').first.get_by_role('button', name='上移')).to_have_count(0)
+    expect(page.locator('.publish-segment').last.get_by_role('button', name='下移')).to_have_count(0)
+    page.locator('.publish-segment').first.get_by_role('button', name='下移').click()
+    expect(page.get_by_label('Threads 回覆 1', exact=True)).to_have_value('隔離回覆二')
+    page.locator('.publish-segment').last.get_by_role('button', name='上移').click()
     expect(page.get_by_label('Threads 回覆 1', exact=True)).to_have_value('隔離回覆一')
-    tab('共用')
+    checks.append('threads-reply-move-up-down')
+    page.locator('.publish-segment').last.get_by_role('button', name='刪除這則').click()
+    expect(page.locator('.publish-segment')).to_have_count(1)
+    page.get_by_role('button', name='改回主文案').click()
+    expect(main).to_have_value('隔離串文主文案 #主題 #第二')
+    expect(page.get_by_label('Threads 回覆 1', exact=True)).to_have_value('隔離回覆一')
     main.fill('依主文案重新分段後只剩一段 #主題')
-    tab('Threads')
     page.get_by_label('Threads 回覆 1', exact=True).fill('隔離回覆內容，不加編號。')
     page.get_by_role('button', name='存成草稿', exact=True).click()
     expect(page.locator('.notice.success')).to_have_text('草稿已儲存')
     page.reload()
     expect(main).to_have_value('依主文案重新分段後只剩一段 #主題')
     tab('Threads')
-    expect(threads_caption).to_have_value('依主文案重新分段後只剩一段 #主題')
+    expect(main).to_have_value('依主文案重新分段後只剩一段 #主題')
     expect(page.locator('.publish-segment')).to_have_count(1)
     expect(page.get_by_label('Threads 回覆 1', exact=True)).to_have_value('隔離回覆內容，不加編號。')
     expect(page.locator('.publish-preview-caption')).to_have_text(['依主文案重新分段後只剩一段 #主題', '隔離回覆內容，不加編號。'])
@@ -1197,12 +1393,13 @@ def check_youtube(page, settings, checks):
         page.get_by_role('tab', name='新增貼文', exact=True).click()
         expect(page.locator('.publish-editor')).to_have_attribute('aria-busy', 'false')
         page.get_by_role('button', name='新貼文', exact=True).click()
-        # 已連結且有上傳權限的 YouTube：開關可用、頻道名稱出現在發佈帳號。
+        # 已連結且有上傳權限的 YouTube：頻道名稱出現在發佈帳號；還沒有影片時開關停用，傳了影片才可用。
         expect(page.locator('.publish-accounts')).to_contain_text('隔離 YouTube 頻道')
-        expect(switch('YouTube')).to_be_enabled()
+        expect(switch('YouTube')).to_be_disabled()
         expect(page.locator('.publish-composer-tab.ready').filter(has_text='YouTube')).to_have_count(1)
         page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'yt-isolated.mp4', 'mimeType': 'video/mp4', 'buffer': video_bytes(1920, 1080)})
-        expect(page.locator('.publish-media-row')).to_contain_text('12.0 秒')
+        expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(1)
+        expect(switch('YouTube')).to_be_enabled()
         main = page.get_by_label('主文案', exact=True)
         main.fill(caption)
         switch('YouTube').check()
@@ -1210,17 +1407,41 @@ def check_youtube(page, settings, checks):
         # 欄位：標題（預設沿用說明第一行，以灰字顯示）、說明（位元組）、公開狀態、兒童內容、縮圖。
         title = page.get_by_label('YouTube 標題', exact=True)
         expect(title).to_have_value('')
-        expect(title).to_have_attribute('placeholder', title_text)
-        expect(panel).to_contain_text(re.compile(r'\d+／100 字'))
+        expect(title).to_have_attribute('placeholder', '請輸入標題')
+        # 帳號名稱與「沿用主文案」說明各自有底色，和「未開啟」標籤分開。
+        heading = panel.locator('.publish-caption-heading')
+        for part in (heading.locator('> span').first, heading.locator('.publish-caption-hint')):
+            assert part.evaluate('e => getComputedStyle(e).backgroundColor') not in ('rgba(0, 0, 0, 0)', 'transparent')
+        # 標題框與描述框是灰底面板裡的白框，上方各有欄名「標題：」「描述欄」；左右留白一樣、標題框與「描述欄」相隔 10px。
+        expect(panel.locator('label').filter(has_text='YouTube 標題')).to_have_count(0)
+        expect(panel.locator('.publish-youtube-label')).to_have_text(['標題：', '描述欄：'])
+        expect(page.get_by_label('主文案', exact=True)).to_have_attribute('placeholder', '請描述這部影片')
+        stack = panel.locator('.publish-youtube-stack')
+        title_box = stack.locator('.publish-youtube-title .publish-post-box').bounding_box()
+        caption_box = stack.locator('.publish-post-card').nth(1).locator('.publish-post-box').bounding_box()
+        chain_box = panel.locator('.publish-chain').bounding_box()
+        label_box = panel.locator('.publish-youtube-label').nth(1).bounding_box()
+        assert abs(label_box['y'] - title_box['y'] - title_box['height'] - 10) < 1.5, (title_box, label_box)
+        # 欄名比框內文字起點再往右 5px。
+        text_x = label_box['x'] + float(panel.locator('.publish-youtube-label').nth(1).evaluate('e => getComputedStyle(e).paddingLeft').rstrip('px'))
+        assert abs(text_x - chain_box['x'] - (title_box['x'] - chain_box['x']) - 5) < 1.5, (label_box, title_box)
+        for box in (title_box, caption_box):
+            left, right = box['x'] - chain_box['x'], chain_box['x'] + chain_box['width'] - box['x'] - box['width']
+            assert abs(left - right) < 1.5, (box, chain_box)
+        # 沒填標題時字數是 0（只算標題框實際輸入的字），字數不加「字」「位元組」。
+        expect(stack.locator('.publish-youtube-title .publish-post-count')).to_have_text('0／100')
+        expect(stack.locator('.publish-post-card').nth(1).locator('.publish-post-count')).to_have_text(re.compile(r'^[\d,]+／5,000$'))
+        expect(main).to_have_value(caption)
+        page.get_by_role('button', name='此平台另寫', exact=True).click()
         description = page.get_by_label('YouTube 說明', exact=True)
         expect(description).to_have_value(caption)
-        expect(panel).to_contain_text('／5,000 位元組')
+        expect(panel).to_contain_text('／5,000')
         privacy = page.get_by_role('radiogroup', name='公開狀態', exact=True)
         expect(privacy.get_by_role('radio')).to_have_text(['公開', '不公開', '私人'])
         expect(privacy.get_by_role('radio', name='公開', exact=True)).to_be_checked()
         kids = page.get_by_label('這是為兒童製作的內容', exact=True)
         expect(kids).not_to_be_checked()
-        expect(page.locator('.publish-thumbnail')).to_contain_text('未上傳則用自動縮圖')
+        expect(page.locator('.publish-thumbnail')).to_contain_text('JPG／PNG · 50 MB 內 · 未上傳則用自動縮圖')
         expect(page.get_by_role('button', name='上傳縮圖', exact=True)).to_have_class('secondary')
         expect(page.get_by_role('button', name='移除縮圖', exact=True)).to_have_count(0)
         # 縮圖：預覽顯示、不算發佈素材（素材清單仍只有影片）。
@@ -1231,9 +1452,7 @@ def check_youtube(page, settings, checks):
         expect(page.get_by_role('button', name='更換縮圖', exact=True)).to_have_class('secondary')
         expect(page.get_by_role('button', name='移除縮圖', exact=True)).to_have_class('primary danger')
         idle()
-        tab('共用')
-        expect(page.locator('.publish-media-row')).to_have_count(1)
-        tab('YouTube')
+        expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(1)
         # 標題 100 字、說明 5000 位元組：超過就紅字並擋發佈。
         title.fill('字' * 101)
         idle()
@@ -1251,8 +1470,8 @@ def check_youtube(page, settings, checks):
         description.fill('字' * 1666 + 'ab')
         idle()
         expect(page.locator('#publish-disabled-reason')).to_have_count(0)
-        page.get_by_role('button', name='還原為共用文案').click()
-        expect(description).to_have_value(caption)
+        page.get_by_role('button', name='改回主文案').click()
+        expect(main).to_have_value(caption)
         checks.append('ytpublish-fields-limits-thumbnail-not-media')
         # 選項隨草稿保存；縮圖由伺服端保存，重新開啟仍在。
         title.fill(custom)
@@ -1281,51 +1500,55 @@ def check_youtube(page, settings, checks):
         assert preview.locator('.publish-preview-media > div').evaluate('e => getComputedStyle(e).aspectRatio') == '16 / 9'
         expect(preview.locator('video')).to_have_attribute('poster', re.compile(r'/api/publish/posts/\d+/media/\d+$'))
         capture('youtube-preview', '.publish-preview')
-        # Shorts：直式且 3 分鐘內只提示「將被歸為 Shorts」；不支援縮圖，帶縮圖就擋；預覽改直式。
-        tab('共用')
-        page.locator('.publish-media-row').get_by_role('button', name='移除', exact=True).click()
-        expect(page.locator('.publish-media-row')).to_have_count(0)
+        # Shorts：直式且 3 分鐘內只提示「將被歸為 Shorts」；縮圖可用，只提醒處理完成後才套用；預覽改直式並用縮圖當封面。
+        page.get_by_role('button', name='移除 yt-isolated.mp4', exact=True).click()
+        expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(0)
+        # 刪掉影片後 YouTube 開關仍開著（換影片不必重開），只是檢查會擋。
+        expect(switch('YouTube')).to_be_checked()
+        expect(switch('YouTube')).to_be_enabled()
         page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'yt-short.mp4', 'mimeType': 'video/mp4', 'buffer': video_bytes()})
-        expect(page.locator('.publish-media-row')).to_contain_text('1080 × 1920')
+        expect(page.get_by_role('button', name='移除 yt-short.mp4', exact=True)).to_have_count(1)
         tab('YouTube')
         idle()
-        expect(panel.locator('.notice.warning')).to_contain_text('將被歸為 Shorts')
-        expect(page.get_by_role('button', name='更換縮圖', exact=True)).to_be_disabled()
-        expect(page.locator('.publish-thumbnail')).to_contain_text('Shorts 不支援自訂縮圖')
-        expect(page.locator('#publish-disabled-reason')).to_contain_text('Shorts 不支援自訂縮圖，請移除縮圖')
-        expect(page.locator('.publish-actions .primary')).to_be_disabled()
+        expect(panel.locator('.notice.warning').filter(has_text='將被歸為 Shorts')).to_have_count(1)
+        expect(panel.locator('.notice.warning').filter(has_text='Shorts 的自訂縮圖要等 YouTube 處理完影片才會套用')).to_have_count(1)
+        expect(page.get_by_role('button', name='更換縮圖', exact=True)).to_be_enabled()
+        expect(page.locator('.publish-thumbnail img')).to_be_visible()
+        expect(page.locator('#publish-disabled-reason')).to_have_count(0)
+        expect(page.locator('.publish-actions .primary')).to_be_enabled()
         assert preview.locator('.publish-preview-media > div').evaluate('e => getComputedStyle(e).aspectRatio') == '9 / 16'
-        assert preview.locator('video').get_attribute('poster') is None
+        expect(preview.locator('video')).to_have_attribute('poster', re.compile(r'/api/publish/posts/\d+/media/\d+$'))
         page.get_by_role('button', name='移除縮圖', exact=True).click()
         expect(page.locator('.publish-thumbnail img')).to_have_count(0)
         idle()
-        expect(page.locator('#publish-disabled-reason')).to_have_count(0)
-        expect(page.locator('.publish-actions .primary')).to_be_enabled()
-        expect(page.locator('.publish-thumbnail')).to_contain_text('Shorts 不支援自訂縮圖')
-        checks.append('ytpublish-shorts-notice-no-thumbnail')
+        expect(page.locator('.publish-thumbnail')).to_contain_text('50 MB 內')
+        expect(panel.locator('.notice.warning').filter(has_text='Shorts 的自訂縮圖')).to_have_count(0)
+        assert preview.locator('video').get_attribute('poster') is None
+        checks.append('ytpublish-shorts-notice-thumbnail-allowed')
         # 換回一般影片並重傳縮圖。
-        tab('共用')
-        page.locator('.publish-media-row').get_by_role('button', name='移除', exact=True).click()
-        expect(page.locator('.publish-media-row')).to_have_count(0)
+        page.get_by_role('button', name='移除 yt-short.mp4', exact=True).click()
+        expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(0)
         page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'yt-isolated.mp4', 'mimeType': 'video/mp4', 'buffer': video_bytes(1920, 1080)})
-        expect(page.locator('.publish-media-row')).to_contain_text('1920 × 1080')
+        expect(page.get_by_role('button', name='移除 yt-isolated.mp4', exact=True)).to_have_count(1)
         tab('YouTube')
         page.get_by_label('上傳縮圖', exact=True).set_input_files({'name': 'thumb.jpg', 'mimeType': 'image/jpeg', 'buffer': canvas_jpeg(1280, 720)})
         expect(page.locator('.publish-thumbnail img')).to_be_visible()
         idle()
-        # 非影片格式：YouTube 開關停用並移除，分頁只顯示「YouTube 只支援影片」。
-        for format_name in ('圖片', '輪播', '純文字'):
-            tab('共用')
-            page.get_by_role('radio', name=format_name, exact=True).click()
-            expect(switch('YouTube')).to_be_disabled()
-            expect(switch('YouTube')).not_to_be_checked()
-            expect(switch('YouTube')).to_have_attribute('title', 'YouTube 只支援影片')
-            tab('YouTube')
-            expect(panel).to_contain_text('YouTube 只支援影片')
-            expect(title).to_have_count(0)
-            expect(page.locator('#composer-tab-youtube .publish-tab-error')).to_have_count(0)
-        tab('共用')
-        page.get_by_role('radio', name='影片', exact=True).click()
+        # 非影片格式：已開啟的 YouTube 開關仍可關掉，關掉後停用；分頁只顯示「YouTube 只支援影片」。
+        page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'yt-extra.jpg', 'mimeType': 'image/jpeg', 'buffer': canvas_jpeg(1280, 720)})
+        expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(2)
+        idle()
+        expect(switch('YouTube')).to_be_enabled()
+        switch('YouTube').uncheck()
+        expect(switch('YouTube')).to_be_disabled()
+        expect(switch('YouTube')).to_have_attribute('title', 'YouTube 只支援影片')
+        tab('YouTube')
+        expect(panel).to_contain_text('YouTube 只支援影片')
+        expect(title).to_have_count(0)
+        expect(page.locator('#composer-tab-youtube .publish-tab-error')).to_have_count(0)
+        page.get_by_role('button', name='移除 yt-extra.jpg', exact=True).click()
+        expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(1)
+        idle()
         expect(switch('YouTube')).to_be_enabled()
         expect(switch('YouTube')).not_to_be_checked()
         switch('YouTube').check()
@@ -1453,23 +1676,20 @@ def check_tiktok(page, settings, checks):
         expect(page.locator('.publish-editor')).to_have_attribute('aria-busy', 'false')
         page.get_by_role('button', name='新貼文', exact=True).click()
         expect(page.locator('.publish-accounts')).to_contain_text('隔離 TikTok 帳號')
-        expect(switch()).to_be_enabled()
-        # 圖文：開關停用並提示只支援影片，分頁顯示同一句。
-        page.get_by_role('radio', name='圖片', exact=True).click()
+        # 還沒有影片（純文字）：開關停用並提示只支援影片，分頁顯示同一句。
         expect(switch()).to_be_disabled()
         expect(switch()).to_have_attribute('title', '僅支援影片發布，圖文需從APP上傳')
         tab('TikTok')
         expect(panel).to_contain_text('僅支援影片發布，圖文需從APP上傳')
-        tab('共用')
-        page.get_by_role('radio', name='影片', exact=True).click()
         page.get_by_label('上傳媒體', exact=True).set_input_files({'name': 'tt-isolated.mp4', 'mimeType': 'video/mp4', 'buffer': video_bytes(1920, 1080)})
-        expect(page.locator('.publish-media-row')).to_contain_text('12.0 秒')
+        expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(1)
+        expect(switch()).to_be_enabled()
         page.get_by_label('主文案', exact=True).fill(caption)
         switch().check()
         tab('TikTok')
         expect(panel.locator('.tiktok-caption-notice')).to_contain_text('收件匣不會帶入文案')
         expect(panel).to_contain_text('影片會送到 TikTok 收件匣')
-        expect(page.get_by_label('TikTok 文案', exact=True)).to_have_value(caption)
+        expect(page.get_by_label('主文案', exact=True)).to_have_value(caption)
         # 橫式影片在直式框裡要完整顯示並上下補邊：送出的是原檔，預覽裁成直式會誤導。
         frame = page.locator('.publish-preview .publish-preview-media > div').first
         expect(frame.locator('video')).to_have_css('object-fit', 'contain')
@@ -1544,7 +1764,7 @@ def exercise(page, unused, shot, checks):
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (name, width)
         page.set_viewport_size(size)
         if size['width'] < 600 and name in {'new-uploaded', 'rules-invalid'}:
-            focus = '.publish-media-row' if name == 'new-uploaded' else '.publish-platforms'
+            focus = '.publish-preview' if name == 'new-uploaded' else '.publish-platforms'
             page.locator(focus).scroll_into_view_if_needed()
         shot(name)
         page.screenshot(path=str(folder / f'{name}-{size["width"]}x{size["height"]}.png'))
@@ -1561,11 +1781,11 @@ def exercise(page, unused, shot, checks):
     capture('new-empty')
     page.get_by_label('上傳媒體', exact=True).set_input_files({
         'name': 'isolated-video.mp4', 'mimeType': 'video/mp4', 'buffer': video_bytes()})
-    expect(page.locator('.publish-media-row')).to_contain_text('12.0 秒')
+    expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(1)
     page.get_by_role('tab', name='Instagram', exact=True).click()
     expect(page.locator('#publish-disabled-reason')).not_to_contain_text('Instagram：')
-    expect(page.get_by_label('Instagram 文案', exact=True)).to_be_enabled()
-    page.get_by_role('tab', name='共用', exact=True).click()
+    expect(page.get_by_label('主文案', exact=True)).to_be_enabled()
+    page.get_by_role('tab', name='Facebook', exact=True).click()
     capture('new-uploaded')
     page.get_by_label('主文案', exact=True).fill('a' * 2201)
     page.get_by_role('tab', name='Instagram', exact=True).click()
@@ -1574,7 +1794,7 @@ def exercise(page, unused, shot, checks):
     expect(page.locator('#composer-tab-instagram .publish-tab-error')).to_have_count(1)
     page.get_by_role('switch', name='發佈到 Instagram', exact=True).check()
     expect(page.locator('.publish-actions .primary')).to_be_disabled()
-    page.get_by_role('tab', name='共用', exact=True).click()
+    page.get_by_role('tab', name='Facebook', exact=True).click()
     capture('rules-invalid')
     page.get_by_label('主文案', exact=True).fill('隔離影片發佈')
     for label in ('Facebook', 'Instagram', 'Threads'):
@@ -1595,13 +1815,20 @@ def exercise(page, unused, shot, checks):
     expect(row.locator('.publish-targets a')).to_have_count(3)
     capture('history-success')
     page.get_by_role('tab', name='新增貼文', exact=True).click()
-    page.get_by_role('radio', name='純文字', exact=True).click()
+    expect(page.locator('.publish-preview .publish-preview-media > div')).to_have_count(0)
     page.get_by_label('主文案', exact=True).fill('隔離排程')
     page.get_by_role('tab', name='Instagram', exact=True).click()
-    expect(page.locator('#publish-disabled-reason')).to_contain_text('Instagram：Instagram 不支援純文字')
+    # 「Instagram 不支援純文字」標在預覽帳號列右邊，錯誤清單不再重複；帳號列的平台名稱改成圖示。
+    identity = page.locator('.publish-preview .publish-preview-identity').first
+    expect(identity.locator('.publish-preview-alert')).to_have_text('Instagram 不支援純文字，請新增媒體。')
+    expect(identity.get_by_role('img', name='Instagram')).to_have_count(1)
+    expect(page.get_by_text('Instagram：Instagram 不支援純文字')).to_have_count(0)
+    # 提示靠帳號列右緣（窄螢幕放不下時換到下一行，仍靠右）。
+    alert_box, row_box = identity.locator('.publish-preview-alert').bounding_box(), identity.bounding_box()
+    assert abs(alert_box['x'] + alert_box['width'] - row_box['x'] - row_box['width']) < 2, (alert_box, row_box)
     expect(page.get_by_role('switch', name='發佈到 Instagram', exact=True)).to_be_enabled()
     expect(page.locator('#composer-tab-instagram .publish-tab-error')).to_have_count(1)
-    page.get_by_role('tab', name='共用', exact=True).click()
+    page.get_by_role('tab', name='Facebook', exact=True).click()
     page.get_by_role('switch', name='發佈到 Facebook', exact=True).check()
     page.get_by_role('radio', name='排程', exact=True).click()
     when = (utc_now() + timedelta(hours=9)).replace(tzinfo=None).isoformat(timespec='minutes')
@@ -1623,7 +1850,6 @@ def exercise(page, unused, shot, checks):
     page.get_by_role('tab', name='新增貼文', exact=True).click()
     page.get_by_role('button', name='新貼文', exact=True).click()
     page.get_by_role('radio', name='立即發佈', exact=True).click()
-    page.get_by_role('radio', name='純文字', exact=True).click()
     page.get_by_label('主文案', exact=True).fill('partial-case-' + str(size['width']))
     page.get_by_role('switch', name='發佈到 Facebook', exact=True).check()
     page.get_by_role('switch', name='發佈到 Threads', exact=True).check()

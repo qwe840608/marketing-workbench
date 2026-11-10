@@ -4,7 +4,7 @@
 
 整理工作台会涉及的平台条款与 API 规格，免得每次重新查。每条都注明出处与核实日期；**“推论”**是我们根据条文做出的判断，**“未核实”**是还没在官方文档中找到依据的说法。条款会更新，发现与官方不符时以官方为准，并更新这份文档与核实日期。
 
-核实日期：2026-10-15～2026-10-17（应用模式、Google OAuth、TikTok Sandbox 于 2026-10-17 补查；FB 公共主页 Webhook 与各平台受众数据于 2026-10-19 补查）。
+核实日期：2026-10-15～2026-10-17（应用模式、Google OAuth、TikTok Sandbox 于 2026-10-17 补查；FB 公共主页 Webhook 与各平台受众数据于 2026-10-19 补查；X 于 2026-11-05 补查）。
 
 > 这份文档只记录规定与工作台的对应做法，不是法律意见。开源后每位自托管者都是自己应用的开发者，义务在他们身上（README 待补，见开源规划）。
 
@@ -43,6 +43,7 @@
 - **FB 普通视频封面**（[Page Videos](https://developers.facebook.com/docs/graph-api/reference/page/videos/)）：上传时的 `thumb` 参数（图片原始数据）；文档没写格式与大小限制。
 - **FB Reels 封面**（[Reels Publishing](https://developers.facebook.com/docs/video-api/guides/reels-publishing)）：Reels 发布三个步骤（start／upload／finish）都没有封面参数；文档最后指向 [Video Thumbnails](https://developers.facebook.com/docs/graph-api/reference/video/thumbnails) 来“为 Reels 添加自定义封面”。
 - **Video Thumbnails**：`POST /{video-id}/thumbnails`，`source`（图片文件）＋ `is_preferred=true`；最大 10 MB，建议与视频同比例；只能用于已关联公共主页的视频。需要 Page 令牌与 `pages_read_user_content`、`pages_manage_engagement`、`pages_show_list`。文档没有明说适用于 Reels，只是 Reels 文档指向它 → 实测确认。工作台 0049 对普通视频与 Reels 都用这个接口（不用 `thumb` 参数），在帖子发布成功后才应用；`pages_manage_engagement` 是可选权限，在 Meta 后台开启后还要重新连接才会出现在令牌中（2026-10-17 确认正式令牌缺少该权限）。
+- **帖子留言（评论）**：`POST /{帖子ID}/comments`，`message` 文字，以 Page 令牌代表主页留言；查询既有留言用 `GET /{帖子ID}/comments?fields=id,message,from&filter=stream`。需要 `pages_manage_engagement`（读取另需 `pages_read_user_content`）。工作台用它在 FB 发帖成功后依次发表「评论」；20 条上限是工作台自定，不是平台规定。依 Graph API Comments 文档整理（2026-11-04），尚未在正式主页实测，Reels／视频帖子 ID 能否直接留言待实测确认。评论附图用 `source`（multipart 图片文件）；Comments 文档只列出图片（`attachment_id`／`attachment_url`／`source`）与 GIF（`attachment_share_url`），没有视频参数，所以评论不能附视频（2026-11-04 查证）。
 - Graph API 版本：`v26.0`（`oauth.FB`）。
 
 ## YouTube／Google
@@ -62,7 +63,9 @@ OAuth 发布状态（2026-10-17 核实，[OAuth 2.0](https://developers.google.c
 - **个人使用（100 人以下）不需要验证**：发布状态改为“正式版（In production）”后，用户登录时可以跳过“未经验证的应用”警告页面；超过 100 人才必须验证。未经验证时仍须遵守 API 用户数据政策。
 - 未经验证的 API 项目上传的视频**不会**被限制为私享（`videos.insert` 文档原文，2026-10-17）；工作台实际上传过一个“不公开列出”的视频，实际状态也是不公开列出。
 
-API 规格：`videos.insert` 使用 resumable upload；缩略图 `thumbnails.set` 接受 JPEG／PNG、2 MB 以内；Shorts 自定义缩略图 API 未列出支持（工作台已停用）。配额：`videos.insert` 另有每日上传额度，其余读取共用 `youtube.quota`（见 `docs/cn/部署与运维.md`）。
+社区帖子（2026-11-05 查证，[YouTube Data API 参考](https://developers.google.com/youtube/v3/docs)、[修订记录](https://developers.google.com/youtube/v3/revision_history)）：Data API 的资源列表没有社区帖子（Studio 现称「帖子」）可用的创建方法，2025–2026 修订记录也没有新增，所以工作台无法代发 YouTube 帖子，只能在 YouTube Studio 或 App 手动发。另外修订记录 2026-11-03 写明 `thumbnails.set` 已支持 Shorts 处理完成后上传自定义缩略图，2026-09-14 缩略图上限从 2 MB 提高到 50 MB；工作台已于 2026-11-05 跟进。
+
+API 规格：`videos.insert` 使用 resumable upload；缩略图 `thumbnails.set` 接受 JPEG／PNG、50 MB 以内（2026-09-14 起，之前为 2 MB）；Shorts 自定义缩略图要等视频处理完成才能设置（2026-11-03 起），处理完成前会返回什么错误文档没写，工作台先查询 `videos.list` 的 `uploadStatus` 再调用。配额：`videos.insert` 另有每日上传额度，其余读取共用 `youtube.quota`（见 `docs/cn/部署与运维.md`）。
 
 ## TikTok
 
@@ -102,6 +105,21 @@ API 规格：`videos.insert` 使用 resumable upload；缩略图 `thumbnails.set
 - **封面**（[Query Videos](https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query)，2026-10-19 查）：`POST /v2/video/query/` 需要 `video.list`，一次最多 20 个视频 ID，只返回授权账号自己的视频，文档说可用来“刷新封面网址的有效期”（没写多久）。工作台的缩略图缓存用它获取 `cover_image_url` 后立即缩小成 JPEG 存档。CDN 域名文档没写，工作台暂时允许 `tiktokcdn.com`／`tiktokcdn-us.com`／`tiktokcdn-eu.com`，**未实测**。
 - **评论**：只有 TikTok API for Business 能读取，申请者须为公司并使用公司域名邮箱，不接受个人开发者 → 工作台不读取 TikTok 评论。
 
+## X（2026-11-05 核实）
+
+出处：[X API 价目](https://docs.x.com/x-api/getting-started/pricing)、[OAuth 2.0 授权码流程（PKCE）](https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code)、[分段上传媒体](https://docs.x.com/x-api/media/quickstart/media-upload-chunked)、[媒体最佳做法](https://docs.x.com/x-api/media/quickstart/best-practices)。
+
+| 规定 | 内容 | 工作台的做法 |
+|---|---|---|
+| 计费 | 没有免费发帖额度，按次扣预付点数：普通帖子约 $0.015、含网址的帖子约 $0.20；读取自己的帖子（owned reads）每条约 $0.001。点数用完 API 返回 402。 | 确认窗口与编辑器提示“含网址，费用较高”；402 时提示到开发者后台充值或调整上限。自托管者要在开发者后台充值并设置每月花费上限。 |
+| 授权 | OAuth 2.0 授权码＋PKCE（S256）；权限 `tweet.read tweet.write users.read media.write offline.access`。access token 2 小时，refresh token 每次换发都会轮换。 | 令牌加密入库，到期前自动换发并存回新的 refresh token；“断开连接”会调用撤销端点。 |
+| 发帖 | `POST /2/tweets`；文字按加权计字 280（中日韩字与 emoji 算 2、网址一律 23）。内容与近期帖子相同会被拒（403 duplicate）。 | 编辑器使用同一套加权计字，超出的字标红；重复内容提示修改文案后重试。 |
+| 媒体 | v2 `/2/media/upload` 的 initialize → append → finalize，视频再查 STATUS 等处理完成。图片 JPEG／PNG 每张 5 MB、最多 4 张，或 1 个视频。视频超过 140 秒只有 X Premium 账号能发，API 无法事先查询账号等级。 | 按上述规格检查；超过 140 秒只提示、不拦截。 |
+| 重试 | 响应丢失时无法判断是否已发出。 | 重试前先读取自己的最新帖子（owned read，约 $0.001）比对，找到就不再发，避免重复扣费。 |
+| 读取 | 评论、提及、成效都要另外计费的读取。 | 第一阶段不读；第二阶段加上每月花费上限后才做。 |
+
+- **开发者协议**：X 开发者协议与政策的完整条文这次没有逐条查，**未核实**；工作台只发用户自己确认过的内容，不收集他人数据。
+
 ## 受众数据（各平台，2026-10-19 核实）
 
 | 平台 | 官方提供 | 条件 | 工作台的做法 |
@@ -112,6 +130,7 @@ API 规格：`videos.insert` 使用 resumable upload；缩略图 `thumbnails.set
 | YouTube | YouTube Analytics：按 `ageGroup`、`gender` 的 `viewerPercentage`；按 `country` 的 `views` | `yt-analytics.readonly`。年龄与性别只包含已登录的观众。Studio 的“观众在线时间”API 没有提供（**推论**：官方维度清单中没有对应项目） | 近 28 天 |
 | TikTok | Display API 没有受众数据；Business API（企业账号）有年龄、性别、地区、活跃时段 | Business API 要另外申请、审核，且仅限企业账号 | 不做，界面中说明原因 |
 | LINE | Messaging API 提供官方账号好友的人口统计（`/v2/bot/insight/demographic`） | 需要连接品牌官方账号；工作台的 LINE 只用于通知（`AGENTS.md`） | 不做，界面中说明原因 |
+| X | 受众数据要另外计费的读取 | 按次扣点数 | 第一阶段不读 |
 
 出处：[IG 账号 Insights](https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights)、[已停用的公共主页 Insights 指标](https://developers.facebook.com/documentation/pages-api/platforminsights/page/deprecated-metrics)、[Threads Insights](https://developers.facebook.com/docs/threads/insights/)。
 
@@ -124,6 +143,7 @@ API 规格：`videos.insert` 使用 resumable upload；缩略图 `thumbnails.set
 | YouTube | Analytics：`averageViewDuration`、`estimatedMinutesWatched`、`averageViewPercentage`；留存曲线 `audienceWatchRatio` 要为每个视频另外调用一次报表 | 平均观看百分比与原有报表在同一次调用中获取；留存曲线暂不获取（每个视频多一次调用，会占用每轮 420 次的上限） |
 | Threads | 帖子 insights 只有 views、likes、replies、reposts、quotes、shares | 没有观看时长或留存，界面中说明 |
 | TikTok | Display API `video/list` 只有 view／like／comment／share 次数与视频时长；观看时长、完播率需要 Business API（企业账号、另行审核） | 不做，界面中说明 |
+| X | 帖子成效要另外计费的读取 | 第一阶段不读 |
 
 出处：[IG Media Insights](https://developers.facebook.com/documentation/instagram-platform/reference/instagram-media/insights)、[Page／Post Insights](https://developers.facebook.com/docs/graph-api/reference/insights)、[YouTube Analytics 指标](https://developers.google.com/youtube/analytics/metrics)。
 

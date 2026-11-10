@@ -52,6 +52,8 @@ class YouTubeMock:
         self.faults = []
         self.start_error = None
         self.thumbnail_error = None
+        # videos.list 依序回報的 uploadStatus；用完後一律 processed。
+        self.processing = []
         # 模擬 YouTube 回報與請求不同的實際公開狀態（例如被限制為私人）。
         self.forced_privacy = None
         self.serial = 0
@@ -76,6 +78,12 @@ class YouTubeMock:
             (request.method, path, params, dict(request.headers), len(request.content))
         )
         assert request.headers["authorization"].startswith("Bearer ")
+        if path == "/youtube/v3/videos":
+            assert request.method == "GET" and params["part"] == "status" and params["id"]
+            state = self.processing.pop(0) if self.processing else "processed"
+            return httpx.Response(
+                200, json={"items": [{"id": params["id"], "status": {"uploadStatus": state}}]}
+            )
         if path == "/upload/youtube/v3/thumbnails/set":
             assert request.method == "POST" and params["videoId"]
             failure = self.thumbnail_failure()
@@ -205,6 +213,58 @@ class TikTokMock:
         return httpx.Response(200, json={"data": data, "error": {"code": "ok"}})
 
 
+class XMock:
+    """X API v2：媒體 initialize／append／finalize、建立貼文、讀自己的最新貼文（重試確認用）。"""
+
+    def __init__(self):
+        self.inits, self.appends, self.posts, self.timeline_reads = [], [], [], []
+        # 依序回傳的媒體處理狀態；None 代表 finalize 沒有 processing_info（圖片）。
+        self.processing = None
+        # 建立貼文時的錯誤：(狀態碼, 內容)；lose_post 為 True 時貼文建立成功但回應中斷。
+        self.post_error = None
+        self.lose_post = False
+        self.timeline = []
+
+    def handle(self, request):
+        path = request.url.path
+        assert request.headers["authorization"] == "Bearer isolated-x-access"
+        if path == "/2/media/upload/initialize":
+            self.inits.append(json.loads(request.content))
+            return httpx.Response(200, json={"data": {
+                "id": str(7000 + len(self.inits)), "expires_after_secs": 86400}})
+        found = re.fullmatch(r"/2/media/upload/(\d+)/(append|finalize)", path)
+        if found and found.group(2) == "append":
+            index = re.search(rb'name="segment_index"\r\n\r\n(\d+)', request.content)
+            self.appends.append((found.group(1), int(index.group(1))))
+            return httpx.Response(204)
+        if found:
+            data = {"id": found.group(1)}
+            if self.processing:
+                data["processing_info"] = {"state": "pending", "check_after_secs": 1}
+            return httpx.Response(200, json={"data": data})
+        if path == "/2/media/upload":
+            state = self.processing.pop(0) if self.processing else "succeeded"
+            return httpx.Response(200, json={"data": {
+                "id": request.url.params["media_id"], "processing_info": {"state": state}}})
+        if path.endswith("/tweets") and request.method == "GET":
+            self.timeline_reads.append(dict(request.url.params))
+            return httpx.Response(200, json={"data": self.timeline} if self.timeline else {
+                "meta": {"result_count": 0}})
+        assert path == "/2/tweets" and request.method == "POST", path
+        body = json.loads(request.content)
+        self.posts.append(body)
+        if self.post_error:
+            status, content = self.post_error
+            return httpx.Response(status, json=content)
+        identity = str(1850000000000000000 + len(self.posts))
+        if self.lose_post:
+            # 貼文已建立但回應沒有回來；X 讀回時網址換成 t.co、& 變成 &amp;。
+            self.timeline = [{"id": identity, "text": body["text"].replace("&", "&amp;")
+                              + " https://t.co/isolated"}]
+            raise httpx.ReadTimeout("isolated lost response")
+        return httpx.Response(201, json={"data": {"id": identity, "text": body["text"]}})
+
+
 class PlatformMock:
     def __init__(self):
         self.calls = []
@@ -220,13 +280,23 @@ class PlatformMock:
         # FB 封面（/{video-id}/thumbnails）：fail_cover 為 Meta 錯誤碼時回錯誤（200＝缺權限）。
         self.covers = []
         self.fail_cover = None
+        # FB／IG 評論（/{貼文}/comments）：(編號, 文字)；fail_comments 內的文字回 429 一次，
+        # lost_comments 內的文字留言成功但回應中斷（模擬逾時後重試不可重複留言）。
+        self.comments = []
+        # 附圖評論（multipart 的 source 檔案）的編號 → 圖片位元組數。
+        self.comment_files = {}
+        self.fail_comments = set()
+        self.lost_comments = set()
         self.youtube = YouTubeMock()
         self.tiktok = TikTokMock()
+        self.x = XMock()
 
     def handler(self, request):
         self.calls.append((request.method, request.url.host, request.url.path))
         if request.url.host in {"open.tiktokapis.com", "open-upload.tiktokapis.com"}:
             return self.tiktok.handle(request)
+        if request.url.host == "api.x.com":
+            return self.x.handle(request)
         if request.url.host == "www.googleapis.com":
             # YouTube 的二進位上傳不是表單，另由 YouTubeMock 處理。
             return self.youtube.handle(request)
@@ -260,6 +330,27 @@ class PlatformMock:
                 time.sleep(1)
                 ids = json.loads(listing.read_text(encoding="utf-8"))
                 return httpx.Response(200, json={"data": [{"id": value} for value in ids]})
+        if host == "graph.facebook.com" and path.endswith("/comments"):
+            if request.method == "GET":
+                # FB 以 from.id（粉專 100）、IG 以 user.id（IG 帳號 200）辨認自己留的評論。
+                rows = [
+                    {"id": i, "message": m, "text": m, "from": {"id": "100"}, "user": {"id": "200"}}
+                    for i, m in self.comments
+                ]
+                return httpx.Response(200, json={"data": rows})
+            message = request_fields(request).get("message")
+            if message in self.fail_comments:
+                self.fail_comments.discard(message)
+                return httpx.Response(429, json={"error": {"code": 4, "message": "isolated"}})
+            self.serial += 1
+            identity = path.split("/")[2] + "_" + str(9000 + self.serial)
+            self.comments.append((identity, message))
+            if b'name="source"' in request.content:
+                self.comment_files[identity] = len(request.content)
+            if message in self.lost_comments:
+                self.lost_comments.discard(message)
+                raise httpx.ReadTimeout("isolated lost response")
+            return httpx.Response(200, json={"id": identity})
         if request.method == "GET":
             fields = request.url.params.get("fields")
             if fields in {"status", "status_code"}:
@@ -503,3 +594,44 @@ def seed_connections(session, settings, brand_id):
                 token_ref="",
             )
         )
+
+
+def seed_x(session, settings, brand_id, *, user_id="1234567890"):
+    """已連結的 X 帳號；access token 尚未過期，所以發佈時不會換發。"""
+    from app.models import Account, OAuthConnection
+    from app.models.base import utc_now
+    from app.services import oauth, x_oauth
+
+    for name, value in {
+        "X_CLIENT_ID": "isolated-x-client",
+        "X_CLIENT_SECRET": "isolated-x-client-secret",
+        "X_USER_ID": user_id,
+        "X_ACCESS_TOKEN": "isolated-x-access",
+        "X_REFRESH_TOKEN": "isolated-x-refresh",
+    }.items():
+        oauth.put_secret(session, settings, name, value)
+    session.flush()
+    session.add(
+        OAuthConnection(
+            platform="x",
+            account_name="@isolated_x",
+            granted_scopes=list(x_oauth.SCOPES),
+            credential_digest=oauth.digest_credentials(session, settings, "x"),
+            cache_json={"access_expires_at": (utc_now() + timedelta(hours=1)).isoformat()},
+        )
+    )
+    session.add(Account(brand_id=brand_id, platform="x", external_id=user_id,
+                        name="@isolated_x", token_ref="", status="connected"))
+
+
+def unseed_platform(session, platform, prefix):
+    """隔離瀏覽器驗收每輪開始時還原成尚未連結；發佈目標須已先刪除。"""
+    from sqlalchemy import delete
+
+    from app.models import Account, OAuthConnection, PlatformCredential
+
+    session.execute(delete(Account).where(Account.platform == platform))
+    session.execute(delete(OAuthConnection).where(OAuthConnection.platform == platform))
+    session.execute(
+        delete(PlatformCredential).where(PlatformCredential.provider.like(prefix + "_%"))
+    )

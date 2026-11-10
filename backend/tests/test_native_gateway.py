@@ -254,6 +254,9 @@ BLOCKED = [
         {"x-mwb-public": "0"},
         {"x-forwarded-host": "example.ngrok.app"},
         {"x-forwarded-for": "203.0.113.2"},
+        # Cloudflare Tunnel 從本機連進後端，來源是 127.0.0.1；靠邊緣加的標頭判斷是公開。
+        {"cf-connecting-ip": "203.0.113.2"},
+        {"cf-ray": "0123456789abcdef-TPE"},
     ],
 )
 def test_public_paths_rejected_even_with_internal_host(client, path, header):

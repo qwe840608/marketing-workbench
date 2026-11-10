@@ -51,7 +51,9 @@ class PublishPost(Base, Versioned):
 class PublishMedia(Base):
     __tablename__ = "publish_media"
     __table_args__ = (
-        CheckConstraint("role IN ('media','thumbnail','cover','fb_cover')", name="role"),
+        CheckConstraint(
+            "role IN ('media','thumbnail','cover','fb_cover','fb_comment')", name="role"
+        ),
     )
     post_id: Mapped[int] = mapped_column(ForeignKey("publish_posts.id"), index=True)
     position: Mapped[int] = mapped_column(Integer)
@@ -66,7 +68,7 @@ class PublishMedia(Base):
     uploader_id: Mapped[int] = mapped_column(ForeignKey("staff.id"))
     deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     # thumbnail 是 YouTube 自訂縮圖、cover 是 Instagram Reels 封面、fb_cover 是 Facebook 影片封面，
-    # 都不是發佈素材；
+    # fb_comment 是 Facebook 評論附圖（由 facebook.comment_media 依序引用），都不是發佈素材；
     # 一般素材清單與規則檢查一律不含它們。
     role: Mapped[str] = mapped_column(String(16), default="media", server_default="media")
 
@@ -76,7 +78,8 @@ class PublishTarget(Base):
     __table_args__ = (
         UniqueConstraint("post_id", "platform"),
         CheckConstraint(
-            "platform IN ('facebook','instagram','threads','youtube','tiktok')", name="platform"
+            "platform IN ('facebook','instagram','threads','youtube','tiktok','x')",
+            name="platform",
         ),
         CheckConstraint("status IN ('pending','publishing','succeeded','failed')", name="status"),
     )

@@ -4,7 +4,7 @@
 >
 > **Agent: before you start, work out which language the user speaks** (from the messages they write to you; if they have not written yet, from the system locale). If it is not English, read the matching version above instead and use that language with the user throughout. If none of the four matches, follow this English version but still reply in the user's language.
 
-This document is written for an **AI agent**. After the user first sets up the workbench, connecting their Facebook Page, Instagram, Threads, YouTube and TikTok requires creating their own apps in each platform's **developer console** first. The steps are tedious, so you can operate the browser and fill in the settings for them, while they do only the parts they must do in person.
+This document is written for an **AI agent**. After the user first sets up the workbench, connecting their Facebook Page, Instagram, Threads, YouTube, TikTok and X requires creating their own apps in each platform's **developer console** first. The steps are tedious, so you can operate the browser and fill in the settings for them, while they do only the parts they must do in person.
 
 - Prerequisite: Stages 1–5 of [`agent-install-guide.md`](agent-install-guide.md) are done (the workbench opens at the internal https address, and the privacy policy and terms of service are public).
 - Follow this document when you can operate a browser (for example Claude in Chrome, Claude's built-in browser, or Codex's browser tool); when you can't, walk the user through the same steps in text so they click through themselves.
@@ -44,7 +44,7 @@ Console: <https://developers.facebook.com/apps/>
 1. (Ask first) "Create app" <https://developers.facebook.com/apps/creation/>, named after the brand; for the use case, pick one related to Pages, and click "Next" for the rest.
 2. "App settings → Basic": enter the privacy policy URL, terms of service URL, data deletion instructions URL (can point to `#delete` in the privacy policy), category and contact email, then save. Ask the user to paste the app ID and secret into the "App ID" and "App secret" fields of the workbench Meta card themselves.
 3. In "Facebook Login → Settings" (apps created through the use-case flow show "Facebook Login for Business → Settings"), paste the meta callback URL into "Valid OAuth Redirect URIs" and click "Save changes".
-4. In "Use cases → Customize → Permissions and features", find each of these and click "Add" (there's no add-all option; use in-page search): `pages_show_list`, `pages_read_engagement`, `pages_read_user_content`, `pages_manage_metadata`, `pages_manage_posts`, `read_insights`. Optional: `pages_manage_engagement` (for custom video covers; without it only the cover feature is disabled).
+4. In "Use cases → Customize → Permissions and features", find each of these and click "Add" (there's no add-all option; use in-page search): `pages_show_list`, `pages_read_engagement`, `pages_read_user_content`, `pages_manage_metadata`, `pages_manage_posts`, `read_insights`. Optional: `pages_manage_engagement` (for custom video covers and Facebook comments; without it only those two features are disabled).
 5. With Instagram: on the same page also add `instagram_basic`, `instagram_manage_comments`, `instagram_manage_insights`, `instagram_content_publish`. If they aren't on that page, add "Manage messaging & content on Instagram" under "Use cases", choose "API setup with Facebook Login", then add them.
 6. Hand over to the user: in the workbench they click "Connect Meta account", and on the authorization screen click "Edit settings" (or "Edit access") to select the Page and Instagram.
 
@@ -95,6 +95,15 @@ Console: <https://developers.tiktok.com/> ("Developer Portal" at the top right)
 8. Hand over to the user: they paste the Client key and Client secret from the Sandbox "Credentials" into the workbench TikTok card themselves, then click "Connect TikTok account".
 
 **Never**: submit for Production review (TikTok doesn't accept private or self-use tools), turn on Direct Post, or apply for TikTok API for Business (companies only). Remind the user: videos only go to inbox drafts (at most 5 pending within 24 hours), the caption and cover are handled in the app, choose "Everyone" when posting, then confirm from a signed-out browser that it's public.
+
+## X
+
+Console: <https://console.x.com/>
+
+1. "Apps" in the left menu usually already has an auto-created app (Default Project, Pay Per Use); use it. Only if there is none, (ask first) click "Create App" and name it after the brand.
+2. Hand off to the user: under "Billing" → "Credits", click "Purchase credits" to top up, then set a cap with "Manage Spend Cap" under "Billing Cycle Cap" (payments are always done by the user). The X API deducts credits per call: about $0.015 per regular post, about $0.20 with a URL.
+3. Open the app; at the bottom of "Keys & Tokens", click "Set up" next to "User authentication settings": App permissions "Read and write", Type of App "Web App, Automated App or Bot", paste the x callback URL into Callback URI / Redirect URL, enter the user's site as Website URL, and save.
+4. Hand off to the user: they paste the OAuth 2.0 Client ID and Client Secret into the workbench's X card themselves, then click "Connect X account" (scopes `tweet.read`, `tweet.write`, `users.read`, `media.write`, `offline.access`).
 
 ## Wrapping up
 

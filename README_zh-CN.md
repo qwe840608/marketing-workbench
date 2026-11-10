@@ -26,7 +26,7 @@
 - 每小时抓取自家帖子的评论；发送给云端模型前先对个人信息脱敏。
 - 从选定帖子的评论中整理证据，生成 15 个内容选题，并附上观众原话。
 - 根据选题撰写脚本，检查品牌禁用词，可导出。
-- 定时或立即发布到 FB／IG／Threads／YouTube，发送前两步确认；TikTok 只能发送到 App 收件箱草稿。
+- 定时或立即发布到 FB／IG／Threads／YouTube／X，发送前两步确认；TikTok 只能发送到 App 收件箱草稿。
 - 内置 MCP 端点（Streamable HTTP），可连接 Claude Code plugin、Claude 桌面版扩展与 Codex。
 - 成员与角色权限（管理员／营销人员／查看者）、审计日志、管理员一次性恢复码。
 - 界面支持繁中、简中、English、日本語，适配 390px 手机宽度。
@@ -36,12 +36,13 @@
 
 ## 自行部署前必读
 
-自行部署这个工作台，你就是自己那套 Meta、Google、TikTok 应用的开发者，平台条款的义务由你承担。
+自行部署这个工作台，你就是自己那套 Meta、Google、TikTok、X 应用的开发者，平台条款的义务由你承担。
 
 - **只供自己或自有品牌使用**（单一品牌）。不要用来代运营客户账号或开放给他人注册，这需要各平台审核，TikTok 明确不接受。
-- **账号类型**：Facebook 需要公共主页；Instagram 需要专业账号并关联该主页；Threads、YouTube、TikTok 使用个人账号即可。
+- **账号类型**：Facebook 需要公共主页；Instagram 需要专业账号并关联该主页；Threads、YouTube、TikTok、X 使用个人账号即可。
 - **隐私政策与服务条款要自己写**，放在自己的网站上，再填到各平台开发者后台，模板在 [`docs/cn/templates/`](docs/cn/templates/)。
 - **TikTok 只能发送为收件箱草稿**，文案需要在 TikTok App 内粘贴。
+- **X API 按次收费**：需要先在 X 开发者后台充值点数，每发一篇都会扣点；目前只支持发帖，不同步 X 的数据与回复。
 - **Google 同意屏幕要设为正式版**，否则 YouTube 授权每 7 天失效。
 
 详情见 [`docs/cn/合规须知.md`](docs/cn/合规须知.md)（合规须知），每条规定的官方出处见 [`docs/cn/平台政策与API限制.md`](docs/cn/平台政策与API限制.md)（平台政策）。
@@ -165,7 +166,7 @@ npm run dev
 | `NOTIFY_LINE_*` | LINE 通知用的 Messaging API 凭证与群组 |
 | `BACKUP_LOCAL_ROOT`／`BACKUP_DRIVE_ROOT`／`BACKUP_PASSWORD`／`SEVEN_ZIP_PATH` | 加密备份位置、密码与 7-Zip 路径 |
 
-各平台（Meta、Threads、YouTube、TikTok）的应用密钥建议在界面的平台连接卡片中填写，会加密保存到数据库；令牌由连接流程写入，无需手动填写。不要把密钥、令牌、密码提交到 git。
+各平台（Meta、Threads、YouTube、TikTok、X）的应用密钥建议在界面的平台连接卡片中填写，会加密保存到数据库；令牌由连接流程写入，无需手动填写。不要把密钥、令牌、密码提交到 git。
 
 ## 贡献指南
 

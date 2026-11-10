@@ -31,6 +31,8 @@ from app.services.publish_rules import (
     VIDEO_BYTES,
     VIDEO_MIMES,
     effective_options,
+    facebook_comments,
+    instagram_comments,
     is_short,
     platform_caption,
     platform_options,
@@ -66,6 +68,10 @@ def public_targets(rows):
                 "successful_segments",
                 "total_segments",
                 "failed_segment",
+                # Facebook：評論進度；評論與貼文編號不外露。
+                "successful_comments",
+                "total_comments",
+                "failed_comment",
                 "successful_stories",
                 "total_stories",
                 "failed_story",
@@ -90,7 +96,15 @@ def brand_fields(value):
     if not isinstance(value, dict):
         return value
     value = dict(value)
-    for key in ("caption", "captions", "platform_captions", "threads_segments"):
+    keys = (
+        "caption",
+        "captions",
+        "platform_captions",
+        "threads_segments",
+        "facebook_comments",
+        "instagram_comments",
+    )
+    for key in keys:
         if key in value:
             value[key] = agent_queries.brand(value[key])
     for key in ("platform_options", "effective_platform_options"):
@@ -98,6 +112,10 @@ def brand_fields(value):
             options = {p: dict(o) if isinstance(o, dict) else o for p, o in value[key].items()}
             if isinstance(options.get("threads"), dict) and "segments" in options["threads"]:
                 options["threads"]["segments"] = agent_queries.brand(options["threads"]["segments"])
+            for platform in ("facebook", "instagram"):
+                if isinstance(options.get(platform), dict) and "comments" in options[platform]:
+                    comments = agent_queries.brand(options[platform]["comments"])
+                    options[platform]["comments"] = comments
             if isinstance(options.get("youtube"), dict) and "title" in options["youtube"]:
                 options["youtube"]["title"] = agent_queries.brand(options["youtube"]["title"])
             value[key] = options
@@ -200,6 +218,8 @@ def options(access, settings, body):
             if platform == "youtube"
             else tiktok_rule(rule)
             if platform == "tiktok"
+            else x_rule(rule)
+            if platform == "x"
             else {
                 **rule,
                 "hashtag": rule.get("hashtag"),
@@ -220,6 +240,26 @@ def options(access, settings, body):
             }
             for platform, rule in RULES.items()
         },
+    }
+
+
+def x_rule(rule):
+    """X：文案以加權字數計（中文字算 2、網址 23），按次扣預付點數，含網址的貼文較貴。"""
+    return {
+        **rule,
+        "hashtag": None,
+        "image_bytes": rule["image_bytes"],
+        "video_bytes": VIDEO_BYTES,
+        "image_mimes": list(IMAGE_MIMES),
+        "video_mimes": list(VIDEO_MIMES),
+        "text_supported": True,
+        "media_count": {
+            "text": 0,
+            "image": 1,
+            "video": 1,
+            "carousel": {"min": 2, "max": rule["carousel"]},
+        },
+        "carousel_types": ["image"],
     }
 
 
@@ -273,7 +313,11 @@ def post_safety(access, post):
         post.brand_id,
         post.caption,
         post.captions_json,
-        threads_segments(post),
+        [
+            *threads_segments(post),
+            *platform_options(post)["facebook"]["comments"],
+            *platform_options(post)["instagram"]["comments"],
+        ],
         platform_options(post)["youtube"]["title"],
     )
 
@@ -298,6 +342,8 @@ def details(access, settings, post, selected, scheduled_at, retry):
     accounts = publish.accounts(access.session, settings, post.brand_id)
     media = publish.media_rows(access.session, post.id)
     checked = publish.checks(access, settings, post.id)
+    comment_images = publish.comment_media(access.session, post) if "facebook" in selected else []
+    comment_images = comment_images if facebook_comments(post) else []
     youtube = instagram = facebook = None
     cover = publish.cover_row(access.session, post)
     facebook_cover = publish.facebook_cover_row(access.session, post)
@@ -338,6 +384,12 @@ def details(access, settings, post, selected, scheduled_at, retry):
         "platform_options": platform_options(post),
         "effective_platform_options": effective_options(post),
         "threads_segments": threads_segments(post),
+        # Facebook 發文成功後由粉專依序留的評論（實際送出的文字）；FB 草稿不留。
+        "facebook_comments": facebook_comments(post) if "facebook" in selected else [],
+        # 與 facebook_comments 同序：每則評論的附圖（檔名、尺寸），沒附圖為 null。
+        "facebook_comment_images": [publish.image_view(row) for row in comment_images],
+        # Instagram 發文成功後由 IG 帳號依序留的評論（只有文字）；限時動態不留。
+        "instagram_comments": instagram_comments(post) if "instagram" in selected else [],
         "warnings": list(dict.fromkeys(w for p in selected for w in checked[p]["warnings"])),
         "threads_progress": [
             t["detail"]
@@ -377,6 +429,7 @@ def details(access, settings, post, selected, scheduled_at, retry):
         "target_progress": [t.detail_json for t in publish.targets(access.session, post.id)],
         "accounts": {p: [accounts[p].id, accounts[p].external_id] for p in selected},
         "media": [[m.id, m.sha256, m.position] for m in media],
+        "comment_images": [[row.id, row.sha256] if row else None for row in comment_images],
     }
     return display, agent_auth.digest(
         json.dumps(fingerprint, sort_keys=True, ensure_ascii=False, default=str)
@@ -411,6 +464,17 @@ def write(factory, settings, grant_id, name, body, origin=None):
             segments = supplied_threads.segments if supplied_threads else None
             if segments is None and post:
                 segments = threads_segments(post)
+            supplied_facebook = body.platform_options.facebook if body.platform_options else None
+            comments = supplied_facebook.comments if supplied_facebook else None
+            if comments is None and post:
+                comments = platform_options(post)["facebook"]["comments"]
+            supplied_instagram = body.platform_options.instagram if body.platform_options else None
+            ig_comments = supplied_instagram.comments if supplied_instagram else None
+            if ig_comments is None and post:
+                ig_comments = platform_options(post)["instagram"]["comments"]
+            comments = [*(comments or []), *(ig_comments or [])]
+            # 評論和串文一樣是要送出的品牌文字：同樣擋佔位字串與禁語。
+            segments = [*(segments or []), *(comments or [])]
             supplied_youtube = body.platform_options.youtube if body.platform_options else None
             title = supplied_youtube.title if supplied_youtube else None
             reject_placeholders(body.caption, body.platform_captions, segments, title)

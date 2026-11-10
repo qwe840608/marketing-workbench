@@ -112,6 +112,10 @@ class RuntimeCleanupTests(unittest.TestCase):
             check()
             check()
 
+    @unittest.skipIf(
+        os.environ.get("VERIFY_ALL_RUNTIME_GUARD") == "1",
+        "完整的 verify_all 會對整輪所有檢查做同樣的比對",
+    )
     def test_representative_checks_leave_no_new_runtime_items(self):
         dist = Path(os.environ["FRONTEND_DIST_DIR"]).resolve()
         self.assertTrue(dist.is_relative_to(RUNTIME.resolve()))

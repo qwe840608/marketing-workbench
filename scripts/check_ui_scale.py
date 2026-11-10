@@ -74,7 +74,9 @@ def main():
     )
     os.environ.update(env)
     settings = Settings(_env_file=env_path)
-    command.upgrade(Config(str(REPO / "backend/alembic.ini")), "head")
+    alembic_cfg = Config(str(REPO / "backend/alembic.ini"))
+    alembic_cfg.attributes["settings"] = Settings(_env_file=None)
+    command.upgrade(alembic_cfg, "head")
     engine = build_engine(settings)
     cleanup(engine.dispose)
     factory = session_factory(engine)
@@ -471,7 +473,7 @@ def main():
                         capture(name + "-bottom", width, height)
                         page.locator(selector).evaluate("e => e.scrollTop = 0")
                     if name == "workspace-settings":
-                        from check_csv_ui import exercise_csv
+                        from ui_csv import exercise_csv
 
                         exercise_csv(page, width, height, capture)
                         expect(page.get_by_role("heading", name="緊急回覆權限", exact=True)).to_have_count(0)

@@ -1,7 +1,7 @@
 // 社群平台都不支援 Markdown：文案框可以寫 Markdown，發佈時用 toPlatformText 轉成平台顯示得出來的純文字。
 // 規則與後端 caption_markdown.to_platform_text 相同，共用 shared/caption_markdown_vectors.json。
 
-const MARKDOWN = /\*\*[^*\n]+\*\*|__[^_\n]+__|(?<![\p{L}\p{N}*])\*[^*\s][^*\n]*\*(?!\*)|(?<![\p{L}\p{N}_])_[^_\s][^_\n]*_(?!_)|^#{1,6} \S|\[[^\]\n]+\]\([^)\s]+\)|`[^`\n]+`/mu;
+const MARKDOWN = /\*\*[^*\n]+\*\*|__[^_\n]+__|(?<![\p{L}\p{N}*])\*[^*\s][^*\n]*\*(?!\*)|(?<![\p{L}\p{N}_])_[^_\s][^_\n]*_(?!_)|^#{1,6} \S|\[[^\]\n]+\]\([^)\s]+\)|`[^`\n]+`|<u>[^<\n]+<\/u>/mu;
 
 export function hasMarkdown(text: string) {
   return MARKDOWN.test(text);
@@ -24,7 +24,7 @@ function styled(text: string, style: keyof typeof STYLES) {
   }).join('');
 }
 
-// 發佈時送出的文字：# 大標題 → █ 大標題、## 小標題 → ▍小標題（英數粗體）、**粗體**／*斜體* → Unicode 字形（中文只去掉符號）、
+// 發佈時送出的文字：# 大標題 → █ 大標題、## 小標題 → ▍小標題（英數粗體）、**粗體**／*斜體* → Unicode 字形（中文只去掉符號）、<u>底線</u> → 每個字後面加組合底線（U+0332）、
 // 行首 - ／* ／+ 項目 → •、[文字](網址) → 文字 網址、`程式碼` → 程式碼；1. 編號維持原樣。
 export function toPlatformText(text: string) {
   return text
@@ -33,8 +33,12 @@ export function toPlatformText(text: string) {
     .split('\n').map(inline).join('\n');
 }
 
+// 平台沒有底線樣式：每個字後面接組合用底線字元，中英文都畫得出來。
+const underlined = (text: string) => Array.from(text, ch => ch + String.fromCodePoint(0x332)).join('');
+
 function inline(text: string) {
   return text
+    .replace(/<u>([^<\n]+)<\/u>/gu, (_, a: string) => underlined(a))
     .replace(/\*\*([^*\n]+)\*\*|__([^_\n]+)__/gu, (_, a?: string, b?: string) => styled(a ?? b ?? '', 'bold'))
     .replace(/(?<![\p{L}\p{N}*])\*([^*\s][^*\n]*)\*(?!\*)|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*)_(?!_)/gu, (_, a?: string, b?: string) => styled(a ?? b ?? '', 'italic'))
     .replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/gu, '$1 $2')

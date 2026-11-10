@@ -3,10 +3,11 @@ import { createHmac, randomBytes } from 'node:crypto';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import vm from 'node:vm';
-import { fixedUrl, request, checkBackend, checkEndpoint, gatewayEnvironment, backendPort, portSettings } from './webhooks.mjs';
+import { fixedUrl, publicUrl, gatewayKind, gatewayAgent, tunnelTokenValid, resolveCloudflared, request, checkBackend, checkEndpoint, accessLogin, gatewayEnvironment, backendPort, portSettings } from './webhooks.mjs';
 import { readPlatformSettings } from './platform-credentials.mjs';
 
 const secret = randomBytes(32).toString('hex');
@@ -61,6 +62,42 @@ test('固定網址設定拒絕任意主機、HTTP、userinfo、port、path、que
   }
 });
 
+test('Cloudflare 固定網址只接受自有網域的根網址', () => {
+  assert.equal(fixedUrl('https://mwb.example.com/', 'cloudflare'), 'https://mwb.example.com');
+  assert.equal(publicUrl({ WEBHOOK_GATEWAY: 'cloudflare', WEBHOOK_PUBLIC_URL: 'https://mwb.example.com' }), 'https://mwb.example.com');
+  for (const value of ['http://mwb.example.com', 'https://user:pass@mwb.example.com', 'https://mwb.example.com:8443',
+    'https://mwb.example.com/webhook/x', 'https://mwb.example.com?x=1', 'https://mwb.example.com#x',
+    'https://203.0.113.5', 'https://[::1]', 'https://localhost', 'https://mwb.localhost', 'https://mwb.example.ts.net',
+    'https://example.ngrok.app', 'https://*.example.com', 'https://example']) {
+    assert.throws(() => fixedUrl(value, 'cloudflare'), undefined, value);
+  }
+  // 設成 ngrok 時不接受自有網域，避免一半設定就送出探測金鑰。
+  assert.throws(() => publicUrl({ WEBHOOK_PUBLIC_URL: 'https://mwb.example.com' }));
+});
+
+test('閘道種類與本機狀態埠依 WEBHOOK_GATEWAY 決定', () => {
+  assert.equal(gatewayKind({}), 'ngrok');
+  assert.equal(gatewayKind({ WEBHOOK_GATEWAY: ' Cloudflare ' }), 'cloudflare');
+  assert.throws(() => gatewayKind({ WEBHOOK_GATEWAY: 'tailscale' }), /WEBHOOK_GATEWAY/);
+  assert.deepEqual(gatewayAgent({}), { name: 'ngrok', port: 4040, url: 'http://127.0.0.1:4040/api/tunnels' });
+  assert.deepEqual(gatewayAgent({ WEBHOOK_GATEWAY: 'cloudflare' }), { name: 'cloudflared', port: 20241, url: 'http://127.0.0.1:20241/ready' });
+});
+
+test('Tunnel token 格式檢查不接受空白或亂碼', () => {
+  const good = Buffer.from(JSON.stringify({ a: 'account', t: 'tunnel', s: 'secret' })).toString('base64');
+  assert.equal(tunnelTokenValid(good), true);
+  for (const value of [undefined, '', 'not-a-token', Buffer.from('{"a":"x"}').toString('base64')]) assert.equal(tunnelTokenValid(value), false);
+});
+
+test('cloudflared 搜尋順序 PATH、CLOUDFLARED_PATH、Program Files；缺少時提示安裝', () => {
+  const exe = process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared';
+  const env = { PATH: 'E:/path', ProgramFiles: 'E:/pf', 'ProgramFiles(x86)': 'E:/pf86' }, settings = { CLOUDFLARED_PATH: 'E:/configured/cloudflared.exe' };
+  assert.equal(resolveCloudflared(settings, env, () => true), join('E:/path', exe));
+  assert.equal(resolveCloudflared(settings, env, p => p === settings.CLOUDFLARED_PATH), settings.CLOUDFLARED_PATH);
+  assert.equal(resolveCloudflared(settings, env, p => p === join('E:/pf86', 'cloudflared', exe)), join('E:/pf86', 'cloudflared', exe));
+  assert.throws(() => resolveCloudflared(settings, env, () => false), /找不到 cloudflared.*winget/);
+});
+
 async function serverFor(t, handler) {
   const server = http.createServer(handler);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -110,6 +147,9 @@ test('驗收不接受公開管理 API 或 HTTP 200 提示頁冒充成功', async
 test('ngrok 子程序僅接收 tunnel 憑證與必要系統變數', () => {
   const env = gatewayEnvironment({ NGROK_AUTHTOKEN:'isolated-token' }, { PATH:'fixture-path', JEV_API_KEY:'private', META_PAGE_ACCESS_TOKEN:'private', ADMIN_INITIAL_PASSWORD:'private' });
   assert.deepEqual(env, { PATH:'fixture-path', NGROK_AUTHTOKEN:'isolated-token' });
+  // cloudflared 只拿 Tunnel token，而且經環境變數，不出現在命令列。
+  const cf = gatewayEnvironment({ WEBHOOK_GATEWAY:'cloudflare', CLOUDFLARE_TUNNEL_TOKEN:'tunnel-token', NGROK_AUTHTOKEN:'other' }, { PATH:'fixture-path', JEV_API_KEY:'private' });
+  assert.deepEqual(cf, { PATH:'fixture-path', TUNNEL_TOKEN:'tunnel-token' });
 });
 
 test('後端埠號取自 BACKEND_INTERNAL_URL，且 APP_ORIGIN 本機網址要同埠', () => {
@@ -128,4 +168,18 @@ test('改用其他埠號時只換本機網址，保留 Tailscale 來源', () => 
   assert.equal(backendPort(portSettings({ APP_ORIGIN: 'http://localhost:8000' }, 8010)), 8010);
   assert.throws(() => portSettings({}, 80));
   assert.throws(() => portSettings({}, Number('abc')));
+});
+
+test('only a Cloudflare Access login redirect counts as blocked', () => {
+  const r = (status, location) => ({ status, headers: location ? { location } : {} });
+  assert.equal(accessLogin(r(302, 'https://team-1.cloudflareaccess.com/cdn-cgi/access/login/mwb.example.com?kid=x')), true);
+  assert.equal(accessLogin(r(303, 'https://team.cloudflareaccess.com/cdn-cgi/access/login/h')), true);
+  assert.equal(accessLogin(r(200, 'https://team.cloudflareaccess.com/cdn-cgi/access/login/h')), false);
+  assert.equal(accessLogin(r(302)), false);
+  assert.equal(accessLogin(r(302, '/signin')), false);
+  assert.equal(accessLogin(r(302, 'http://team.cloudflareaccess.com/cdn-cgi/access/login/h')), false);
+  assert.equal(accessLogin(r(302, 'https://team.cloudflareaccess.com.evil.test/cdn-cgi/access/login/h')), false);
+  assert.equal(accessLogin(r(302, 'https://evil.test/cdn-cgi/access/login/?x=.cloudflareaccess.com')), false);
+  assert.equal(accessLogin(r(302, 'https://team.cloudflareaccess.com:8443/cdn-cgi/access/login/h')), false);
+  assert.equal(accessLogin(r(302, 'https://team.cloudflareaccess.com/other')), false);
 });

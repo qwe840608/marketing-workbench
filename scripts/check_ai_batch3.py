@@ -79,7 +79,9 @@ def main():
     for provider in ("OPENAI", "GEMINI", "ANTHROPIC", "JEV"):
         os.environ.pop(provider + "_API_KEY", None)
     settings = Settings(_env_file=None)
-    command.upgrade(Config(str(REPO / "backend/alembic.ini")), "head")
+    alembic_cfg = Config(str(REPO / "backend/alembic.ini"))
+    alembic_cfg.attributes["settings"] = Settings(_env_file=None)
+    command.upgrade(alembic_cfg, "head")
     engine = build_engine(settings)
     cleanup(engine.dispose)
     factory = session_factory(engine)

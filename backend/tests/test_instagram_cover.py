@@ -69,6 +69,7 @@ def test_cover_is_bound_to_instagram_and_can_be_replaced_and_removed(ready):
     assert saved.json()["platform_options"]["instagram"] == {
         "share_to_feed": False,
         "cover_media_id": cover["id"],
+        "comments": [],
     }
     replaced = upload_cover(ready, saved.json(), png_bytes((1080, 1920)), filename="new.png")
     assert replaced["cover"]["id"] != cover["id"] and replaced["cover"]["mime"] == "image/png"

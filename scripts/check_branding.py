@@ -45,6 +45,7 @@ def main():
     from playwright.sync_api import expect, sync_playwright
     from test_records import seed_records
 
+    from app.config import Settings
     from app.db import build_engine, session_factory
 
     folder = temporary_dir()
@@ -70,6 +71,7 @@ def main():
     )
     cfg = Config(str(REPO / "backend/alembic.ini"))
     cfg.set_main_option("script_location", str(REPO / "backend/migrations"))
+    cfg.attributes["settings"] = Settings(_env_file=None)
     command.upgrade(cfg, "head")
     settings = configured()
     engine = build_engine(settings)
